@@ -17,6 +17,7 @@ export function LoadingSpinner({ text }: LoadingSpinnerProps) {
           strokeLinecap="round"
         />
       </svg>
+      {text && <span className="text-blue-600">{text}</span>}
     </div>
   );
 }
