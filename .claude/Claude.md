@@ -1,8 +1,26 @@
-# 코딩 원칙
+# Coding Principles
 
-1. **3의 법칙** — 세 번째 반복 전까진 추상화하지 않는다
-2. **작동 → 올바름 → 빠름** — 지금 코드가 어느 단계인지 자문한다
-3. **단순하게 시작** — 처음부터 완벽한 시스템 설계 금지 (Gall's Law)
-4. **멱등성** — 같은 입력엔 항상 같은 출력. 부수 효과는 별도 함수로
-5. **단일 책임** — 함수 설명에 "그리고"가 나오면 분리 신호
-6. **단일 추상화 수준** — 한 함수 안에 세부 수준 섞지 않는다
+1. **Rule of Three** — Don't abstract until you've written it three times
+2. **Make it work → Make it right → Make it fast** — Ask yourself which stage this code is at
+3. **Start simple** — Never design a perfect system from the start (Gall's Law)
+4. **Idempotency** — Same input, same output. Isolate side effects into separate functions
+5. **Single Responsibility** — If you need "and" to describe a function, split it
+6. **Single Level of Abstraction** — Don't mix levels of detail inside one function
+
+# Commit Convention
+
+format: type(scope): description (#issue-number)
+feat(scope): add new feature (#n)
+fix(scope): bug fix (#n)
+refactor(scope): code improvement without behavior change (#n)
+style(scope): UI or style change (#n)
+chore: config, package, environment (#n)
+docs: documentation (#n)
+test(scope): add or update tests (#n)
+perf(scope): performance improvement (#n)
+ci: CI/CD configuration (#n)
+revert: revert previous commit (#n)
+
+# Workflow
+
+- Always stop and wait for confirmation before making a commit
