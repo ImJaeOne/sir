@@ -7,6 +7,10 @@
 5. **Single Responsibility** — If you need "and" to describe a function, split it
 6. **Single Level of Abstraction** — Don't mix levels of detail inside one function
 
+# Path Alias
+
+Use `@/` for all imports instead of relative paths (e.g. `@/components/Button`)
+
 # Commit Convention
 
 format: type(scope): description (#issue-number)
