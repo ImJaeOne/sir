@@ -21,7 +21,7 @@ export function PipelineStageCard({
 
   return (
     <div
-      className={`bg-white rounded-2xl border p-6 flex flex-col gap-4 transition-all duration-200 ${
+      className={`bg-white rounded-2xl border p-4 sm:p-5 lg:p-6 flex flex-col gap-3 sm:gap-4 transition-all duration-200 ${
         isActive
           ? 'border-blue-200 shadow-md'
           : isCompleted

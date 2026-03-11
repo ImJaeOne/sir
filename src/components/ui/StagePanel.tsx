@@ -10,10 +10,10 @@ interface StagePanelProps {
 
 export function StagePanel({ stage, status, nextStageLabel, onStart, onNext }: StagePanelProps) {
   return (
-    <div className="relative bg-white rounded-2xl border border-slate-100 shadow-sm p-8 flex flex-col gap-6">
+    <div className="relative bg-white rounded-2xl border border-slate-100 shadow-sm p-5 sm:p-6 lg:p-8 flex flex-col gap-4 sm:gap-6">
       {/* Stage title */}
       <div className="flex items-center gap-3">
-        <h2 className="text-xl font-bold text-slate-800">{stage.label}</h2>
+        <h2 className="text-lg sm:text-xl font-bold text-slate-800">{stage.label}</h2>
         {status === 'completed' && (
           <span className="text-xs font-semibold text-green-600 bg-green-50 px-2.5 py-1 rounded-full">
             완료
@@ -24,14 +24,14 @@ export function StagePanel({ stage, status, nextStageLabel, onStart, onNext }: S
       {status === 'idle' && (
         <button
           onClick={onStart}
-          className="self-start bg-blue-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-blue-700 active:scale-95 transition-all duration-150 cursor-pointer"
+          className="self-start bg-blue-600 text-white px-5 sm:px-6 py-2.5 sm:py-3 rounded-xl text-sm sm:text-base font-semibold hover:bg-blue-700 active:scale-95 transition-all duration-150 cursor-pointer"
         >
           {stage.buttonText}
         </button>
       )}
       {/* Loading: loading button */}
       {status === 'loading' && (
-        <button className="self-start bg-blue-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-blue-700 active:scale-95 transition-all duration-150 cursor-pointer">
+        <button className="self-start bg-blue-600 text-white px-5 sm:px-6 py-2.5 sm:py-3 rounded-xl text-sm sm:text-base font-semibold hover:bg-blue-700 active:scale-95 transition-all duration-150 cursor-pointer">
           처리 중...
         </button>
       )}
@@ -53,7 +53,7 @@ export function StagePanel({ stage, status, nextStageLabel, onStart, onNext }: S
           {nextStageLabel ? (
             <button
               onClick={onNext}
-              className="self-start bg-slate-800 text-white px-6 py-3 rounded-xl font-semibold hover:bg-slate-700 active:scale-95 transition-all duration-150 cursor-pointer"
+              className="self-start bg-slate-800 text-white px-5 sm:px-6 py-2.5 sm:py-3 rounded-xl text-sm sm:text-base font-semibold hover:bg-slate-700 active:scale-95 transition-all duration-150 cursor-pointer"
             >
               → 다음: {nextStageLabel}
             </button>
