@@ -25,8 +25,9 @@ jobs:
 
       - name: Add fork remote
         run: |
-          echo "Token length: ${#TOKEN}"
-          git remote add fork https://ImJaeOne:${TOKEN}@github.com/ImJaeOne/sir.git
+          git config credential.helper store
+          echo "https://ImJaeOne:${TOKEN}@github.com" > ~/.git-credentials
+          git remote add fork https://github.com/ImJaeOne/sir.git
           git remote -v
         env:
           TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
@@ -39,3 +40,4 @@ jobs:
         if: always()
         run: |
           git remote remove fork 2>/dev/null || true
+          rm -f ~/.git-credentials
