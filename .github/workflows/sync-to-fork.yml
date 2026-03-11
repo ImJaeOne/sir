@@ -25,11 +25,11 @@ jobs:
 
       - name: Add fork remote
         run: |
+          echo "Token length: ${#TOKEN}"
+          git remote add fork https://ImJaeOne:${TOKEN}@github.com/ImJaeOne/sir.git
           git remote -v
-          git remote remove fork 2>/dev/null || true
-          git remote -v
-          git remote add fork https://ImJaeOne:${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/ImJaeOne/sir.git
-          git remote -v
+        env:
+          TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
 
       - name: Push to fork
         run: |
