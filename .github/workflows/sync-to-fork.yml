@@ -25,7 +25,7 @@ jobs:
 
       - name: Push to fork
         run: |
-          git remote add fork https://ImJaeOne:${TOKEN}@github.com/ImJaeOne/sir.git
+          git remote add fork "https://ImJaeOne:$TOKEN@github.com/ImJaeOne/sir.git"
           git push -f fork main
         env:
           TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
