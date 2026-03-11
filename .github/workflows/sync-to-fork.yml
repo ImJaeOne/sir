@@ -1,4 +1,4 @@
-name: Sync to Personal Fork
+name: Sync to Fork
 
 on:
   push:
@@ -8,29 +8,21 @@ on:
 
 jobs:
   sync:
-    name: Sync forked repo
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout main
+      - name: Checkout source (org repo)
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: main
 
-      - name: Configure Git
+      - name: Configure git
         run: |
-          git config user.name "ImJaeOne"
           git config user.email "${{ secrets.EMAIL }}"
+          git config user.name "GitHub Actions Bot"
 
       - name: Push to fork
-        run: |
-          git remote add fork "https://ImJaeOne:$TOKEN@github.com/ImJaeOne/sir.git"
-          git push -f fork main
         env:
           TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
-
-      - name: Clean up
-        if: always()
         run: |
-          git remote remove fork 2>/dev/null || true
+          git remote add fork https://x-access-token:${TOKEN}@github.com/ImJaeOne/sir.git
+          git push fork main --force
