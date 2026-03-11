@@ -1,7 +1,8 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { Suspense, useRef, useState, useEffect, useCallback } from 'react';
 import type { KeyboardEvent } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { StagePanel } from '@/components/ui/StagePanel';
 import { PIPELINE_STAGES } from '@/constants/pipeline';
 import type { StageId, StageStatus } from '@/types/pipeline';
@@ -20,12 +21,39 @@ const MOCK_SIR_INDEX = 72;
 const INITIAL_KEYWORDS = ['삼성전자', 'Samsung Electronics'];
 
 export default function DashboardPage() {
+  return (
+    <Suspense>
+      <DashboardContent />
+    </Suspense>
+  );
+}
+
+function DashboardContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [keywords, setKeywords] = useState<string[]>(INITIAL_KEYWORDS);
   const [inputValue, setInputValue] = useState('');
   const [stageStatuses, setStageStatuses] =
     useState<Record<StageId, StageStatus>>(INITIAL_STATUSES);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const stageRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  const updateStep = useCallback(
+    (stageId: StageId) => {
+      router.replace(`/dashboard?step=${stageId}`, { scroll: false });
+    },
+    [router]
+  );
+
+  // 초기 로드 시 step 파라미터에 해당하는 스테이지로 스크롤
+  useEffect(() => {
+    const step = searchParams?.get('step') as StageId | null;
+    if (step && STAGE_IDS.includes(step)) {
+      setTimeout(() => {
+        stageRefs.current[step]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 100);
+    }
+  }, [searchParams]);
 
   const addKeyword = () => {
     const trimmed = inputValue.trim();
@@ -44,13 +72,14 @@ export default function DashboardPage() {
   };
 
   const handleStart = (stageId: StageId) => {
+    updateStep(stageId);
     setStageStatuses((prev) => ({ ...prev, [stageId]: 'loading' }));
     setTimeout(() => {
       setStageStatuses((prev) => ({ ...prev, [stageId]: 'completed' }));
-      // 다음 스테이지로 스크롤
       const nextIndex = STAGE_IDS.indexOf(stageId) + 1;
       if (nextIndex < STAGE_IDS.length) {
         const nextId = STAGE_IDS[nextIndex];
+        updateStep(nextId);
         setTimeout(() => {
           stageRefs.current[nextId]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }, 100);
@@ -64,6 +93,7 @@ export default function DashboardPage() {
   })();
 
   const scrollToStage = (id: StageId) => {
+    updateStep(id);
     stageRefs.current[id]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     setSidebarOpen(false);
   };
