@@ -23,21 +23,14 @@ jobs:
           git config user.name "ImJaeOne"
           git config user.email "${{ secrets.EMAIL }}"
 
-      - name: Add fork remote
-        run: |
-          git config credential.helper store
-          echo "https://ImJaeOne:${TOKEN}@github.com" > ~/.git-credentials
-          git remote add fork https://github.com/ImJaeOne/sir.git
-          git remote -v
-        env:
-          TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
-
       - name: Push to fork
         run: |
+          git remote add fork https://ImJaeOne:${TOKEN}@github.com/ImJaeOne/sir.git
           git push -f fork main
+        env:
+          TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
 
       - name: Clean up
         if: always()
         run: |
           git remote remove fork 2>/dev/null || true
-          rm -f ~/.git-credentials
