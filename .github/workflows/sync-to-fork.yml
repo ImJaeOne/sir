@@ -24,6 +24,6 @@ jobs:
         env:
           TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
         run: |
-          git remote remove fork 2>/dev/null || true
+          git remote rm fork 2>/dev/null || true
           git remote add fork https://x-access-token:${TOKEN}@github.com/ImJaeOne/sir.git
           git push fork main --force
