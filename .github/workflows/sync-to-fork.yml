@@ -21,6 +21,4 @@ jobs:
           git config user.name "GitHub Actions Bot"
 
       - name: Push to fork
-        env:
-          TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
-        run: git push https://x-access-token:${TOKEN}@github.com/ImJaeOne/sir.git main --force
+        run: git push https://x-access-token:${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/ImJaeOne/sir.git HEAD:main --force
