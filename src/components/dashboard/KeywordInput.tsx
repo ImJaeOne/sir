@@ -4,6 +4,7 @@ import { useKeywordParams } from '@/hooks/useKeywordParams';
 export function KeywordInput() {
   const { keywords, addKeyword, removeKeyword } = useKeywordParams();
   const [inputValue, setInputValue] = useState('');
+  const [isComposing, setIsComposing] = useState(false);
 
   const handleAdd = () => {
     addKeyword(inputValue);
@@ -11,7 +12,10 @@ export function KeywordInput() {
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') handleAdd();
+    if (e.key === 'Enter' && !isComposing) {
+      e.preventDefault();
+      handleAdd();
+    }
   };
 
   return (
@@ -23,6 +27,8 @@ export function KeywordInput() {
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           onKeyDown={handleKeyDown}
+          onCompositionStart={() => setIsComposing(true)}
+          onCompositionEnd={() => setIsComposing(false)}
           placeholder="키워드 입력..."
           className="flex-1 min-w-0 text-sm border border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-blue-400 transition-colors"
         />
