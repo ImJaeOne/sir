@@ -20,5 +20,5 @@ jobs:
           PERSONAL_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
           PERSONAL_REPO: ImJaeOne/sir
         run: |
-          git remote add fork https://$PERSONAL_TOKEN@github.com/$PERSONAL_REPO.git
+          git remote add fork "https://$PERSONAL_TOKEN@github.com/$PERSONAL_REPO.git"
           git push fork main --force
