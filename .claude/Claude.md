@@ -13,18 +13,49 @@ Use `@/` for all imports instead of relative paths (e.g. `@/components/Button`)
 
 # Commit Convention
 
-format: type(scope): description (#issue-number)
-feat(scope): add new feature (#n)
-fix(scope): bug fix (#n)
-refactor(scope): code improvement without behavior change (#n)
-style(scope): UI or style change (#n)
-chore: config, package, environment (#n)
-docs: documentation (#n)
-test(scope): add or update tests (#n)
-perf(scope): performance improvement (#n)
-ci: CI/CD configuration (#n)
-revert: revert previous commit (#n)
+format: `type(scope): description (#issue-number)`
+
+| Type     | When to use                              |
+| -------- | ---------------------------------------- |
+| feat     | new feature                              |
+| fix      | bug fix                                  |
+| refactor | code improvement without behavior change |
+| style    | UI or style change                       |
+| chore    | config, package, environment             |
+| docs     | documentation                            |
+| test     | add or update tests                      |
+| perf     | performance improvement                  |
+| ci       | CI/CD configuration                      |
+| revert   | revert previous commit                   |
 
 # Workflow
 
-- Always stop and wait for confirmation before making a commit
+## Commit Flow
+
+When work is ready to commit, follow these steps and STOP before executing the commit:
+
+**Step 1 — Stage files**
+
+```bash
+git add <files>
+```
+
+**Step 2 — Show staged diff**
+
+```bash
+git diff --staged
+```
+
+**Step 3 — Propose commit message**
+Present the commit message in this format and wait for confirmation:
+
+```
+type(scope): description (#issue-number)
+```
+
+⛔ Do NOT run `git commit` until the user explicitly confirms the message.
+
+## Context Management
+
+- If context feels lost or circular, compact the current state into a summary doc and start a new chat
+- Follow RPI: Research → Plan → Implement
