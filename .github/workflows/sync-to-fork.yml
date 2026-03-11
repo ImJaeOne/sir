@@ -15,20 +15,16 @@ jobs:
       - name: Checkout main
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
           fetch-depth: 0
           ref: main
 
-      - name: Add remote-url
+      - name: Configure Git & Push to fork
         run: |
-          git remote add fork https://ImJaeOne:${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/ImJaeOne/sir
-          git config user.name ImJaeOne
-          git config user.email ${{ secrets.EMAIL }}
-
-      - name: Push changes to forked-repo
-        run: |
+          git config user.name "ImJaeOne"
+          git config user.email "${{ secrets.EMAIL }}"
+          git remote add fork https://ImJaeOne:${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/ImJaeOne/sir.git
           git push -f fork main
 
       - name: Clean up
-        run: |
-          git remote remove fork
+        if: always()
+        run: git remote remove fork
