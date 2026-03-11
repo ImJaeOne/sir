@@ -18,13 +18,21 @@ jobs:
           fetch-depth: 0
           ref: main
 
-      - name: Configure Git & Push to fork
+      - name: Configure Git
         run: |
           git config user.name "ImJaeOne"
           git config user.email "${{ secrets.EMAIL }}"
+
+      - name: Add fork remote
+        run: |
+          git remote remove fork 2>/dev/null || true
           git remote add fork https://ImJaeOne:${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/ImJaeOne/sir.git
+
+      - name: Push to fork
+        run: |
           git push -f fork main
 
       - name: Clean up
         if: always()
-        run: git remote remove fork
+        run: |
+          git remote remove fork 2>/dev/null || true
