@@ -3,14 +3,13 @@
 import { Suspense, useRef, useState, useEffect, useCallback } from 'react';
 import { useSearchParams, useRouter, useParams } from 'next/navigation';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
-import { DashboardSidebar } from '@/components/dashboard/DashboardSidebar';
 import { StagePanel } from '@/components/ui/StagePanel';
 import { PIPELINE_STAGES } from '@/constants/pipeline';
 import type { StageId, StageStatus } from '@/types/pipeline';
 
 const STAGE_IDS: StageId[] = ['crawling', 'analysis', 'content', 'report', 'email'];
 
-function buildInitialStatuses(step: StageId | null): Record<StageId, StageStatus> {
+function buildInitialStatuses(step: StageId | null, allCompleted: boolean): Record<StageId, StageStatus> {
   const statuses: Record<StageId, StageStatus> = {
     crawling: 'idle',
     analysis: 'idle',
@@ -18,6 +17,11 @@ function buildInitialStatuses(step: StageId | null): Record<StageId, StageStatus
     report: 'idle',
     email: 'idle',
   };
+
+  if (allCompleted) {
+    STAGE_IDS.forEach((id) => { statuses[id] = 'completed'; });
+    return statuses;
+  }
 
   if (!step || !STAGE_IDS.includes(step)) return statuses;
 
@@ -43,11 +47,11 @@ function PipelineContent() {
   const contextId = params?.contextId as string;
   const searchParams = useSearchParams();
   const initialStep = (searchParams?.get('step') as StageId | null) ?? null;
+  const isCompleted = searchParams?.get('completed') === 'true';
 
   const [stageStatuses, setStageStatuses] = useState<Record<StageId, StageStatus>>(() =>
-    buildInitialStatuses(initialStep)
+    buildInitialStatuses(initialStep, isCompleted)
   );
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const stageRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const updateStep = useCallback(
@@ -93,41 +97,37 @@ function PipelineContent() {
   const allCompleted = frontierIndex === STAGE_IDS.length;
 
   return (
-    <div className="h-screen bg-slate-50 flex overflow-hidden">
-      <DashboardSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+    <div className="h-screen bg-slate-50 flex flex-col overflow-hidden">
+      <DashboardHeader />
 
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <DashboardHeader onOpenSidebar={() => setSidebarOpen(true)} />
+      <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+        <div className="max-w-2xl mx-auto flex flex-col gap-4 sm:gap-6">
+          {PIPELINE_STAGES.map((stage, index) => (
+            <div
+              key={stage.id}
+              ref={(el) => {
+                stageRefs.current[stage.id] = el;
+              }}
+            >
+              <StagePanel
+                stage={stage}
+                index={index}
+                status={stageStatuses[stage.id]}
+                locked={index > frontierIndex}
+                onStart={() => handleStart(stage.id)}
+              />
+            </div>
+          ))}
 
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
-          <div className="max-w-2xl mx-auto flex flex-col gap-4 sm:gap-6">
-            {PIPELINE_STAGES.map((stage, index) => (
-              <div
-                key={stage.id}
-                ref={(el) => {
-                  stageRefs.current[stage.id] = el;
-                }}
-              >
-                <StagePanel
-                  stage={stage}
-                  index={index}
-                  status={stageStatuses[stage.id]}
-                  locked={index > frontierIndex}
-                  onStart={() => handleStart(stage.id)}
-                />
-              </div>
-            ))}
-
-            {allCompleted && (
-              <div className="text-center py-6 sm:py-8">
-                <p className="text-green-600 font-semibold text-sm sm:text-base">
-                  모든 단계가 완료되었습니다.
-                </p>
-              </div>
-            )}
-          </div>
-        </main>
-      </div>
+          {allCompleted && (
+            <div className="text-center py-6 sm:py-8">
+              <p className="text-green-600 font-semibold text-sm sm:text-base">
+                모든 단계가 완료되었습니다.
+              </p>
+            </div>
+          )}
+        </div>
+      </main>
     </div>
   );
 }

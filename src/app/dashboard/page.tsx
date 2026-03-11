@@ -55,7 +55,15 @@ export default function DashboardPage() {
   };
 
   const handleSelect = (ctx: AnalysisContext) => {
-    router.push(`/dashboard/${ctx.id}`);
+    const params = new URLSearchParams();
+    params.set('completed', 'true');
+    params.set('company', ctx.name);
+    params.set('startDate', ctx.dateRange.start);
+    params.set('endDate', ctx.dateRange.end);
+    if (ctx.keywords.length > 0) {
+      params.set('keywords', ctx.keywords.join(','));
+    }
+    router.push(`/dashboard/${ctx.id}?${params.toString()}`);
   };
 
   const handleCreate = () => {
@@ -64,6 +72,7 @@ export default function DashboardPage() {
     const newId = `ctx-${Date.now()}`;
     const params = new URLSearchParams();
     params.set('step', 'crawling');
+    params.set('company', selectedCompany);
     params.set('startDate', dateRange.start);
     params.set('endDate', dateRange.end);
     if (keywords.length > 0) {
