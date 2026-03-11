@@ -13,6 +13,7 @@ jobs:
       - name: Checkout source (org repo)
         uses: actions/checkout@v4
         with:
+          ref: main
           fetch-depth: 0
 
       - name: Configure git
@@ -20,5 +21,10 @@ jobs:
           git config user.email "${{ secrets.EMAIL }}"
           git config user.name "GitHub Actions Bot"
 
+      - name: Check branch
+        run: |
+          git branch -a
+          git status
+
       - name: Push to fork
-        run: git push https://x-access-token:${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/ImJaeOne/sir.git HEAD:main --force
+        run: git push https://x-access-token:${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/ImJaeOne/sir.git refs/heads/main:refs/heads/main --force
