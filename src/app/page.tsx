@@ -5,17 +5,7 @@ import { ROUTES } from '@/constants/routes';
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
-      {/* Navbar */}
-      <header className="bg-white border-b border-slate-100 px-4 sm:px-6 py-4">
-        <div className="max-w-5xl mx-auto flex items-center gap-3">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-            <span className="text-white text-xs font-bold">S</span>
-          </div>
-          <span className="text-slate-800 font-semibold text-lg tracking-tight">SIR</span>
-        </div>
-      </header>
-
+    <div className="flex flex-col min-h-0">
       {/* Main content */}
       <main className="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 py-12 sm:py-16 lg:py-20 gap-10 sm:gap-12 lg:gap-16">
         {/* Hero */}
@@ -46,7 +36,7 @@ export default function LandingPage() {
 
       {/* Footer */}
       <footer className="text-center text-xs text-slate-400 py-6">
-        © 2026 SIR. All rights reserved.
+        © 2026 InnoPlan SIR. All rights reserved.
       </footer>
     </div>
   );

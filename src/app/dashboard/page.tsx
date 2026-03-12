@@ -129,17 +129,7 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      {/* Header */}
-      <header className="bg-white border-b border-slate-100 px-4 sm:px-6 py-4">
-        <div className="max-w-3xl mx-auto flex items-center gap-3">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-            <span className="text-white text-xs font-bold">S</span>
-          </div>
-          <span className="text-slate-800 font-semibold text-lg tracking-tight">SIR</span>
-        </div>
-      </header>
-
+    <div className="min-h-0">
       <main className="max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-12 flex flex-col gap-8">
         {/* Title */}
         <div className="flex items-center justify-between">
