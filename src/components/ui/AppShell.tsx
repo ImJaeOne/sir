@@ -4,8 +4,14 @@ import { useEffect } from 'react';
 import { AppHeader } from '@/components/ui/AppHeader';
 import { Sidebar } from '@/components/ui/Sidebar';
 import { useSidebarStore } from '@/store/sidebar';
+import type { AuthUser } from '@/types/auth';
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+interface AppShellProps {
+  children: React.ReactNode;
+  user?: AuthUser | null;
+}
+
+export function AppShell({ children, user = null }: AppShellProps) {
   const isOpen = useSidebarStore((s) => s.isOpen);
   const open = useSidebarStore((s) => s.open);
   const close = useSidebarStore((s) => s.close);
@@ -26,7 +32,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="h-screen bg-slate-50 flex flex-col overflow-hidden">
-      <AppHeader />
+      <AppHeader user={user} />
       <Sidebar />
 
       <main

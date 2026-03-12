@@ -2,12 +2,20 @@
 
 import { useState } from 'react';
 import { useSidebarStore } from '@/store/sidebar';
+import { logout } from '@/app/auth/actions';
 import { Bell, ChevronDown, LogOut, PanelLeftClose, PanelLeftOpen, User } from 'lucide-react';
+import type { AuthUser } from '@/types/auth';
 
-export function AppHeader() {
+interface AppHeaderProps {
+  user: AuthUser | null;
+}
+
+export function AppHeader({ user }: AppHeaderProps) {
   const isOpen = useSidebarStore((s) => s.isOpen);
   const toggle = useSidebarStore((s) => s.toggle);
   const [showUserMenu, setShowUserMenu] = useState(false);
+
+  const initial = user?.displayName?.charAt(0) ?? '?';
 
   return (
     <header
@@ -53,10 +61,13 @@ export function AppHeader() {
               className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer"
             >
               <div className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
-                <span className="text-[10px] font-bold text-blue-600">임</span>
+                <span className="text-[10px] font-bold text-blue-600">{initial}</span>
               </div>
               <span className="text-sm font-medium text-slate-700 hidden sm:block">
-                임재원<span className="text-slate-400 font-normal">(개발)</span>
+                {user?.displayName ?? '사용자'}
+                {user?.department && (
+                  <span className="text-slate-400 font-normal">({user.department})</span>
+                )}
               </span>
               <ChevronDown
                 size={14}
@@ -70,8 +81,8 @@ export function AppHeader() {
                 <div className="fixed inset-0 z-40" onClick={() => setShowUserMenu(false)} />
                 <div className="absolute right-0 top-full mt-1 w-48 bg-white border border-slate-200 rounded-xl shadow-lg z-50 py-1">
                   <div className="px-3 py-2.5 border-b border-slate-100">
-                    <p className="text-sm font-medium text-slate-800">임재원</p>
-                    <p className="text-xs text-slate-400">개발</p>
+                    <p className="text-sm font-medium text-slate-800">{user?.displayName}</p>
+                    <p className="text-xs text-slate-400">{user?.department ?? user?.email}</p>
                   </div>
                   <button
                     className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer"
@@ -81,9 +92,9 @@ export function AppHeader() {
                   </button>
                   <button
                     className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
-                    onClick={() => {
+                    onClick={async () => {
                       setShowUserMenu(false);
-                      // TODO: 로그아웃 로직
+                      await logout();
                     }}
                   >
                     <LogOut size={16} />
