@@ -10,11 +10,12 @@ interface StagePanelProps {
   status: StageStatus;
   locked: boolean;
   onStart: () => void;
+  onSkip?: () => void;
   badge?: ReactNode;
   children?: ReactNode;
 }
 
-export function StagePanel({ stage, index, status, locked, onStart, badge, children }: StagePanelProps) {
+export function StagePanel({ stage, index, status, locked, onStart, onSkip, badge, children }: StagePanelProps) {
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -24,7 +25,9 @@ export function StagePanel({ stage, index, status, locked, onStart, badge, child
           ? 'border-slate-100 opacity-40 pointer-events-none'
           : status === 'completed'
             ? 'border-green-100'
-            : 'border-blue-200 shadow-md'
+            : status === 'skipped'
+              ? 'border-slate-200 opacity-60'
+              : 'border-blue-200 shadow-md'
       }`}
     >
       {/* Stage header */}
@@ -39,12 +42,14 @@ export function StagePanel({ stage, index, status, locked, onStart, badge, child
             className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
               status === 'completed'
                 ? 'bg-green-100 text-green-600'
-                : locked
+                : status === 'skipped'
                   ? 'bg-slate-100 text-slate-400'
-                  : 'bg-blue-100 text-blue-600'
+                  : locked
+                    ? 'bg-slate-100 text-slate-400'
+                    : 'bg-blue-100 text-blue-600'
             }`}
           >
-            {status === 'completed' ? '✓' : index + 1}
+            {status === 'completed' ? '✓' : status === 'skipped' ? '—' : index + 1}
           </div>
           <h2 className="text-lg sm:text-xl font-bold text-slate-800">{stage.label}</h2>
           {badge}
@@ -56,15 +61,30 @@ export function StagePanel({ stage, index, status, locked, onStart, badge, child
               완료
             </span>
           )}
+          {status === 'skipped' && (
+            <span className="text-xs font-semibold text-slate-400 bg-slate-100 px-2.5 py-1 rounded-full">
+              건너뜀
+            </span>
+          )}
 
-          {/* Idle: start button */}
+          {/* Idle: start button + optional skip */}
           {status === 'idle' && !locked && (
-            <button
-              onClick={onStart}
-              className="bg-blue-600 text-white px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-700 active:scale-95 transition-all duration-150 cursor-pointer"
-            >
-              {stage.buttonText}
-            </button>
+            <div className="flex items-center gap-2">
+              {onSkip && (
+                <button
+                  onClick={onSkip}
+                  className="border border-slate-200 text-slate-500 px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl text-sm font-semibold hover:bg-slate-50 active:scale-95 transition-all duration-150 cursor-pointer"
+                >
+                  건너뛰기
+                </button>
+              )}
+              <button
+                onClick={onStart}
+                className="bg-blue-600 text-white px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-700 active:scale-95 transition-all duration-150 cursor-pointer"
+              >
+                {stage.buttonText}
+              </button>
+            </div>
           )}
 
           {/* Loading */}

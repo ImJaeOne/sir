@@ -53,6 +53,9 @@ export default function DashboardPage() {
     );
   };
 
+  // 컨텍스트명
+  const [contextName, setContextName] = useState('');
+
   // 키워드
   const [keywordInput, setKeywordInput] = useState('');
   const [keywords, setKeywords] = useState<string[]>([]);
@@ -88,11 +91,12 @@ export default function DashboardPage() {
   };
 
   const handleCreate = () => {
-    if (!selectedCompany.trim()) return;
+    if (!selectedCompany.trim() || !contextName.trim()) return;
     // TODO: API로 context 생성 후 반환된 id로 이동
     const newId = `ctx-${Date.now()}`;
     const params = new URLSearchParams();
     params.set('step', 'crawling');
+    params.set('contextName', contextName.trim());
     params.set('company', selectedCompany);
     params.set('startDate', dateRange.start);
     params.set('endDate', dateRange.end);
@@ -152,6 +156,20 @@ export default function DashboardPage() {
         {showCreate && (
           <div className="bg-white rounded-2xl border border-blue-200 shadow-md p-5 sm:p-6 flex flex-col gap-4">
             <h2 className="text-base font-bold text-slate-800">새 컨텍스트 생성</h2>
+
+            {/* 컨텍스트명 */}
+            <div className="flex flex-col gap-2">
+              <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
+                컨텍스트명
+              </label>
+              <input
+                type="text"
+                value={contextName}
+                onChange={(e) => setContextName(e.target.value)}
+                placeholder="예: 삼성전자 3월 감성 분석"
+                className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2.5 outline-none focus:border-blue-400 transition-colors"
+              />
+            </div>
 
             {/* 회사명 with autocomplete */}
             <div className="flex flex-col gap-2">
@@ -292,7 +310,7 @@ export default function DashboardPage() {
 
               <button
                 onClick={handleCreate}
-                disabled={!selectedCompany.trim()}
+                disabled={!selectedCompany.trim() || !contextName.trim()}
                 className="bg-blue-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-700 active:scale-95 transition-all duration-150 cursor-pointer disabled:opacity-40 disabled:cursor-default shrink-0"
               >
                 생성

@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useEffect, useCallback } from 'react';
+import { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams, useRouter, useParams } from 'next/navigation';
 import { StagePanel } from '@/components/ui/StagePanel';
 import { CrawlingResult } from '@/components/pipeline/CrawlingResult';
@@ -64,6 +64,8 @@ export function PipelineStages() {
   const stageRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const [selectedUrls, setSelectedUrls] = useState<Set<string>>(() => getDefaultSelectedUrls());
+  const [dismissedComplete, setDismissedComplete] = useState(false);
+  const contextName = searchParams?.get('contextName') ?? searchParams?.get('company') ?? 'Company';
 
   const handleToggleUrl = useCallback((url: string) => {
     setSelectedUrls((prev) => {
@@ -112,8 +114,12 @@ export function PipelineStages() {
     }, 1500);
   };
 
+  const handleSkip = (stageId: StageId) => {
+    setStageStatuses((prev) => ({ ...prev, [stageId]: 'skipped' }));
+  };
+
   const frontierIndex = (() => {
-    const idx = STAGE_IDS.findIndex((id) => stageStatuses[id] !== 'completed');
+    const idx = STAGE_IDS.findIndex((id) => stageStatuses[id] !== 'completed' && stageStatuses[id] !== 'skipped');
     return idx === -1 ? STAGE_IDS.length : idx;
   })();
 
@@ -172,6 +178,7 @@ export function PipelineStages() {
             status={stageStatuses[stage.id]}
             locked={index > frontierIndex}
             onStart={() => handleStart(stage.id)}
+            onSkip={stage.id === 'email' ? () => handleSkip('email') : undefined}
             badge={getStageBadge(stage.id)}
           >
             {stage.id === 'crawling' && <CrawlingResult />}
@@ -188,11 +195,43 @@ export function PipelineStages() {
         </div>
       ))}
 
-      {allCompleted && (
-        <div className="text-center py-6 sm:py-8">
-          <p className="text-green-600 font-semibold text-sm sm:text-base">
-            모든 단계가 완료되었습니다.
-          </p>
+      {allCompleted && !dismissedComplete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" onClick={() => setDismissedComplete(true)}>
+          <div
+            className="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-sm mx-4 p-6 flex flex-col gap-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" className="text-green-600">
+                    <circle cx="10" cy="10" r="9" stroke="currentColor" strokeWidth="1.5" />
+                    <path d="M6 10l3 3 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-base font-bold text-slate-800">작업 완료</span>
+                  <span className="text-sm text-slate-500">
+                    <span className="font-semibold text-slate-700">{contextName}</span> 작업이 완료되었습니다.
+                  </span>
+                </div>
+              </div>
+              <button
+                onClick={() => setDismissedComplete(true)}
+                className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer shrink-0"
+              >
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                  <path d="M3 3l8 8M11 3l-8 8" />
+                </svg>
+              </button>
+            </div>
+            <button
+              onClick={() => router.push('/dashboard')}
+              className="w-full px-4 py-3 rounded-xl text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 active:scale-95 transition-all cursor-pointer"
+            >
+              대시보드로 이동
+            </button>
+          </div>
         </div>
       )}
     </>

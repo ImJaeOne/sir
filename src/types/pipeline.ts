@@ -1,5 +1,5 @@
 export type StageId = 'crawling' | 'analysis' | 'content' | 'report' | 'email';
-export type StageStatus = 'idle' | 'loading' | 'completed';
+export type StageStatus = 'idle' | 'loading' | 'completed' | 'skipped';
 
 export interface StageResult {
   summary: string;
