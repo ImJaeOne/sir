@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { MOCK_ANALYSIS_RESULTS } from '@/constants/analysisResults';
 import { PLATFORM_CATEGORIES } from '@/constants/platforms';
 import { ChevronIcon } from '@/components/ui/ChevronIcon';
+import { AnalysisCharts } from '@/components/pipeline/AnalysisCharts';
 import { useToggleSet } from '@/hooks/useToggleSet';
 import type { PlatformAnalysis } from '@/types/pipeline';
 
@@ -75,6 +76,17 @@ function calcCategorySentiment(platforms: PlatformAnalysis[]) {
 export function AnalysisResult({ selectedUrls, onToggleUrl }: AnalysisResultProps) {
   const categories = useToggleSet();
   const platforms = useToggleSet();
+  const [selectionOpen, setSelectionOpen] = useState(false);
+
+  const urlInfoMap = useMemo(() => {
+    const map = new Map<string, { title: string; category: string; platform: string }>();
+    MOCK_ANALYSIS_RESULTS.forEach((p) => {
+      const info = { category: p.category, platform: p.platformLabel };
+      p.articles.forEach((a) => map.set(a.url, { ...info, title: a.title }));
+      p.flagged.forEach((f) => map.set(f.url, { ...info, title: f.title }));
+    });
+    return map;
+  }, []);
 
   const totalScore = Math.round(
     MOCK_ANALYSIS_RESULTS.reduce((sum, p) => sum + p.sirScore, 0) / MOCK_ANALYSIS_RESULTS.length
@@ -97,39 +109,61 @@ export function AnalysisResult({ selectedUrls, onToggleUrl }: AnalysisResultProp
         </div>
       </div>
 
-      {/* Flagged summary */}
-      {totalFlagged > 0 && (
-        <div className="flex items-center gap-2 bg-red-50 border border-red-100 rounded-xl px-4 py-2.5">
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 16 16"
-            fill="none"
-            className="text-red-500 shrink-0"
-          >
-            <path
-              d="M8 1.5L1 14h14L8 1.5z"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinejoin="round"
-            />
-            <path d="M8 6v3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-            <circle cx="8" cy="11.5" r="0.75" fill="currentColor" />
-          </svg>
-          <span className="text-sm text-red-700 font-medium">
-            주의 필요 콘텐츠 {totalFlagged}건
-          </span>
-        </div>
-      )}
+      {/* Charts */}
+      <AnalysisCharts />
 
       {/* Selection summary */}
-      <div className="flex items-center justify-between bg-blue-50 border border-blue-100 rounded-xl px-4 py-2.5">
-        <span className="text-sm text-blue-700 font-medium">
-          대응 콘텐츠 제작 대상: {selectedCount}건 선택됨
-        </span>
-        <span className="text-xs text-blue-500">
-          기사를 선택하여 콘텐츠 제작 대상에 추가할 수 있습니다
-        </span>
+      <div className="bg-blue-50 border border-blue-100 rounded-xl overflow-hidden">
+        <button
+          onClick={() => setSelectionOpen((v) => !v)}
+          className="w-full flex items-center justify-between px-4 py-2.5 cursor-pointer text-left"
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-blue-700 font-medium">
+              대응 콘텐츠 제작 대상: {selectedCount}건 선택됨
+            </span>
+          </div>
+          <ChevronIcon open={selectionOpen} />
+        </button>
+
+        {selectionOpen && (
+          <ul className="border-t border-blue-100 max-h-48 overflow-y-auto bg-white">
+            {Array.from(selectedUrls).map((url) => {
+              const info = urlInfoMap.get(url);
+              return (
+              <li
+                key={url}
+                className="flex items-center justify-between gap-2 px-4 py-2 border-b border-slate-50 last:border-b-0"
+              >
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="text-xs font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded shrink-0">
+                    {info?.category ?? ''}
+                  </span>
+                  <span className="text-xs font-medium text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded shrink-0">
+                    {info?.platform ?? ''}
+                  </span>
+                  <span className="text-sm text-slate-700 truncate">
+                    {info?.title ?? url}
+                  </span>
+                </div>
+                <button
+                  onClick={() => onToggleUrl(url)}
+                  className="shrink-0 w-5 h-5 flex items-center justify-center rounded-full hover:bg-red-100 text-slate-400 hover:text-red-500 transition-colors cursor-pointer"
+                >
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                    <path d="M3 3l6 6M9 3l-6 6" />
+                  </svg>
+                </button>
+              </li>
+              );
+            })}
+            {selectedCount === 0 && (
+              <li className="px-4 py-3 text-xs text-slate-400 text-center">
+                선택된 기사가 없습니다
+              </li>
+            )}
+          </ul>
+        )}
       </div>
 
       {/* Categories */}
@@ -159,11 +193,7 @@ export function AnalysisResult({ selectedUrls, onToggleUrl }: AnalysisResultProp
             </button>
 
             {isCategoryOpen && (
-              <div className="border-t border-slate-100">
-                <div className="px-4 py-3">
-                  <SentimentBar {...categorySentiment} />
-                </div>
-
+              <div className="border-t border-slate-100 max-h-80 overflow-y-auto">
                 {items.map((platform) => {
                   const isPlatformOpen = platforms.has(platform.platformId);
 
@@ -187,12 +217,6 @@ export function AnalysisResult({ selectedUrls, onToggleUrl }: AnalysisResultProp
 
                       {isPlatformOpen && (
                         <div className="px-4 pl-6 pb-3 flex flex-col gap-3">
-                          <SentimentBar
-                            positive={platform.positive}
-                            neutral={platform.neutral}
-                            negative={platform.negative}
-                          />
-
                           {/* Flagged content */}
                           {platform.flagged.length > 0 && (
                             <div className="flex flex-col gap-1.5">

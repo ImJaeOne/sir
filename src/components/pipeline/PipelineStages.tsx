@@ -114,6 +114,8 @@ export function PipelineStages() {
 
   const allCompleted = frontierIndex === STAGE_IDS.length;
 
+  const totalFlagged = MOCK_ANALYSIS_RESULTS.reduce((sum, p) => sum + p.flagged.length, 0);
+
   return (
     <>
       {PIPELINE_STAGES.map((stage, index) => (
@@ -129,6 +131,11 @@ export function PipelineStages() {
             status={stageStatuses[stage.id]}
             locked={index > frontierIndex}
             onStart={() => handleStart(stage.id)}
+            badge={
+              stage.id === 'analysis' && stageStatuses.analysis === 'completed' && totalFlagged > 0
+                ? <span className="text-xs font-medium text-red-600 bg-red-50 border border-red-100 px-2 py-0.5 rounded-full">주의 {totalFlagged}건</span>
+                : undefined
+            }
           >
             {stage.id === 'crawling' && <CrawlingResult />}
             {stage.id === 'analysis' && (

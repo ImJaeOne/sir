@@ -10,10 +10,11 @@ interface StagePanelProps {
   status: StageStatus;
   locked: boolean;
   onStart: () => void;
+  badge?: ReactNode;
   children?: ReactNode;
 }
 
-export function StagePanel({ stage, index, status, locked, onStart, children }: StagePanelProps) {
+export function StagePanel({ stage, index, status, locked, onStart, badge, children }: StagePanelProps) {
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -46,14 +47,16 @@ export function StagePanel({ stage, index, status, locked, onStart, children }: 
             {status === 'completed' ? '✓' : index + 1}
           </div>
           <h2 className="text-lg sm:text-xl font-bold text-slate-800">{stage.label}</h2>
+          {badge}
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
           {status === 'completed' && (
             <span className="text-xs font-semibold text-green-600 bg-green-50 px-2.5 py-1 rounded-full">
               완료
             </span>
           )}
-        </div>
 
-        <div className="flex items-center gap-2 shrink-0">
           {/* Idle: start button */}
           {status === 'idle' && !locked && (
             <button
