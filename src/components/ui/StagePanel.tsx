@@ -109,7 +109,7 @@ export function StagePanel({ stage, index, status, locked, onStart, children }: 
       {/* Completed: results (toggleable) */}
       {status === 'completed' && expanded && (
         <div className="px-5 sm:px-6 lg:px-8 pb-5 sm:pb-6 lg:pb-8">
-          {children ?? (
+          {children || (
             <div className="flex flex-col gap-3">
               <p className="text-sm font-semibold text-slate-700">{stage.result.summary}</p>
               <ul className="flex flex-col gap-2">

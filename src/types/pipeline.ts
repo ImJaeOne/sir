@@ -18,6 +18,24 @@ export interface PlatformCrawlResult {
   articles: CrawlArticle[];
 }
 
+export interface FlaggedContent {
+  title: string;
+  url: string;
+  sentiment: 'negative' | 'caution';
+  reason: string;
+}
+
+export interface PlatformAnalysis {
+  platformId: string;
+  platformLabel: string;
+  category: string;
+  sirScore: number;
+  positive: number;
+  neutral: number;
+  negative: number;
+  flagged: FlaggedContent[];
+}
+
 export interface PipelineStage {
   id: StageId;
   label: string;
