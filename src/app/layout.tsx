@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'SIR',
+  title: 'InnoPlan SIR',
   description: 'AI 기반 디지털 평판 관리 플랫폼',
 };
 

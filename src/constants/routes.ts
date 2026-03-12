@@ -1,4 +1,6 @@
 export const ROUTES = {
   LANDING: '/',
-  DASHBOARD: '/dashboard',
+  WORKSPACE: '/workspace',
+  LOGIN: '/auth/login',
+  SIGNUP: '/auth/signup',
 } as const;

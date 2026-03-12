@@ -6,12 +6,12 @@ export const PIPELINE_STAGES: PipelineStage[] = [
     label: '크롤링',
     buttonText: '크롤링 시작',
     result: {
-      summary: '총 128개 콘텐츠 수집 완료',
+      summary: '총 214개 컨텐츠 수집 완료',
       items: [
-        '뉴스 54건 — 네이버 뉴스, 다음 뉴스',
-        '블로그 38건 — 네이버 블로그, 티스토리',
-        '주식 커뮤니티 21건 — 종목토론방, 인베스팅',
-        '검색 결과 15건 — 구글, 네이버 검색',
+        '뉴스 42건 — 네이버 뉴스',
+        '커뮤니티 68건 — 네이버증권 종목토론방, 팍스넷, 디시인사이드 주식갤러리, 뽐뿌 주식포럼',
+        '포털 35건 — 구글, 네이버',
+        'SNS 69건 — 유튜브, 인스타그램, 네이버 카페, 네이버 블로그',
       ],
     },
   },
@@ -30,10 +30,10 @@ export const PIPELINE_STAGES: PipelineStage[] = [
   },
   {
     id: 'content',
-    label: '콘텐츠',
-    buttonText: '콘텐츠 생성',
+    label: '컨텐츠',
+    buttonText: '컨텐츠 생성',
     result: {
-      summary: '대응 콘텐츠 3건 생성 완료',
+      summary: '대응 컨텐츠 3건 생성 완료',
       items: [
         '보도자료 — "삼성전자, 2분기 실적 발표"',
         'FAQ — 제품 리콜 관련 고객 FAQ 10선',
@@ -48,7 +48,7 @@ export const PIPELINE_STAGES: PipelineStage[] = [
     result: {
       summary: '주간 감사 리포트 생성 완료',
       items: [
-        '총 128건 수집 / 감성 분석 완료',
+        '총 214건 수집 / 감성 분석 완료',
         'SIR 지수: 72점 (전주 대비 +4점)',
         '주요 이슈: 리콜 관련 부정 여론 모니터링 필요',
         'PDF 리포트 첨부 준비 완료',
