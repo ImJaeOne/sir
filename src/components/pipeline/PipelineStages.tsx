@@ -5,8 +5,11 @@ import { useSearchParams, useRouter, useParams } from 'next/navigation';
 import { StagePanel } from '@/components/ui/StagePanel';
 import { CrawlingResult } from '@/components/pipeline/CrawlingResult';
 import { AnalysisResult } from '@/components/pipeline/AnalysisResult';
+import { ContentResult } from '@/components/pipeline/ContentResult';
 import { PIPELINE_STAGES } from '@/constants/pipeline';
+import { MOCK_CRAWL_RESULTS } from '@/constants/crawlResults';
 import { MOCK_ANALYSIS_RESULTS } from '@/constants/analysisResults';
+import { MOCK_CONTENT_STRATEGIES } from '@/constants/contentStrategies';
 import type { StageId, StageStatus } from '@/types/pipeline';
 
 const STAGE_IDS: StageId[] = ['crawling', 'analysis', 'content', 'report', 'email'];
@@ -116,6 +119,42 @@ export function PipelineStages() {
 
   const totalFlagged = MOCK_ANALYSIS_RESULTS.reduce((sum, p) => sum + p.flagged.length, 0);
 
+  const contentItems = MOCK_CONTENT_STRATEGIES.filter((s) => selectedUrls.has(s.url));
+  const responseCount = contentItems.filter((s) => !s.reportable).length;
+  const reportableCount = contentItems.filter((s) => s.reportable).length;
+
+  const totalArticles = MOCK_CRAWL_RESULTS.reduce((sum, p) => sum + p.articles.length, 0);
+
+  const getStageBadge = (stageId: StageId) => {
+    if (stageId === 'crawling' && stageStatuses.crawling === 'completed') {
+      return (
+        <span className="text-xs font-medium text-blue-600 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-full">
+          {totalArticles}건 수집
+        </span>
+      );
+    }
+    if (stageId === 'analysis' && stageStatuses.analysis === 'completed' && totalFlagged > 0) {
+      return (
+        <span className="text-xs font-medium text-red-600 bg-red-50 border border-red-100 px-2 py-0.5 rounded-full">
+          주의 {totalFlagged}건
+        </span>
+      );
+    }
+    if (stageId === 'content' && stageStatuses.content === 'completed') {
+      return (
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs font-medium text-amber-600 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-full">
+            대응 {responseCount}건
+          </span>
+          <span className="text-xs font-medium text-red-600 bg-red-50 border border-red-100 px-2 py-0.5 rounded-full">
+            신고 {reportableCount}건
+          </span>
+        </div>
+      );
+    }
+    return undefined;
+  };
+
   return (
     <>
       {PIPELINE_STAGES.map((stage, index) => (
@@ -131,11 +170,7 @@ export function PipelineStages() {
             status={stageStatuses[stage.id]}
             locked={index > frontierIndex}
             onStart={() => handleStart(stage.id)}
-            badge={
-              stage.id === 'analysis' && stageStatuses.analysis === 'completed' && totalFlagged > 0
-                ? <span className="text-xs font-medium text-red-600 bg-red-50 border border-red-100 px-2 py-0.5 rounded-full">주의 {totalFlagged}건</span>
-                : undefined
-            }
+            badge={getStageBadge(stage.id)}
           >
             {stage.id === 'crawling' && <CrawlingResult />}
             {stage.id === 'analysis' && (
@@ -144,6 +179,7 @@ export function PipelineStages() {
                 onToggleUrl={handleToggleUrl}
               />
             )}
+            {stage.id === 'content' && <ContentResult selectedUrls={selectedUrls} />}
           </StagePanel>
         </div>
       ))}

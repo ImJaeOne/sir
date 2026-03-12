@@ -6,7 +6,7 @@ export const PIPELINE_STAGES: PipelineStage[] = [
     label: '크롤링',
     buttonText: '크롤링 시작',
     result: {
-      summary: '총 214개 콘텐츠 수집 완료',
+      summary: '총 214개 컨텐츠 수집 완료',
       items: [
         '뉴스 42건 — 네이버 뉴스',
         '커뮤니티 68건 — 네이버증권 종목토론방, 팍스넷, 디시인사이드 주식갤러리, 뽐뿌 주식포럼',
@@ -30,10 +30,10 @@ export const PIPELINE_STAGES: PipelineStage[] = [
   },
   {
     id: 'content',
-    label: '콘텐츠',
-    buttonText: '콘텐츠 생성',
+    label: '컨텐츠',
+    buttonText: '컨텐츠 생성',
     result: {
-      summary: '대응 콘텐츠 3건 생성 완료',
+      summary: '대응 컨텐츠 3건 생성 완료',
       items: [
         '보도자료 — "삼성전자, 2분기 실적 발표"',
         'FAQ — 제품 리콜 관련 고객 FAQ 10선',

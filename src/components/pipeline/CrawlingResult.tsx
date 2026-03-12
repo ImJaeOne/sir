@@ -13,8 +13,6 @@ export function CrawlingResult() {
 
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-sm font-semibold text-slate-700">총 {totalArticles}개 콘텐츠 수집 완료</p>
-
       {PLATFORM_CATEGORIES.map((category) => {
         const items = MOCK_CRAWL_RESULTS.filter((p) => p.category === category);
         if (items.length === 0) return null;

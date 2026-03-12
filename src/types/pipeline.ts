@@ -43,6 +43,16 @@ export interface PlatformAnalysis {
   flagged: FlaggedContent[];
 }
 
+export interface ContentStrategy {
+  url: string;
+  title: string;
+  platform: string;
+  category: string;
+  reportable: boolean;
+  strategy?: string;
+  reportReason?: string;
+}
+
 export interface PipelineStage {
   id: StageId;
   label: string;

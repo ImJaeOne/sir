@@ -120,7 +120,7 @@ export function AnalysisResult({ selectedUrls, onToggleUrl }: AnalysisResultProp
         >
           <div className="flex items-center gap-2">
             <span className="text-sm text-blue-700 font-medium">
-              대응 콘텐츠 제작 대상: {selectedCount}건 선택됨
+              대응 컨텐츠 제작 대상: {selectedCount}건 선택됨
             </span>
           </div>
           <ChevronIcon open={selectionOpen} />
@@ -221,7 +221,7 @@ export function AnalysisResult({ selectedUrls, onToggleUrl }: AnalysisResultProp
                           {platform.flagged.length > 0 && (
                             <div className="flex flex-col gap-1.5">
                               <span className="text-xs font-semibold text-red-500 uppercase tracking-wide">
-                                주의 콘텐츠
+                                주의 컨텐츠
                               </span>
                               <ul className="flex flex-col gap-2">
                                 {platform.flagged.map((item, i) => (
