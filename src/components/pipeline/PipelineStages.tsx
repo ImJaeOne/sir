@@ -6,6 +6,7 @@ import { StagePanel } from '@/components/ui/StagePanel';
 import { CrawlingResult } from '@/components/pipeline/CrawlingResult';
 import { AnalysisResult } from '@/components/pipeline/AnalysisResult';
 import { PIPELINE_STAGES } from '@/constants/pipeline';
+import { MOCK_ANALYSIS_RESULTS } from '@/constants/analysisResults';
 import type { StageId, StageStatus } from '@/types/pipeline';
 
 const STAGE_IDS: StageId[] = ['crawling', 'analysis', 'content', 'report', 'email'];
@@ -34,6 +35,16 @@ function buildInitialStatuses(step: StageId | null, allCompleted: boolean): Reco
   return statuses;
 }
 
+function getDefaultSelectedUrls(): Set<string> {
+  const urls = new Set<string>();
+  MOCK_ANALYSIS_RESULTS.forEach((platform) => {
+    platform.flagged.forEach((item) => {
+      urls.add(item.url);
+    });
+  });
+  return urls;
+}
+
 export function PipelineStages() {
   const router = useRouter();
   const params = useParams();
@@ -46,6 +57,20 @@ export function PipelineStages() {
     buildInitialStatuses(initialStep, isCompleted)
   );
   const stageRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  const [selectedUrls, setSelectedUrls] = useState<Set<string>>(() => getDefaultSelectedUrls());
+
+  const handleToggleUrl = useCallback((url: string) => {
+    setSelectedUrls((prev) => {
+      const next = new Set(prev);
+      if (next.has(url)) {
+        next.delete(url);
+      } else {
+        next.add(url);
+      }
+      return next;
+    });
+  }, []);
 
   const updateStep = useCallback(
     (stageId: StageId) => {
@@ -106,7 +131,12 @@ export function PipelineStages() {
             onStart={() => handleStart(stage.id)}
           >
             {stage.id === 'crawling' && <CrawlingResult />}
-            {stage.id === 'analysis' && <AnalysisResult />}
+            {stage.id === 'analysis' && (
+              <AnalysisResult
+                selectedUrls={selectedUrls}
+                onToggleUrl={handleToggleUrl}
+              />
+            )}
           </StagePanel>
         </div>
       ))}

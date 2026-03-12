@@ -10,6 +10,14 @@ export const MOCK_ANALYSIS_RESULTS: PlatformAnalysis[] = [
     positive: 72,
     neutral: 18,
     negative: 10,
+    articles: [
+      { title: '삼성전자, 2분기 영업이익 시장 기대치 상회', url: 'https://news.naver.com/article/001', sentiment: 'positive' },
+      { title: '삼성전자 반도체 부문 회복세 뚜렷…HBM 수주 확대', url: 'https://news.naver.com/article/002', sentiment: 'positive' },
+      { title: '삼성전자, 갤럭시 신제품 출시 앞두고 기대감 상승', url: 'https://news.naver.com/article/003', sentiment: 'positive' },
+      { title: '삼성전자 주가 52주 신고가 경신…외국인 매수세', url: 'https://news.naver.com/article/004', sentiment: 'positive' },
+      { title: '"삼성전자 목표가 상향" 증권사 리포트 잇따라', url: 'https://news.naver.com/article/005', sentiment: 'neutral' },
+      { title: '삼성전자 리콜 이슈, 소비자 불만 확산 중', url: 'https://news.naver.com/article/006', sentiment: 'negative' },
+    ],
     flagged: [
       {
         title: '삼성전자 리콜 이슈, 소비자 불만 확산 중',
@@ -27,6 +35,13 @@ export const MOCK_ANALYSIS_RESULTS: PlatformAnalysis[] = [
     positive: 45,
     neutral: 25,
     negative: 30,
+    articles: [
+      { title: '삼성전자 이번 실적 진짜 좋네요', url: 'https://finance.naver.com/item/board_read.nhn?code=005930&nid=1', sentiment: 'positive' },
+      { title: 'HBM 관련 수혜 기대합니다', url: 'https://finance.naver.com/item/board_read.nhn?code=005930&nid=2', sentiment: 'positive' },
+      { title: '외국인 매수세 지속 중 의견 공유', url: 'https://finance.naver.com/item/board_read.nhn?code=005930&nid=3', sentiment: 'neutral' },
+      { title: '삼전 경영진 무능하다 진짜', url: 'https://finance.naver.com/item/board_read.nhn?code=005930&nid=10', sentiment: 'negative' },
+      { title: '삼성 반도체 TSMC한테 밀리는 거 아님?', url: 'https://finance.naver.com/item/board_read.nhn?code=005930&nid=11', sentiment: 'negative' },
+    ],
     flagged: [
       {
         title: '삼전 경영진 무능하다 진짜',
@@ -50,6 +65,10 @@ export const MOCK_ANALYSIS_RESULTS: PlatformAnalysis[] = [
     positive: 50,
     neutral: 30,
     negative: 20,
+    articles: [
+      { title: '삼성전자 반도체 사이클 바닥 확인?', url: 'https://paxnet.co.kr/stock/report/1', sentiment: 'positive' },
+      { title: '삼전 차트 분석 — 돌파 시그널 감지', url: 'https://paxnet.co.kr/stock/report/2', sentiment: 'neutral' },
+    ],
     flagged: [],
   },
   {
@@ -60,6 +79,12 @@ export const MOCK_ANALYSIS_RESULTS: PlatformAnalysis[] = [
     positive: 30,
     neutral: 25,
     negative: 45,
+    articles: [
+      { title: '삼성전자 실적 발표 요약 정리', url: 'https://gall.dcinside.com/board/view/?id=stock&no=1', sentiment: 'neutral' },
+      { title: '삼전 8만전자 가나요?', url: 'https://gall.dcinside.com/board/view/?id=stock&no=2', sentiment: 'positive' },
+      { title: '삼성 망한다 ㅋㅋ 탈출각', url: 'https://gall.dcinside.com/board/view/?id=stock&no=5', sentiment: 'negative' },
+      { title: '삼성 파운드리 수율 문제 심각하다는 소문', url: 'https://gall.dcinside.com/board/view/?id=stock&no=6', sentiment: 'negative' },
+    ],
     flagged: [
       {
         title: '삼성 망한다 ㅋㅋ 탈출각',
@@ -83,6 +108,10 @@ export const MOCK_ANALYSIS_RESULTS: PlatformAnalysis[] = [
     positive: 55,
     neutral: 30,
     negative: 15,
+    articles: [
+      { title: '삼성전자 장기 보유 후기', url: 'https://ppomppu.co.kr/zboard/view.php?id=stock&no=1', sentiment: 'positive' },
+      { title: '삼전 배당금 정리 (2026년 기준)', url: 'https://ppomppu.co.kr/zboard/view.php?id=stock&no=2', sentiment: 'neutral' },
+    ],
     flagged: [],
   },
   {
@@ -93,6 +122,11 @@ export const MOCK_ANALYSIS_RESULTS: PlatformAnalysis[] = [
     positive: 70,
     neutral: 20,
     negative: 10,
+    articles: [
+      { title: 'Samsung Electronics Q2 earnings beat expectations', url: 'https://google.com/search?q=samsung+electronics+1', sentiment: 'positive' },
+      { title: 'Samsung HBM expansion plans revealed', url: 'https://google.com/search?q=samsung+electronics+2', sentiment: 'positive' },
+      { title: 'Samsung Galaxy S26 launch date rumors', url: 'https://google.com/search?q=samsung+electronics+3', sentiment: 'neutral' },
+    ],
     flagged: [],
   },
   {
@@ -103,6 +137,11 @@ export const MOCK_ANALYSIS_RESULTS: PlatformAnalysis[] = [
     positive: 62,
     neutral: 23,
     negative: 15,
+    articles: [
+      { title: '삼성전자 실적 분석 — 2026년 상반기 전망', url: 'https://search.naver.com/search.nhn?query=samsung+1', sentiment: 'positive' },
+      { title: '삼성전자 주가 전망 총정리', url: 'https://search.naver.com/search.nhn?query=samsung+2', sentiment: 'neutral' },
+      { title: '삼성전자 품질 이슈 연이어 발생…소비자 신뢰 하락', url: 'https://search.naver.com/search.nhn?query=samsung+quality', sentiment: 'negative' },
+    ],
     flagged: [
       {
         title: '삼성전자 품질 이슈 연이어 발생…소비자 신뢰 하락',
@@ -120,6 +159,12 @@ export const MOCK_ANALYSIS_RESULTS: PlatformAnalysis[] = [
     positive: 55,
     neutral: 25,
     negative: 20,
+    articles: [
+      { title: '[긴급] 삼성전자 실적 발표 리뷰 — 반도체 슈퍼사이클 시작?', url: 'https://youtube.com/watch?v=abc1', sentiment: 'positive' },
+      { title: '삼성전자 주가 전망 2026 하반기 분석', url: 'https://youtube.com/watch?v=abc2', sentiment: 'neutral' },
+      { title: '삼성 vs TSMC HBM 경쟁 구도 정리', url: 'https://youtube.com/watch?v=abc3', sentiment: 'neutral' },
+      { title: '[폭로] 삼성전자 내부 사정 다 알려드림', url: 'https://youtube.com/watch?v=flag1', sentiment: 'negative' },
+    ],
     flagged: [
       {
         title: '[폭로] 삼성전자 내부 사정 다 알려드림',
@@ -137,6 +182,10 @@ export const MOCK_ANALYSIS_RESULTS: PlatformAnalysis[] = [
     positive: 65,
     neutral: 25,
     negative: 10,
+    articles: [
+      { title: '#삼성전자 #투자 — 실적 호조 반응 모음', url: 'https://instagram.com/p/samsung1', sentiment: 'positive' },
+      { title: '#갤럭시S26 #삼성 — 신제품 기대 포스트', url: 'https://instagram.com/p/samsung2', sentiment: 'positive' },
+    ],
     flagged: [],
   },
   {
@@ -147,6 +196,11 @@ export const MOCK_ANALYSIS_RESULTS: PlatformAnalysis[] = [
     positive: 48,
     neutral: 30,
     negative: 22,
+    articles: [
+      { title: '삼성전자 주주모임 — 이번 분기 배당 예측', url: 'https://cafe.naver.com/samsung/1', sentiment: 'positive' },
+      { title: '삼전 단기 매매 전략 공유합니다', url: 'https://cafe.naver.com/samsung/2', sentiment: 'neutral' },
+      { title: '삼성전자 AS 최악 후기 공유', url: 'https://cafe.naver.com/samsung/complaint1', sentiment: 'negative' },
+    ],
     flagged: [
       {
         title: '삼성전자 AS 최악 후기 공유',
@@ -164,6 +218,11 @@ export const MOCK_ANALYSIS_RESULTS: PlatformAnalysis[] = [
     positive: 68,
     neutral: 20,
     negative: 12,
+    articles: [
+      { title: '삼성전자 2026년 실적 분석 및 투자 포인트', url: 'https://blog.naver.com/samsung_analysis_1', sentiment: 'positive' },
+      { title: '삼성전자 HBM 관련주 수혜 정리', url: 'https://blog.naver.com/samsung_analysis_2', sentiment: 'positive' },
+      { title: '초보 투자자를 위한 삼성전자 기업 분석', url: 'https://blog.naver.com/samsung_analysis_3', sentiment: 'neutral' },
+    ],
     flagged: [],
   },
 ];

@@ -1,10 +1,16 @@
 'use client';
 
+import { useEffect } from 'react';
 import { MOCK_ANALYSIS_RESULTS } from '@/constants/analysisResults';
 import { PLATFORM_CATEGORIES } from '@/constants/platforms';
 import { ChevronIcon } from '@/components/ui/ChevronIcon';
 import { useToggleSet } from '@/hooks/useToggleSet';
 import type { PlatformAnalysis } from '@/types/pipeline';
+
+interface AnalysisResultProps {
+  selectedUrls: Set<string>;
+  onToggleUrl: (url: string) => void;
+}
 
 function ScoreBadge({ score }: { score: number }) {
   const color =
@@ -42,6 +48,16 @@ function SentimentBar({
   );
 }
 
+function SentimentTag({ sentiment }: { sentiment: 'positive' | 'neutral' | 'negative' }) {
+  const config = {
+    positive: { label: '긍정', className: 'bg-green-50 text-green-700' },
+    neutral: { label: '중립', className: 'bg-slate-100 text-slate-600' },
+    negative: { label: '부정', className: 'bg-red-50 text-red-700' },
+  };
+  const { label, className } = config[sentiment];
+  return <span className={`text-xs font-bold px-1.5 py-0.5 rounded shrink-0 ${className}`}>{label}</span>;
+}
+
 function calcCategoryScore(platforms: PlatformAnalysis[]): number {
   if (platforms.length === 0) return 0;
   return Math.round(platforms.reduce((sum, p) => sum + p.sirScore, 0) / platforms.length);
@@ -56,7 +72,7 @@ function calcCategorySentiment(platforms: PlatformAnalysis[]) {
   };
 }
 
-export function AnalysisResult() {
+export function AnalysisResult({ selectedUrls, onToggleUrl }: AnalysisResultProps) {
   const categories = useToggleSet();
   const platforms = useToggleSet();
 
@@ -64,6 +80,7 @@ export function AnalysisResult() {
     MOCK_ANALYSIS_RESULTS.reduce((sum, p) => sum + p.sirScore, 0) / MOCK_ANALYSIS_RESULTS.length
   );
   const totalFlagged = MOCK_ANALYSIS_RESULTS.reduce((sum, p) => sum + p.flagged.length, 0);
+  const selectedCount = selectedUrls.size;
 
   return (
     <div className="flex flex-col gap-4">
@@ -104,6 +121,16 @@ export function AnalysisResult() {
           </span>
         </div>
       )}
+
+      {/* Selection summary */}
+      <div className="flex items-center justify-between bg-blue-50 border border-blue-100 rounded-xl px-4 py-2.5">
+        <span className="text-sm text-blue-700 font-medium">
+          대응 콘텐츠 제작 대상: {selectedCount}건 선택됨
+        </span>
+        <span className="text-xs text-blue-500">
+          기사를 선택하여 콘텐츠 제작 대상에 추가할 수 있습니다
+        </span>
+      </div>
 
       {/* Categories */}
       {PLATFORM_CATEGORIES.map((category) => {
@@ -166,6 +193,7 @@ export function AnalysisResult() {
                             negative={platform.negative}
                           />
 
+                          {/* Flagged content */}
                           {platform.flagged.length > 0 && (
                             <div className="flex flex-col gap-1.5">
                               <span className="text-xs font-semibold text-red-500 uppercase tracking-wide">
@@ -178,25 +206,35 @@ export function AnalysisResult() {
                                     className="bg-red-50 border border-red-100 rounded-lg px-3 py-2.5 flex flex-col gap-1"
                                   >
                                     <div className="flex items-start gap-2">
-                                      <span
-                                        className={`text-xs font-bold px-1.5 py-0.5 rounded shrink-0 ${
-                                          item.sentiment === 'negative'
-                                            ? 'bg-red-100 text-red-700'
-                                            : 'bg-yellow-100 text-yellow-700'
-                                        }`}
-                                      >
-                                        {item.sentiment === 'negative' ? '부정' : '주의'}
-                                      </span>
-                                      <span className="text-sm text-slate-700 wrap-break-words">
-                                        {item.title}
-                                      </span>
+                                      <label className="flex items-start gap-2 cursor-pointer flex-1 min-w-0">
+                                        <input
+                                          type="checkbox"
+                                          checked={selectedUrls.has(item.url)}
+                                          onChange={() => onToggleUrl(item.url)}
+                                          className="mt-1 shrink-0 accent-red-600"
+                                        />
+                                        <div className="flex items-start gap-2 min-w-0">
+                                          <span
+                                            className={`text-xs font-bold px-1.5 py-0.5 rounded shrink-0 ${
+                                              item.sentiment === 'negative'
+                                                ? 'bg-red-100 text-red-700'
+                                                : 'bg-yellow-100 text-yellow-700'
+                                            }`}
+                                          >
+                                            {item.sentiment === 'negative' ? '부정' : '주의'}
+                                          </span>
+                                          <span className="text-sm text-slate-700 wrap-break-words">
+                                            {item.title}
+                                          </span>
+                                        </div>
+                                      </label>
                                     </div>
-                                    <span className="text-xs text-slate-400">{item.reason}</span>
+                                    <span className="text-xs text-slate-400 pl-6">{item.reason}</span>
                                     <a
                                       href={item.url}
                                       target="_blank"
                                       rel="noopener noreferrer"
-                                      className="text-xs text-blue-500 hover:text-blue-700 hover:underline truncate transition-colors"
+                                      className="text-xs text-blue-500 hover:text-blue-700 hover:underline truncate transition-colors pl-6"
                                     >
                                       {item.url}
                                     </a>
@@ -205,6 +243,47 @@ export function AnalysisResult() {
                               </ul>
                             </div>
                           )}
+
+                          {/* All articles */}
+                          <div className="flex flex-col gap-1.5">
+                            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                              전체 기사 ({platform.articles.length}건)
+                            </span>
+                            <ul className="flex flex-col gap-1">
+                              {platform.articles.map((article, i) => (
+                                <li
+                                  key={i}
+                                  className="flex items-start gap-2 px-3 py-2 rounded-lg hover:bg-slate-50 transition-colors"
+                                >
+                                  <label className="flex items-start gap-2 cursor-pointer flex-1 min-w-0">
+                                    <input
+                                      type="checkbox"
+                                      checked={selectedUrls.has(article.url)}
+                                      onChange={() => onToggleUrl(article.url)}
+                                      className="mt-1 shrink-0 accent-blue-600"
+                                    />
+                                    <div className="flex flex-col gap-0.5 min-w-0">
+                                      <div className="flex items-start gap-2">
+                                        <SentimentTag sentiment={article.sentiment} />
+                                        <span className="text-sm text-slate-700 wrap-break-words">
+                                          {article.title}
+                                        </span>
+                                      </div>
+                                      <a
+                                        href={article.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-xs text-blue-500 hover:text-blue-700 hover:underline truncate transition-colors"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        {article.url}
+                                      </a>
+                                    </div>
+                                  </label>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
                         </div>
                       )}
                     </div>

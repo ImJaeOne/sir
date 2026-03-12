@@ -25,6 +25,12 @@ export interface FlaggedContent {
   reason: string;
 }
 
+export interface AnalysisArticle {
+  title: string;
+  url: string;
+  sentiment: 'positive' | 'neutral' | 'negative';
+}
+
 export interface PlatformAnalysis {
   platformId: string;
   platformLabel: string;
@@ -33,6 +39,7 @@ export interface PlatformAnalysis {
   positive: number;
   neutral: number;
   negative: number;
+  articles: AnalysisArticle[];
   flagged: FlaggedContent[];
 }
 
