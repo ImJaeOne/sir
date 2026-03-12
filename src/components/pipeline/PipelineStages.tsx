@@ -16,7 +16,10 @@ import type { StageId, StageStatus } from '@/types/pipeline';
 
 const STAGE_IDS: StageId[] = ['crawling', 'analysis', 'content', 'report', 'email'];
 
-function buildInitialStatuses(step: StageId | null, allCompleted: boolean): Record<StageId, StageStatus> {
+function buildInitialStatuses(
+  step: StageId | null,
+  allCompleted: boolean
+): Record<StageId, StageStatus> {
   const statuses: Record<StageId, StageStatus> = {
     crawling: 'idle',
     analysis: 'idle',
@@ -26,7 +29,9 @@ function buildInitialStatuses(step: StageId | null, allCompleted: boolean): Reco
   };
 
   if (allCompleted) {
-    STAGE_IDS.forEach((id) => { statuses[id] = 'completed'; });
+    STAGE_IDS.forEach((id) => {
+      statuses[id] = 'completed';
+    });
     return statuses;
   }
 
@@ -65,6 +70,7 @@ export function PipelineStages() {
 
   const [selectedUrls, setSelectedUrls] = useState<Set<string>>(() => getDefaultSelectedUrls());
   const [dismissedComplete, setDismissedComplete] = useState(false);
+  const [backModalType, setBackModalType] = useState<'delete' | 'confirm' | null>(null);
   const contextName = searchParams?.get('contextName') ?? searchParams?.get('company') ?? 'Company';
 
   const handleToggleUrl = useCallback((url: string) => {
@@ -97,6 +103,24 @@ export function PipelineStages() {
     }
   }, [searchParams]);
 
+  // 파이프라인 시작 후 뒤로가기 감지
+  const hasStarted = stageStatuses.crawling !== 'idle';
+  const reportDone = stageStatuses.report === 'completed';
+
+  useEffect(() => {
+    if (!hasStarted) return;
+
+    window.history.pushState(null, '', window.location.href);
+
+    const handlePopState = () => {
+      window.history.pushState(null, '', window.location.href);
+      setBackModalType(reportDone ? 'confirm' : 'delete');
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [hasStarted, reportDone]);
+
   const handleStart = (stageId: StageId) => {
     updateStep(stageId);
     setStageStatuses((prev) => ({ ...prev, [stageId]: 'loading' }));
@@ -119,7 +143,9 @@ export function PipelineStages() {
   };
 
   const frontierIndex = (() => {
-    const idx = STAGE_IDS.findIndex((id) => stageStatuses[id] !== 'completed' && stageStatuses[id] !== 'skipped');
+    const idx = STAGE_IDS.findIndex(
+      (id) => stageStatuses[id] !== 'completed' && stageStatuses[id] !== 'skipped'
+    );
     return idx === -1 ? STAGE_IDS.length : idx;
   })();
 
@@ -183,10 +209,7 @@ export function PipelineStages() {
           >
             {stage.id === 'crawling' && <CrawlingResult />}
             {stage.id === 'analysis' && (
-              <AnalysisResult
-                selectedUrls={selectedUrls}
-                onToggleUrl={handleToggleUrl}
-              />
+              <AnalysisResult selectedUrls={selectedUrls} onToggleUrl={handleToggleUrl} />
             )}
             {stage.id === 'content' && <ContentResult selectedUrls={selectedUrls} />}
             {stage.id === 'report' && <ReportResult />}
@@ -196,7 +219,10 @@ export function PipelineStages() {
       ))}
 
       {allCompleted && !dismissedComplete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" onClick={() => setDismissedComplete(true)}>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30"
+          onClick={() => setDismissedComplete(true)}
+        >
           <div
             className="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-sm mx-4 p-6 flex flex-col gap-5"
             onClick={(e) => e.stopPropagation()}
@@ -204,15 +230,28 @@ export function PipelineStages() {
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center shrink-0">
-                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" className="text-green-600">
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 20 20"
+                    fill="none"
+                    className="text-green-600"
+                  >
                     <circle cx="10" cy="10" r="9" stroke="currentColor" strokeWidth="1.5" />
-                    <path d="M6 10l3 3 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    <path
+                      d="M6 10l3 3 5-5"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
                   </svg>
                 </div>
                 <div className="flex flex-col">
                   <span className="text-base font-bold text-slate-800">작업 완료</span>
                   <span className="text-sm text-slate-500">
-                    <span className="font-semibold text-slate-700">{contextName}</span> 작업이 완료되었습니다.
+                    <span className="font-semibold text-slate-700">{contextName}</span> 작업이
+                    완료되었습니다.
                   </span>
                 </div>
               </div>
@@ -220,7 +259,15 @@ export function PipelineStages() {
                 onClick={() => setDismissedComplete(true)}
                 className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer shrink-0"
               >
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 14 14"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                >
                   <path d="M3 3l8 8M11 3l-8 8" />
                 </svg>
               </button>
@@ -231,6 +278,84 @@ export function PipelineStages() {
             >
               대시보드로 이동
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* 뒤로가기 모달 — 1~3단계: 삭제 경고 / 4단계 이후: 확인 */}
+      {backModalType === 'delete' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+          <div className="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-sm mx-4 p-6 flex flex-col gap-5">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 20 20"
+                  fill="none"
+                  className="text-red-600"
+                >
+                  <path
+                    d="M10 2L2 18h16L10 2z"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinejoin="round"
+                  />
+                  <path d="M10 8v4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                  <circle cx="10" cy="14.5" r="0.75" fill="currentColor" />
+                </svg>
+              </div>
+              <div className="flex flex-col gap-1">
+                <span className="text-base font-bold text-slate-800">
+                  진행 중인 작업이 삭제됩니다
+                </span>
+                <span className="text-sm text-slate-500">
+                  현재까지 진행된 크롤링, 분석, 컨텐츠 데이터가 모두 삭제됩니다.
+                </span>
+                <span className="text-sm text-slate-500">계속하시겠습니까?</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setBackModalType(null)}
+                className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer"
+              >
+                계속 진행
+              </button>
+              <button
+                onClick={() => router.push('/dashboard')}
+                className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold bg-red-600 text-white hover:bg-red-700 active:scale-95 transition-all cursor-pointer"
+              >
+                나가기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {backModalType === 'confirm' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+          <div className="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-sm mx-4 p-6 flex flex-col gap-5">
+            <div className="flex flex-col gap-1">
+              <span className="text-base font-bold text-slate-800">
+                대시보드로 돌아가시겠습니까?
+              </span>
+              <span className="text-sm text-slate-500">현재 페이지를 벗어납니다.</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setBackModalType(null)}
+                className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer"
+              >
+                취소
+              </button>
+              <button
+                onClick={() => router.push('/dashboard')}
+                className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 active:scale-95 transition-all cursor-pointer"
+              >
+                대시보드로 이동
+              </button>
+            </div>
           </div>
         </div>
       )}
