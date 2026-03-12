@@ -42,7 +42,7 @@ export function PipelineStages() {
     (stageId: StageId) => {
       const p = new URLSearchParams(searchParams?.toString());
       p.set('step', stageId);
-      router.replace(`/dashboard/${contextId}?${p.toString()}`, { scroll: false });
+      router.replace(`/workspace/${contextId}?${p.toString()}`, { scroll: false });
     },
     [router, contextId, searchParams]
   );
@@ -222,7 +222,7 @@ export function PipelineStages() {
             <button
               onClick={() => {
                 store.reset();
-                router.push('/dashboard');
+                router.push('/workspace');
               }}
               className="w-full px-4 py-3 rounded-xl text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 active:scale-95 transition-all cursor-pointer"
             >
@@ -275,7 +275,7 @@ export function PipelineStages() {
               <button
                 onClick={() => {
                   store.reset();
-                  router.push('/dashboard');
+                  router.push('/workspace');
                 }}
                 className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold bg-red-600 text-white hover:bg-red-700 active:scale-95 transition-all cursor-pointer"
               >
@@ -306,7 +306,7 @@ export function PipelineStages() {
               <button
                 onClick={() => {
                   store.reset();
-                  router.push('/dashboard');
+                  router.push('/workspace');
                 }}
                 className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 active:scale-95 transition-all cursor-pointer"
               >
