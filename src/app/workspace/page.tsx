@@ -87,7 +87,7 @@ export default function DashboardPage() {
     if (ctx.keywords.length > 0) {
       params.set('keywords', ctx.keywords.join(','));
     }
-    router.push(`/dashboard/${ctx.id}?${params.toString()}`);
+    router.push(`/workspace/${ctx.id}?${params.toString()}`);
   };
 
   const handleCreate = () => {
@@ -106,7 +106,7 @@ export default function DashboardPage() {
     if (selectedPlatforms.length > 0) {
       params.set('platforms', selectedPlatforms.join(','));
     }
-    router.push(`/dashboard/${newId}?${params.toString()}`);
+    router.push(`/workspace/${newId}?${params.toString()}`);
   };
 
   const addKeyword = () => {

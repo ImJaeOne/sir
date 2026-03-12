@@ -1,4 +1,4 @@
 export const ROUTES = {
   LANDING: '/',
-  DASHBOARD: '/dashboard',
+  WORKSPACE: '/workspace',
 } as const;

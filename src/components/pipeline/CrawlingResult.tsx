@@ -9,8 +9,6 @@ export function CrawlingResult() {
   const categories = useToggleSet();
   const platforms = useToggleSet();
 
-  const totalArticles = MOCK_CRAWL_RESULTS.reduce((sum, p) => sum + p.articles.length, 0);
-
   return (
     <div className="flex flex-col gap-3">
       {PLATFORM_CATEGORIES.map((category) => {

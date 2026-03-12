@@ -33,7 +33,7 @@ export default function HomePage() {
             {/* CTA Buttons */}
             <div className="flex flex-wrap items-center justify-center gap-3 mt-2">
               <Link
-                href={ROUTES.DASHBOARD}
+                href={ROUTES.WORKSPACE}
                 className="bg-blue-600 text-white px-6 py-3 rounded-xl font-semibold text-sm hover:bg-blue-700 active:scale-95 transition-all shadow-lg shadow-blue-600/20"
               >
                 워크스페이스
