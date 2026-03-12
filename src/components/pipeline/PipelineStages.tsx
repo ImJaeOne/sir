@@ -7,6 +7,7 @@ import { CrawlingResult } from '@/components/pipeline/CrawlingResult';
 import { AnalysisResult } from '@/components/pipeline/AnalysisResult';
 import { ContentResult } from '@/components/pipeline/ContentResult';
 import { ReportResult } from '@/components/pipeline/ReportResult';
+import { EmailResult } from '@/components/pipeline/EmailResult';
 import { PIPELINE_STAGES } from '@/constants/pipeline';
 import { MOCK_CRAWL_RESULTS } from '@/constants/crawlResults';
 import { MOCK_ANALYSIS_RESULTS } from '@/constants/analysisResults';
@@ -182,6 +183,7 @@ export function PipelineStages() {
             )}
             {stage.id === 'content' && <ContentResult selectedUrls={selectedUrls} />}
             {stage.id === 'report' && <ReportResult />}
+            {stage.id === 'email' && <EmailResult />}
           </StagePanel>
         </div>
       ))}
