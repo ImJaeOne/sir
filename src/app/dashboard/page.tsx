@@ -1,270 +1,375 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import type { KeyboardEvent } from 'react';
-import { StagePanel } from '@/components/ui/StagePanel';
-import { PIPELINE_STAGES } from '@/constants/pipeline';
-import type { StageId, StageStatus } from '@/types/pipeline';
-import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-
-const STAGE_IDS: StageId[] = ['crawling', 'analysis', 'content', 'report', 'email'];
-
-const INITIAL_STATUSES: Record<StageId, StageStatus> = {
-  crawling: 'idle',
-  analysis: 'idle',
-  content: 'idle',
-  report: 'idle',
-  email: 'idle',
-};
-
-const MOCK_SIR_INDEX = 72;
-const INITIAL_KEYWORDS = ['삼성전자', 'Samsung Electronics'];
+import { useRouter } from 'next/navigation';
+import { MOCK_CONTEXTS } from '@/constants/contexts';
+import { MOCK_COMPANIES } from '@/constants/companies';
+import { DateRangePicker } from '@/components/ui/DateRangePicker';
+import type { AnalysisContext, DateRange } from '@/types/context';
+import { todayStr, yesterdayStr, formatDateRange } from '@/utils/date';
+import { PLATFORMS, PLATFORM_CATEGORIES } from '@/constants/platforms';
 
 export default function DashboardPage() {
-  const [keywords, setKeywords] = useState<string[]>(INITIAL_KEYWORDS);
-  const [inputValue, setInputValue] = useState('');
-  const [activeStep, setActiveStep] = useState<StageId>('crawling');
-  const [stageStatuses, setStageStatuses] =
-    useState<Record<StageId, StageStatus>>(INITIAL_STATUSES);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const router = useRouter();
+  const [showCreate, setShowCreate] = useState(false);
+
+  // 회사명 autocomplete
+  const [companyInput, setCompanyInput] = useState('');
+  const [selectedCompany, setSelectedCompany] = useState('');
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
+
+  const suggestions =
+    companyInput.length > 0
+      ? MOCK_COMPANIES.filter(
+          (c) => c.name.includes(companyInput) || c.ticker.includes(companyInput)
+        )
+      : [];
+
+  // 크롤링 기간
+  const [dateRange, setDateRange] = useState<DateRange>(() => ({
+    start: yesterdayStr(),
+    end: todayStr(),
+  }));
+
+  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(() =>
+    PLATFORMS.map((p) => p.id)
+  );
+
+  const togglePlatform = (id: string) => {
+    setSelectedPlatforms((prev) =>
+      prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]
+    );
+  };
+
+  const toggleCategory = (category: string) => {
+    const categoryIds = PLATFORMS.filter((p) => p.category === category).map((p) => p.id);
+    const allSelected = categoryIds.every((id) => selectedPlatforms.includes(id));
+    setSelectedPlatforms((prev) =>
+      allSelected
+        ? prev.filter((id) => !categoryIds.includes(id))
+        : [...new Set([...prev, ...categoryIds])]
+    );
+  };
+
+  // 컨텍스트명
+  const [contextName, setContextName] = useState('');
+
+  // 키워드
+  const [keywordInput, setKeywordInput] = useState('');
+  const [keywords, setKeywords] = useState<string[]>([]);
+  const [isComposing, setIsComposing] = useState(false);
+
+  // 외부 클릭 시 suggestions 닫기
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (suggestionsRef.current && !suggestionsRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleSelectCompany = (name: string) => {
+    setSelectedCompany(name);
+    setCompanyInput(name);
+    setShowSuggestions(false);
+  };
+
+  const handleSelect = (ctx: AnalysisContext) => {
+    const params = new URLSearchParams();
+    params.set('completed', 'true');
+    params.set('company', ctx.name);
+    params.set('startDate', ctx.dateRange.start);
+    params.set('endDate', ctx.dateRange.end);
+    if (ctx.keywords.length > 0) {
+      params.set('keywords', ctx.keywords.join(','));
+    }
+    router.push(`/dashboard/${ctx.id}?${params.toString()}`);
+  };
+
+  const handleCreate = () => {
+    if (!selectedCompany.trim() || !contextName.trim()) return;
+    // TODO: API로 context 생성 후 반환된 id로 이동
+    const newId = `ctx-${Date.now()}`;
+    const params = new URLSearchParams();
+    params.set('step', 'crawling');
+    params.set('contextName', contextName.trim());
+    params.set('company', selectedCompany);
+    params.set('startDate', dateRange.start);
+    params.set('endDate', dateRange.end);
+    if (keywords.length > 0) {
+      params.set('keywords', keywords.join(','));
+    }
+    if (selectedPlatforms.length > 0) {
+      params.set('platforms', selectedPlatforms.join(','));
+    }
+    router.push(`/dashboard/${newId}?${params.toString()}`);
+  };
 
   const addKeyword = () => {
-    const trimmed = inputValue.trim();
+    const trimmed = keywordInput.trim();
     if (trimmed && !keywords.includes(trimmed)) {
       setKeywords((prev) => [...prev, trimmed]);
     }
-    setInputValue('');
+    setKeywordInput('');
+  };
+
+  const handleKeywordKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && !isComposing) {
+      e.preventDefault();
+      addKeyword();
+    }
   };
 
   const removeKeyword = (kw: string) => {
     setKeywords((prev) => prev.filter((k) => k !== kw));
   };
 
-  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') addKeyword();
-  };
-
-  const handleStart = () => {
-    setStageStatuses((prev) => ({ ...prev, [activeStep]: 'loading' }));
-    setTimeout(() => {
-      setStageStatuses((prev) => ({ ...prev, [activeStep]: 'completed' }));
-    }, 1500);
-  };
-
-  const handleNext = () => {
-    const currentIndex = STAGE_IDS.indexOf(activeStep);
-    if (currentIndex < STAGE_IDS.length - 1) {
-      setActiveStep(STAGE_IDS[currentIndex + 1]);
-    }
-  };
-
-  const frontierIndex = (() => {
-    const idx = STAGE_IDS.findIndex((id) => stageStatuses[id] !== 'completed');
-    return idx === -1 ? STAGE_IDS.length : idx;
-  })();
-
-  const canNavigateTo = (id: StageId) => {
-    const idx = STAGE_IDS.indexOf(id);
-    return stageStatuses[id] === 'completed' || idx === frontierIndex;
-  };
-
-  const selectStage = (id: StageId) => {
-    if (canNavigateTo(id)) {
-      setActiveStep(id);
-      setSidebarOpen(false);
-    }
-  };
-
-  const activeStageData = PIPELINE_STAGES.find((s) => s.id === activeStep)!;
-  const activeIndex = STAGE_IDS.indexOf(activeStep);
-  const nextStage = activeIndex < STAGE_IDS.length - 1 ? PIPELINE_STAGES[activeIndex + 1] : null;
-  const showSirIndex = stageStatuses['analysis'] === 'completed';
-
-  /* ── Sidebar content (shared between mobile drawer and desktop sidebar) ── */
-  const sidebarContent = (
-    <>
-      {/* Logo */}
-      <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-3 shrink-0">
-        <div className="w-7 h-7 bg-blue-600 rounded-lg flex items-center justify-center">
-          <span className="text-white text-xs font-bold">S</span>
+  return (
+    <div className="min-h-screen bg-slate-50">
+      {/* Header */}
+      <header className="bg-white border-b border-slate-100 px-4 sm:px-6 py-4">
+        <div className="max-w-3xl mx-auto flex items-center gap-3">
+          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+            <span className="text-white text-xs font-bold">S</span>
+          </div>
+          <span className="text-slate-800 font-semibold text-lg tracking-tight">SIR</span>
         </div>
-        <span className="text-slate-800 font-semibold tracking-tight">SIR</span>
-      </div>
+      </header>
 
-      {/* Keyword input */}
-      <div className="px-4 py-5 border-b border-slate-100 flex flex-col gap-3 shrink-0">
-        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">키워드</p>
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="키워드 입력..."
-            className="flex-1 min-w-0 text-sm border border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-blue-400 transition-colors"
-          />
+      <main className="max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-12 flex flex-col gap-8">
+        {/* Title */}
+        <div className="flex items-center justify-between">
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900">분석 컨텍스트</h1>
           <button
-            onClick={addKeyword}
-            className="text-sm bg-blue-600 text-white px-3 rounded-lg hover:bg-blue-700 transition-colors cursor-pointer font-bold shrink-0"
+            onClick={() => setShowCreate(!showCreate)}
+            className="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-blue-700 active:scale-95 transition-all duration-150 cursor-pointer"
           >
-            +
+            {showCreate ? '취소' : '+ 새로 만들기'}
           </button>
         </div>
-        <div className="flex flex-wrap gap-1.5">
-          {keywords.map((kw) => (
-            <span
-              key={kw}
-              className="flex items-center gap-1 bg-blue-50 text-blue-700 text-xs px-2.5 py-1 rounded-full"
-            >
-              {kw}
-              <button
-                onClick={() => removeKeyword(kw)}
-                className="text-blue-400 hover:text-blue-700 transition-colors cursor-pointer leading-none"
-              >
-                ×
-              </button>
-            </span>
-          ))}
-        </div>
-      </div>
 
-      {/* Stage navigation */}
-      <nav className="flex-1 overflow-y-auto px-4 py-5 flex flex-col gap-1">
-        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Step</p>
-        {PIPELINE_STAGES.map((stage, index) => {
-          const isActive = stage.id === activeStep;
-          const isCompleted = stageStatuses[stage.id] === 'completed';
-          const isLocked = !canNavigateTo(stage.id);
+        {/* Create form */}
+        {showCreate && (
+          <div className="bg-white rounded-2xl border border-blue-200 shadow-md p-5 sm:p-6 flex flex-col gap-4">
+            <h2 className="text-base font-bold text-slate-800">새 컨텍스트 생성</h2>
 
-          return (
-            <button
-              key={stage.id}
-              onClick={() => selectStage(stage.id)}
-              disabled={isLocked}
-              className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm text-left transition-colors ${
-                isActive
-                  ? 'bg-blue-50 text-blue-700 font-medium'
-                  : isCompleted
-                    ? 'text-slate-600 hover:bg-slate-50 cursor-pointer'
-                    : isLocked
-                      ? 'text-slate-300 cursor-default'
-                      : 'text-slate-600 hover:bg-slate-50 cursor-pointer'
-              }`}
-            >
-              <div
-                className={`w-5 h-5 rounded-full flex items-center justify-center text-xs shrink-0 ${
-                  isCompleted
-                    ? 'bg-green-100 text-green-600'
-                    : isActive
-                      ? 'bg-blue-100 text-blue-600'
-                      : 'bg-slate-100 text-slate-400'
-                }`}
-              >
-                {isCompleted ? '✓' : index + 1}
-              </div>
-              {stage.label}
-            </button>
-          );
-        })}
-      </nav>
-    </>
-  );
-
-  return (
-    <div className="h-screen bg-slate-50 flex overflow-hidden">
-      {/* Mobile/Tablet overlay backdrop */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/30 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
-      {/* Sidebar — fixed drawer on mobile/tablet, static on desktop */}
-      <aside
-        className={`
-          fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-100 flex flex-col shrink-0
-          transform transition-transform duration-200 ease-in-out
-          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-          lg:static lg:translate-x-0 lg:z-auto
-        `}
-      >
-        {sidebarContent}
-      </aside>
-
-      {/* Main */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Header */}
-        <header className="bg-white border-b border-slate-100 px-4 sm:px-6 lg:px-8 py-3 sm:py-4 flex items-center justify-between gap-3 sm:gap-4 shrink-0">
-          <div className="flex items-center gap-2 sm:gap-3 flex-wrap min-w-0">
-            {/* Hamburger — mobile/tablet only */}
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className="lg:hidden p-1.5 -ml-1 rounded-lg text-slate-500 hover:bg-slate-100 transition-colors cursor-pointer"
-              aria-label="메뉴 열기"
-            >
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-                <path d="M3 5h14M3 10h14M3 15h14" />
-              </svg>
-            </button>
-            <span className="text-sm text-slate-400 shrink-0">분석 대상</span>
-            <div className="flex items-center gap-1.5 flex-wrap">
-              {keywords.map((kw) => (
-                <span
-                  key={kw}
-                  className="bg-slate-100 text-slate-700 text-xs px-2.5 py-1 rounded-full font-medium"
-                >
-                  {kw}
-                </span>
-              ))}
-            </div>
-          </div>
-          <div
-            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl shrink-0 transition-all duration-500 ${
-              showSirIndex ? 'bg-blue-600' : 'bg-slate-100'
-            }`}
-          >
-            <span
-              className={`text-xs font-semibold transition-colors hidden sm:inline ${
-                showSirIndex ? 'text-blue-100' : 'text-slate-400'
-              }`}
-            >
-              SIR 지수
-            </span>
-            <span
-              className={`text-xs font-semibold transition-colors sm:hidden ${
-                showSirIndex ? 'text-blue-100' : 'text-slate-400'
-              }`}
-            >
-              SIR
-            </span>
-            <span
-              className={`text-lg sm:text-xl font-bold transition-colors ${
-                showSirIndex ? 'text-white' : 'text-slate-300'
-              }`}
-            >
-              {showSirIndex ? MOCK_SIR_INDEX : '--'}
-            </span>
-          </div>
-        </header>
-
-        {/* Active stage panel */}
-        <main className="relative flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
-          <>
-            {stageStatuses[activeStep] === 'loading' && <LoadingSpinner />}
-            <div className="max-w-2xl mx-auto h-full">
-              <StagePanel
-                key={activeStep}
-                stage={activeStageData}
-                status={stageStatuses[activeStep]}
-                nextStageLabel={nextStage?.label ?? null}
-                onStart={handleStart}
-                onNext={handleNext}
+            {/* 컨텍스트명 */}
+            <div className="flex flex-col gap-2">
+              <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
+                컨텍스트명
+              </label>
+              <input
+                type="text"
+                value={contextName}
+                onChange={(e) => setContextName(e.target.value)}
+                placeholder="예: 삼성전자 3월 감성 분석"
+                className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2.5 outline-none focus:border-blue-400 transition-colors"
               />
             </div>
-          </>
-        </main>
-      </div>
+
+            {/* 회사명 with autocomplete */}
+            <div className="flex flex-col gap-2">
+              <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
+                회사명
+              </label>
+              <div className="relative" ref={suggestionsRef}>
+                <input
+                  type="text"
+                  value={companyInput}
+                  onChange={(e) => {
+                    setCompanyInput(e.target.value);
+                    setSelectedCompany('');
+                    setShowSuggestions(true);
+                  }}
+                  onFocus={() => companyInput.length > 0 && setShowSuggestions(true)}
+                  placeholder="회사명 또는 종목코드 검색"
+                  className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2.5 outline-none focus:border-blue-400 transition-colors"
+                />
+                {showSuggestions && suggestions.length > 0 && (
+                  <div className="absolute z-10 top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-48 overflow-y-auto">
+                    {suggestions.map((company) => (
+                      <button
+                        key={company.ticker}
+                        onClick={() => handleSelectCompany(company.name)}
+                        className="w-full flex items-center justify-between px-3 py-2.5 text-sm hover:bg-blue-50 transition-colors cursor-pointer text-left"
+                      >
+                        <span className="font-medium text-slate-800">{company.name}</span>
+                        <span className="text-xs text-slate-400">{company.ticker}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {selectedCompany && (
+                <div className="flex items-center gap-1.5">
+                  <span className="bg-blue-50 text-blue-700 text-xs px-2.5 py-1 rounded-full font-medium">
+                    {selectedCompany}
+                  </span>
+                  <span className="text-xs text-slate-400">
+                    {MOCK_COMPANIES.find((c) => c.name === selectedCompany)?.ticker}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* 키워드 */}
+            <div className="flex flex-col gap-2">
+              <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
+                키워드
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={keywordInput}
+                  onChange={(e) => setKeywordInput(e.target.value)}
+                  onKeyDown={handleKeywordKeyDown}
+                  onCompositionStart={() => setIsComposing(true)}
+                  onCompositionEnd={() => setIsComposing(false)}
+                  placeholder="키워드 입력 후 Enter"
+                  className="flex-1 min-w-0 text-sm border border-slate-200 rounded-lg px-3 py-2.5 outline-none focus:border-blue-400 transition-colors"
+                />
+                <button
+                  onClick={addKeyword}
+                  className="text-sm bg-slate-100 text-slate-600 px-3 rounded-lg hover:bg-slate-200 transition-colors cursor-pointer font-bold shrink-0"
+                >
+                  +
+                </button>
+              </div>
+              {keywords.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mt-1">
+                  {keywords.map((kw) => (
+                    <span
+                      key={kw}
+                      className="flex items-center gap-1 bg-blue-50 text-blue-700 text-xs px-2.5 py-1 rounded-full"
+                    >
+                      {kw}
+                      <button
+                        onClick={() => removeKeyword(kw)}
+                        className="text-blue-400 hover:text-blue-700 transition-colors cursor-pointer leading-none"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* 수집 플랫폼 */}
+            <div className="flex flex-col gap-3">
+              <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
+                수집 플랫폼
+              </label>
+              {PLATFORM_CATEGORIES.map((category) => {
+                const items = PLATFORMS.filter((p) => p.category === category);
+                const allChecked = items.every((p) => selectedPlatforms.includes(p.id));
+                return (
+                  <div key={category} className="flex flex-col gap-1.5">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={allChecked}
+                        onChange={() => toggleCategory(category)}
+                        className="w-3.5 h-3.5 rounded accent-blue-600 cursor-pointer"
+                      />
+                      <span className="text-xs font-semibold text-slate-700">{category}</span>
+                    </label>
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 ml-5.5">
+                      {items.map((platform) => (
+                        <label
+                          key={platform.id}
+                          className="flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedPlatforms.includes(platform.id)}
+                            onChange={() => togglePlatform(platform.id)}
+                            className="w-3 h-3 rounded accent-blue-600 cursor-pointer"
+                          />
+                          <span className="text-xs text-slate-500">{platform.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="flex justify-between items-end">
+              {/* 크롤링 기간 */}
+              <div className="flex flex-col gap-2">
+                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
+                  크롤링 기간
+                </label>
+                <DateRangePicker value={dateRange} onChange={setDateRange} />
+              </div>
+
+              <button
+                onClick={handleCreate}
+                disabled={!selectedCompany.trim() || !contextName.trim()}
+                className="bg-blue-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-700 active:scale-95 transition-all duration-150 cursor-pointer disabled:opacity-40 disabled:cursor-default shrink-0"
+              >
+                생성
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Existing contexts */}
+        <div className="flex flex-col gap-3">
+          {MOCK_CONTEXTS.length === 0 && !showCreate && (
+            <div className="text-center py-12">
+              <p className="text-slate-400 text-sm">아직 생성된 컨텍스트가 없습니다.</p>
+            </div>
+          )}
+          {MOCK_CONTEXTS.map((ctx) => (
+            <button
+              key={ctx.id}
+              onClick={() => handleSelect(ctx)}
+              className="w-full bg-white rounded-2xl border border-slate-100 shadow-sm p-5 sm:p-6 flex items-center justify-between gap-4 hover:shadow-md hover:border-slate-200 transition-all duration-200 cursor-pointer text-left"
+            >
+              <div className="flex flex-col gap-2 min-w-0">
+                <h3 className="text-base font-semibold text-slate-800 truncate">{ctx.name}</h3>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="bg-slate-50 text-slate-500 text-xs px-2 py-0.5 rounded-full border border-slate-200">
+                    {formatDateRange(ctx.dateRange)}
+                  </span>
+                  {ctx.keywords.map((kw) => (
+                    <span
+                      key={kw}
+                      className="bg-slate-100 text-slate-600 text-xs px-2 py-0.5 rounded-full"
+                    >
+                      {kw}
+                    </span>
+                  ))}
+                </div>
+                <span className="text-xs text-slate-400">{ctx.createdAt}</span>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-xs font-medium text-green-600 bg-green-50 px-2.5 py-1 rounded-full">
+                  완료
+                </span>
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  className="text-slate-400"
+                >
+                  <path d="M6 4l4 4-4 4" />
+                </svg>
+              </div>
+            </button>
+          ))}
+        </div>
+      </main>
     </div>
   );
 }
