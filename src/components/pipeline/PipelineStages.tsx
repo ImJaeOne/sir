@@ -3,6 +3,7 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { useSearchParams, useRouter, useParams } from 'next/navigation';
 import { StagePanel } from '@/components/ui/StagePanel';
+import { CrawlingResult } from '@/components/pipeline/CrawlingResult';
 import { PIPELINE_STAGES } from '@/constants/pipeline';
 import type { StageId, StageStatus } from '@/types/pipeline';
 
@@ -102,7 +103,9 @@ export function PipelineStages() {
             status={stageStatuses[stage.id]}
             locked={index > frontierIndex}
             onStart={() => handleStart(stage.id)}
-          />
+          >
+            {stage.id === 'crawling' ? <CrawlingResult /> : undefined}
+          </StagePanel>
         </div>
       ))}
 

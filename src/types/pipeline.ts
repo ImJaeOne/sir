@@ -6,6 +6,18 @@ export interface StageResult {
   items: string[];
 }
 
+export interface CrawlArticle {
+  title: string;
+  url: string;
+}
+
+export interface PlatformCrawlResult {
+  platformId: string;
+  platformLabel: string;
+  category: string;
+  articles: CrawlArticle[];
+}
+
 export interface PipelineStage {
   id: StageId;
   label: string;
