@@ -226,7 +226,7 @@ export function PipelineStages() {
               }}
               className="w-full px-4 py-3 rounded-xl text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 active:scale-95 transition-all cursor-pointer"
             >
-              대시보드로 이동
+              워크스페이스로 이동
             </button>
           </div>
         </div>
@@ -292,7 +292,7 @@ export function PipelineStages() {
           <div className="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-sm mx-4 p-6 flex flex-col gap-5">
             <div className="flex flex-col gap-1">
               <span className="text-base font-bold text-slate-800">
-                대시보드로 돌아가시겠습니까?
+                워크스페이스로 돌아가시겠습니까?
               </span>
               <span className="text-sm text-slate-500">현재 페이지를 벗어납니다.</span>
             </div>
@@ -310,7 +310,7 @@ export function PipelineStages() {
                 }}
                 className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 active:scale-95 transition-all cursor-pointer"
               >
-                대시보드로 이동
+                워크스페이스로 이동
               </button>
             </div>
           </div>

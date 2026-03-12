@@ -24,31 +24,6 @@ function ScoreBadge({ score }: { score: number }) {
   return <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${color}`}>{score}</span>;
 }
 
-function SentimentBar({
-  positive,
-  neutral,
-  negative,
-}: {
-  positive: number;
-  neutral: number;
-  negative: number;
-}) {
-  return (
-    <div className="flex items-center gap-2">
-      <div className="flex-1 h-2 rounded-full bg-slate-100 overflow-hidden flex">
-        <div className="bg-green-400 h-full" style={{ width: `${positive}%` }} />
-        <div className="bg-slate-300 h-full" style={{ width: `${neutral}%` }} />
-        <div className="bg-red-400 h-full" style={{ width: `${negative}%` }} />
-      </div>
-      <div className="flex items-center gap-2 shrink-0 text-xs text-slate-400">
-        <span className="text-green-600">{positive}%</span>
-        <span>{neutral}%</span>
-        <span className="text-red-500">{negative}%</span>
-      </div>
-    </div>
-  );
-}
-
 function SentimentTag({ sentiment }: { sentiment: 'positive' | 'neutral' | 'negative' }) {
   const config = {
     positive: { label: '긍정', className: 'bg-green-50 text-green-700' },
@@ -56,21 +31,14 @@ function SentimentTag({ sentiment }: { sentiment: 'positive' | 'neutral' | 'nega
     negative: { label: '부정', className: 'bg-red-50 text-red-700' },
   };
   const { label, className } = config[sentiment];
-  return <span className={`text-xs font-bold px-1.5 py-0.5 rounded shrink-0 ${className}`}>{label}</span>;
+  return (
+    <span className={`text-xs font-bold px-1.5 py-0.5 rounded shrink-0 ${className}`}>{label}</span>
+  );
 }
 
 function calcCategoryScore(platforms: PlatformAnalysis[]): number {
   if (platforms.length === 0) return 0;
   return Math.round(platforms.reduce((sum, p) => sum + p.sirScore, 0) / platforms.length);
-}
-
-function calcCategorySentiment(platforms: PlatformAnalysis[]) {
-  if (platforms.length === 0) return { positive: 0, neutral: 0, negative: 0 };
-  return {
-    positive: Math.round(platforms.reduce((s, p) => s + p.positive, 0) / platforms.length),
-    neutral: Math.round(platforms.reduce((s, p) => s + p.neutral, 0) / platforms.length),
-    negative: Math.round(platforms.reduce((s, p) => s + p.negative, 0) / platforms.length),
-  };
 }
 
 export function AnalysisResult({ selectedUrls, onToggleUrl }: AnalysisResultProps) {
@@ -91,7 +59,6 @@ export function AnalysisResult({ selectedUrls, onToggleUrl }: AnalysisResultProp
   const totalScore = Math.round(
     MOCK_ANALYSIS_RESULTS.reduce((sum, p) => sum + p.sirScore, 0) / MOCK_ANALYSIS_RESULTS.length
   );
-  const totalFlagged = MOCK_ANALYSIS_RESULTS.reduce((sum, p) => sum + p.flagged.length, 0);
   const selectedCount = selectedUrls.size;
 
   return (
@@ -131,30 +98,36 @@ export function AnalysisResult({ selectedUrls, onToggleUrl }: AnalysisResultProp
             {Array.from(selectedUrls).map((url) => {
               const info = urlInfoMap.get(url);
               return (
-              <li
-                key={url}
-                className="flex items-center justify-between gap-2 px-4 py-2 border-b border-slate-50 last:border-b-0"
-              >
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <span className="text-xs font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded shrink-0">
-                    {info?.category ?? ''}
-                  </span>
-                  <span className="text-xs font-medium text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded shrink-0">
-                    {info?.platform ?? ''}
-                  </span>
-                  <span className="text-sm text-slate-700 truncate">
-                    {info?.title ?? url}
-                  </span>
-                </div>
-                <button
-                  onClick={() => onToggleUrl(url)}
-                  className="shrink-0 w-5 h-5 flex items-center justify-center rounded-full hover:bg-red-100 text-slate-400 hover:text-red-500 transition-colors cursor-pointer"
+                <li
+                  key={url}
+                  className="flex items-center justify-between gap-2 px-4 py-2 border-b border-slate-50 last:border-b-0"
                 >
-                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-                    <path d="M3 3l6 6M9 3l-6 6" />
-                  </svg>
-                </button>
-              </li>
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="text-xs font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded shrink-0">
+                      {info?.category ?? ''}
+                    </span>
+                    <span className="text-xs font-medium text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded shrink-0">
+                      {info?.platform ?? ''}
+                    </span>
+                    <span className="text-sm text-slate-700 truncate">{info?.title ?? url}</span>
+                  </div>
+                  <button
+                    onClick={() => onToggleUrl(url)}
+                    className="shrink-0 w-5 h-5 flex items-center justify-center rounded-full hover:bg-red-100 text-slate-400 hover:text-red-500 transition-colors cursor-pointer"
+                  >
+                    <svg
+                      width="12"
+                      height="12"
+                      viewBox="0 0 12 12"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                    >
+                      <path d="M3 3l6 6M9 3l-6 6" />
+                    </svg>
+                  </button>
+                </li>
               );
             })}
             {selectedCount === 0 && (
@@ -172,7 +145,6 @@ export function AnalysisResult({ selectedUrls, onToggleUrl }: AnalysisResultProp
         if (items.length === 0) return null;
 
         const categoryScore = calcCategoryScore(items);
-        const categorySentiment = calcCategorySentiment(items);
         const categoryFlagged = items.reduce((sum, p) => sum + p.flagged.length, 0);
         const isCategoryOpen = categories.has(category);
 
@@ -253,7 +225,9 @@ export function AnalysisResult({ selectedUrls, onToggleUrl }: AnalysisResultProp
                                         </div>
                                       </label>
                                     </div>
-                                    <span className="text-xs text-slate-400 pl-6">{item.reason}</span>
+                                    <span className="text-xs text-slate-400 pl-6">
+                                      {item.reason}
+                                    </span>
                                     <a
                                       href={item.url}
                                       target="_blank"
