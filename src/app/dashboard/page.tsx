@@ -8,6 +8,7 @@ import { MOCK_COMPANIES } from '@/constants/companies';
 import { DateRangePicker } from '@/components/ui/DateRangePicker';
 import type { AnalysisContext, DateRange } from '@/types/context';
 import { todayStr, yesterdayStr, formatDateRange } from '@/utils/date';
+import { PLATFORMS, PLATFORM_CATEGORIES } from '@/constants/platforms';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -31,6 +32,26 @@ export default function DashboardPage() {
     start: yesterdayStr(),
     end: todayStr(),
   }));
+
+  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(() =>
+    PLATFORMS.map((p) => p.id)
+  );
+
+  const togglePlatform = (id: string) => {
+    setSelectedPlatforms((prev) =>
+      prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]
+    );
+  };
+
+  const toggleCategory = (category: string) => {
+    const categoryIds = PLATFORMS.filter((p) => p.category === category).map((p) => p.id);
+    const allSelected = categoryIds.every((id) => selectedPlatforms.includes(id));
+    setSelectedPlatforms((prev) =>
+      allSelected
+        ? prev.filter((id) => !categoryIds.includes(id))
+        : [...new Set([...prev, ...categoryIds])]
+    );
+  };
 
   // 키워드
   const [keywordInput, setKeywordInput] = useState('');
@@ -77,6 +98,9 @@ export default function DashboardPage() {
     params.set('endDate', dateRange.end);
     if (keywords.length > 0) {
       params.set('keywords', keywords.join(','));
+    }
+    if (selectedPlatforms.length > 0) {
+      params.set('platforms', selectedPlatforms.join(','));
     }
     router.push(`/dashboard/${newId}?${params.toString()}`);
   };
@@ -215,6 +239,46 @@ export default function DashboardPage() {
                   ))}
                 </div>
               )}
+            </div>
+
+            {/* 수집 플랫폼 */}
+            <div className="flex flex-col gap-3">
+              <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
+                수집 플랫폼
+              </label>
+              {PLATFORM_CATEGORIES.map((category) => {
+                const items = PLATFORMS.filter((p) => p.category === category);
+                const allChecked = items.every((p) => selectedPlatforms.includes(p.id));
+                return (
+                  <div key={category} className="flex flex-col gap-1.5">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={allChecked}
+                        onChange={() => toggleCategory(category)}
+                        className="w-3.5 h-3.5 rounded accent-blue-600 cursor-pointer"
+                      />
+                      <span className="text-xs font-semibold text-slate-700">{category}</span>
+                    </label>
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 ml-5.5">
+                      {items.map((platform) => (
+                        <label
+                          key={platform.id}
+                          className="flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedPlatforms.includes(platform.id)}
+                            onChange={() => togglePlatform(platform.id)}
+                            className="w-3 h-3 rounded accent-blue-600 cursor-pointer"
+                          />
+                          <span className="text-xs text-slate-500">{platform.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
 
             <div className="flex justify-between items-end">
