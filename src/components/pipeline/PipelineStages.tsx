@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useEffect, useCallback, useMemo } from 'react';
+import { useRef, useEffect, useCallback } from 'react';
 import { useSearchParams, useRouter, useParams } from 'next/navigation';
 import { StagePanel } from '@/components/ui/StagePanel';
 import { CrawlingResult } from '@/components/pipeline/CrawlingResult';
@@ -12,80 +12,33 @@ import { PIPELINE_STAGES } from '@/constants/pipeline';
 import { MOCK_CRAWL_RESULTS } from '@/constants/crawlResults';
 import { MOCK_ANALYSIS_RESULTS } from '@/constants/analysisResults';
 import { MOCK_CONTENT_STRATEGIES } from '@/constants/contentStrategies';
-import type { StageId, StageStatus } from '@/types/pipeline';
-
-const STAGE_IDS: StageId[] = ['crawling', 'analysis', 'content', 'report', 'email'];
-
-function buildInitialStatuses(
-  step: StageId | null,
-  allCompleted: boolean
-): Record<StageId, StageStatus> {
-  const statuses: Record<StageId, StageStatus> = {
-    crawling: 'idle',
-    analysis: 'idle',
-    content: 'idle',
-    report: 'idle',
-    email: 'idle',
-  };
-
-  if (allCompleted) {
-    STAGE_IDS.forEach((id) => {
-      statuses[id] = 'completed';
-    });
-    return statuses;
-  }
-
-  if (!step || !STAGE_IDS.includes(step)) return statuses;
-
-  const stepIndex = STAGE_IDS.indexOf(step);
-  STAGE_IDS.forEach((id, i) => {
-    if (i < stepIndex) statuses[id] = 'completed';
-  });
-
-  return statuses;
-}
-
-function getDefaultSelectedUrls(): Set<string> {
-  const urls = new Set<string>();
-  MOCK_ANALYSIS_RESULTS.forEach((platform) => {
-    platform.flagged.forEach((item) => {
-      urls.add(item.url);
-    });
-  });
-  return urls;
-}
+import { usePipelineStore, STAGE_IDS } from '@/store/pipeline';
+import type { StageId } from '@/types/pipeline';
 
 export function PipelineStages() {
   const router = useRouter();
   const params = useParams();
   const contextId = params?.contextId as string;
   const searchParams = useSearchParams();
-  const initialStep = (searchParams?.get('step') as StageId | null) ?? null;
   const isCompleted = searchParams?.get('completed') === 'true';
+  const contextName =
+    searchParams?.get('contextName') ?? searchParams?.get('company') ?? 'Company';
 
-  const [stageStatuses, setStageStatuses] = useState<Record<StageId, StageStatus>>(() =>
-    buildInitialStatuses(initialStep, isCompleted)
-  );
+  // zustand store
+  const store = usePipelineStore();
   const stageRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const initialized = useRef(false);
 
-  const [selectedUrls, setSelectedUrls] = useState<Set<string>>(() => getDefaultSelectedUrls());
-  const [dismissedComplete, setDismissedComplete] = useState(false);
-  const [backModalType, setBackModalType] = useState<'delete' | 'confirm' | null>(null);
-  const contextName = searchParams?.get('contextName') ?? searchParams?.get('company') ?? 'Company';
+  // URL → store 초기화 (한 번만)
+  useEffect(() => {
+    if (initialized.current) return;
+    initialized.current = true;
+    const step = searchParams?.get('step') as StageId | null;
+    store.initFromParams(step, isCompleted);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleToggleUrl = useCallback((url: string) => {
-    setSelectedUrls((prev) => {
-      const next = new Set(prev);
-      if (next.has(url)) {
-        next.delete(url);
-      } else {
-        next.add(url);
-      }
-      return next;
-    });
-  }, []);
-
-  const updateStep = useCallback(
+  // store → URL 동기화
+  const syncUrl = useCallback(
     (stageId: StageId) => {
       const p = new URLSearchParams(searchParams?.toString());
       p.set('step', stageId);
@@ -94,18 +47,19 @@ export function PipelineStages() {
     [router, contextId, searchParams]
   );
 
+  // step 변경 시 스크롤
   useEffect(() => {
-    const step = searchParams?.get('step') as StageId | null;
-    if (step && STAGE_IDS.includes(step)) {
+    const step = store.currentStep;
+    if (step) {
       setTimeout(() => {
         stageRefs.current[step]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }, 100);
     }
-  }, [searchParams]);
+  }, [store.currentStep]);
 
-  // 파이프라인 시작 후 뒤로가기 감지
-  const hasStarted = stageStatuses.crawling !== 'idle';
-  const reportDone = stageStatuses.report === 'completed';
+  // 뒤로가기 감지
+  const hasStarted = store.hasStarted();
+  const reportDone = store.isReportDone();
 
   useEffect(() => {
     if (!hasStarted) return;
@@ -114,49 +68,40 @@ export function PipelineStages() {
 
     const handlePopState = () => {
       window.history.pushState(null, '', window.location.href);
-      setBackModalType(reportDone ? 'confirm' : 'delete');
+      store.setBackModalType(reportDone ? 'confirm' : 'delete');
     };
 
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, [hasStarted, reportDone]);
+  }, [hasStarted, reportDone, store]);
 
   const handleStart = (stageId: StageId) => {
-    updateStep(stageId);
-    setStageStatuses((prev) => ({ ...prev, [stageId]: 'loading' }));
+    syncUrl(stageId);
+    store.startStage(stageId);
     // TODO: 실제 API 호출로 교체
     setTimeout(() => {
-      setStageStatuses((prev) => ({ ...prev, [stageId]: 'completed' }));
+      store.completeStage(stageId);
       const nextIndex = STAGE_IDS.indexOf(stageId) + 1;
       if (nextIndex < STAGE_IDS.length) {
         const nextId = STAGE_IDS[nextIndex];
-        updateStep(nextId);
-        setTimeout(() => {
-          stageRefs.current[nextId]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }, 100);
+        syncUrl(nextId);
       }
     }, 1500);
   };
 
   const handleSkip = (stageId: StageId) => {
-    setStageStatuses((prev) => ({ ...prev, [stageId]: 'skipped' }));
+    store.skipStage(stageId);
   };
 
-  const frontierIndex = (() => {
-    const idx = STAGE_IDS.findIndex(
-      (id) => stageStatuses[id] !== 'completed' && stageStatuses[id] !== 'skipped'
-    );
-    return idx === -1 ? STAGE_IDS.length : idx;
-  })();
-
-  const allCompleted = frontierIndex === STAGE_IDS.length;
+  // derived
+  const frontierIndex = store.getFrontierIndex();
+  const allCompleted = store.isAllCompleted();
+  const { stageStatuses, selectedUrls, dismissedComplete, backModalType } = store;
 
   const totalFlagged = MOCK_ANALYSIS_RESULTS.reduce((sum, p) => sum + p.flagged.length, 0);
-
   const contentItems = MOCK_CONTENT_STRATEGIES.filter((s) => selectedUrls.has(s.url));
   const responseCount = contentItems.filter((s) => !s.reportable).length;
   const reportableCount = contentItems.filter((s) => s.reportable).length;
-
   const totalArticles = MOCK_CRAWL_RESULTS.reduce((sum, p) => sum + p.articles.length, 0);
 
   const getStageBadge = (stageId: StageId) => {
@@ -206,10 +151,11 @@ export function PipelineStages() {
             onStart={() => handleStart(stage.id)}
             onSkip={stage.id === 'email' ? () => handleSkip('email') : undefined}
             badge={getStageBadge(stage.id)}
+            defaultExpanded={isCompleted && index === 0}
           >
             {stage.id === 'crawling' && <CrawlingResult />}
             {stage.id === 'analysis' && (
-              <AnalysisResult selectedUrls={selectedUrls} onToggleUrl={handleToggleUrl} />
+              <AnalysisResult selectedUrls={selectedUrls} onToggleUrl={store.toggleUrl} />
             )}
             {stage.id === 'content' && <ContentResult selectedUrls={selectedUrls} />}
             {stage.id === 'report' && <ReportResult />}
@@ -218,10 +164,11 @@ export function PipelineStages() {
         </div>
       ))}
 
+      {/* 완료 모달 */}
       {allCompleted && !dismissedComplete && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/30"
-          onClick={() => setDismissedComplete(true)}
+          onClick={() => store.setDismissedComplete(true)}
         >
           <div
             className="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-sm mx-4 p-6 flex flex-col gap-5"
@@ -256,7 +203,7 @@ export function PipelineStages() {
                 </div>
               </div>
               <button
-                onClick={() => setDismissedComplete(true)}
+                onClick={() => store.setDismissedComplete(true)}
                 className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer shrink-0"
               >
                 <svg
@@ -273,7 +220,10 @@ export function PipelineStages() {
               </button>
             </div>
             <button
-              onClick={() => router.push('/dashboard')}
+              onClick={() => {
+                store.reset();
+                router.push('/dashboard');
+              }}
               className="w-full px-4 py-3 rounded-xl text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 active:scale-95 transition-all cursor-pointer"
             >
               대시보드로 이동
@@ -282,7 +232,7 @@ export function PipelineStages() {
         </div>
       )}
 
-      {/* 뒤로가기 모달 — 1~3단계: 삭제 경고 / 4단계 이후: 확인 */}
+      {/* 뒤로가기 모달 — 1~3단계: 삭제 경고 */}
       {backModalType === 'delete' && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
           <div className="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-sm mx-4 p-6 flex flex-col gap-5">
@@ -317,13 +267,16 @@ export function PipelineStages() {
             </div>
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setBackModalType(null)}
+                onClick={() => store.setBackModalType(null)}
                 className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer"
               >
                 계속 진행
               </button>
               <button
-                onClick={() => router.push('/dashboard')}
+                onClick={() => {
+                  store.reset();
+                  router.push('/dashboard');
+                }}
                 className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold bg-red-600 text-white hover:bg-red-700 active:scale-95 transition-all cursor-pointer"
               >
                 나가기
@@ -333,6 +286,7 @@ export function PipelineStages() {
         </div>
       )}
 
+      {/* 뒤로가기 모달 — 4단계 이후: 확인 */}
       {backModalType === 'confirm' && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
           <div className="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-sm mx-4 p-6 flex flex-col gap-5">
@@ -344,13 +298,16 @@ export function PipelineStages() {
             </div>
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setBackModalType(null)}
+                onClick={() => store.setBackModalType(null)}
                 className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer"
               >
                 취소
               </button>
               <button
-                onClick={() => router.push('/dashboard')}
+                onClick={() => {
+                  store.reset();
+                  router.push('/dashboard');
+                }}
                 className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 active:scale-95 transition-all cursor-pointer"
               >
                 대시보드로 이동

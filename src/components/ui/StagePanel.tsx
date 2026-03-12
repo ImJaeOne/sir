@@ -12,11 +12,12 @@ interface StagePanelProps {
   onStart: () => void;
   onSkip?: () => void;
   badge?: ReactNode;
+  defaultExpanded?: boolean;
   children?: ReactNode;
 }
 
-export function StagePanel({ stage, index, status, locked, onStart, onSkip, badge, children }: StagePanelProps) {
-  const [expanded, setExpanded] = useState(false);
+export function StagePanel({ stage, index, status, locked, onStart, onSkip, badge, defaultExpanded = false, children }: StagePanelProps) {
+  const [expanded, setExpanded] = useState(defaultExpanded);
 
   return (
     <div

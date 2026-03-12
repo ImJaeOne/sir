@@ -5,6 +5,8 @@ export function StageNav() {
   const { stageStatuses, setCurrentStep, getFrontierIndex } = usePipelineStore();
   const frontierIndex = getFrontierIndex();
 
+  console.log(stageStatuses);
+
   return (
     <nav className="flex-1 overflow-y-auto px-4 py-5 flex flex-col gap-1">
       <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Step</p>
