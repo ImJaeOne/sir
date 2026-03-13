@@ -1,12 +1,17 @@
-export interface Platform {
-  id: string;
-  label: string;
-  category: string;
-  is_active: boolean;
-  created_at: string;
-}
+import { z } from 'zod';
 
-export interface WorkspacePlatform {
-  workspace_id: string;
-  platform_id: string;
-}
+export const platformSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+  category: z.string(),
+  is_active: z.boolean(),
+  created_at: z.string(),
+});
+
+export const workspacePlatformSchema = z.object({
+  workspace_id: z.string().uuid(),
+  platform_id: z.string(),
+});
+
+export type Platform = z.infer<typeof platformSchema>;
+export type WorkspacePlatform = z.infer<typeof workspacePlatformSchema>;

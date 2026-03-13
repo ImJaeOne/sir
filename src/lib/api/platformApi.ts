@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/client';
+import { platformSchema, workspacePlatformSchema } from '@/types/platform';
 import type { Platform, WorkspacePlatform } from '@/types/platform';
 
 const supabase = createClient();
@@ -11,7 +12,7 @@ export async function getPlatforms(): Promise<Platform[]> {
     .order('category');
 
   if (error) throw error;
-  return data;
+  return platformSchema.array().parse(data);
 }
 
 export async function getPlatformsByWorkspace(workspaceId: string): Promise<WorkspacePlatform[]> {
@@ -21,7 +22,7 @@ export async function getPlatformsByWorkspace(workspaceId: string): Promise<Work
     .eq('workspace_id', workspaceId);
 
   if (error) throw error;
-  return data;
+  return workspacePlatformSchema.array().parse(data);
 }
 
 export async function createPlatforms(workspaceId: string, platformIds: string[]) {
