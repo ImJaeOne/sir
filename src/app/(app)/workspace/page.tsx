@@ -5,6 +5,7 @@ import type { KeyboardEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { MOCK_WORKSPACES } from '@/constants/workspaces';
 import { CompanySearch } from '@/components/ui/CompanySearch';
+import { useCreateWorkspace } from '@/hooks/workspace/useWorkspaceMutation';
 // import { DateRangePicker } from '@/components/ui/DateRangePicker';
 import type { MockWorkspace } from '@/constants/workspaces';
 import { formatDateRange } from '@/utils/date';
@@ -15,8 +16,10 @@ export default function DashboardPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [workspaceSearch, setContextSearch] = useState('');
 
+  const createWorkspace = useCreateWorkspace();
+
   // 회사명
-  const [selectedCompany, setSelectedCompany] = useState('');
+  const [selectedCompany, setSelectedCompany] = useState<{ name: string; ticker: string } | null>(null);
 
   // TODO: 크롤링 기간 - 기능 확정 후 활성화
   // const [dateRange, setDateRange] = useState<DateRange>(() => ({
@@ -66,23 +69,22 @@ export default function DashboardPage() {
   };
 
   const handleCreate = () => {
-    if (!selectedCompany.trim() || !workspaceName.trim()) return;
-    // TODO: API로 workspace 생성 후 반환된 id로 이동
-    const newId = `ws-${Date.now()}`;
-    const params = new URLSearchParams();
-    params.set('step', 'crawling');
-    params.set('workspaceName', workspaceName.trim());
-    params.set('company', selectedCompany);
-    // TODO: 크롤링 기간 - 기능 확정 후 활성화
-    // params.set('startDate', dateRange.start);
-    // params.set('endDate', dateRange.end);
-    if (keywords.length > 0) {
-      params.set('keywords', keywords.join(','));
-    }
-    if (selectedPlatforms.length > 0) {
-      params.set('platforms', selectedPlatforms.join(','));
-    }
-    router.push(`/workspace/${newId}?${params.toString()}`);
+    if (!selectedCompany || !workspaceName.trim()) return;
+
+    createWorkspace.mutate(
+      {
+        name: workspaceName.trim(),
+        company_name: selectedCompany.name,
+        ticker: selectedCompany.ticker,
+        keywords,
+        platform_ids: selectedPlatforms,
+      },
+      {
+        onSuccess: (workspace) => {
+          router.push(`/workspace/${workspace.id}`);
+        },
+      }
+    );
   };
 
   const addKeyword = () => {
@@ -138,7 +140,7 @@ export default function DashboardPage() {
             </div>
 
             {/* 회사명 with autocomplete */}
-            <CompanySearch onChange={setSelectedCompany} />
+            <CompanySearch onChange={(company) => setSelectedCompany(company)} />
 
             {/* 키워드 */}
             <div className="flex flex-col gap-2">
@@ -234,7 +236,7 @@ export default function DashboardPage() {
 
               <button
                 onClick={handleCreate}
-                disabled={!selectedCompany.trim() || !workspaceName.trim()}
+                disabled={!selectedCompany || !workspaceName.trim() || createWorkspace.isPending}
                 className="bg-blue-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-700 active:scale-95 transition-all duration-150 cursor-pointer disabled:opacity-40 disabled:cursor-default shrink-0"
               >
                 생성

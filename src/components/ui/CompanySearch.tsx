@@ -7,8 +7,13 @@ import type { KrxCompany } from '@/lib/api/krxApi';
 
 type SearchType = 'name' | 'code';
 
+interface SelectedCompany {
+  name: string;
+  ticker: string;
+}
+
 interface CompanySearchProps {
-  onChange: (company: string) => void;
+  onChange: (company: SelectedCompany | null) => void;
 }
 
 export function CompanySearch({ onChange }: CompanySearchProps) {
@@ -55,14 +60,14 @@ export function CompanySearch({ onChange }: CompanySearchProps) {
   };
 
   const handleSelect = (company: KrxCompany) => {
-    onChange(company.name);
+    onChange({ name: company.name, ticker: company.ticker });
     setSelected(company);
     setInput(`${company.name} (${company.ticker})`);
     setShowDropdown(false);
   };
 
   const handleClear = () => {
-    onChange('');
+    onChange(null);
     setSelected(null);
     setInput('');
     setResults([]);
@@ -141,7 +146,9 @@ export function CompanySearch({ onChange }: CompanySearchProps) {
               onCompositionEnd={() => setIsComposing(false)}
               disabled={loading}
               placeholder={
-                searchType === 'name' ? '회사명 또는 종목명 입력 후 Enter' : '종목코드 입력 후 Enter'
+                searchType === 'name'
+                  ? '회사명 또는 종목명 입력 후 Enter'
+                  : '종목코드 입력 후 Enter'
               }
               className="flex-1 min-w-0 text-sm border border-slate-200 rounded-lg px-3 py-2.5 outline-none focus:border-blue-400 transition-colors disabled:opacity-50 disabled:cursor-default"
             />
@@ -206,13 +213,12 @@ export function CompanySearch({ onChange }: CompanySearchProps) {
               ))
             ) : (
               <div className="px-3 py-4 text-center text-xs text-slate-400">
-                검색 결과가 없습니다
+                검색 결과가 없습니다.
               </div>
             )}
           </div>
         )}
       </div>
-
     </div>
   );
 }

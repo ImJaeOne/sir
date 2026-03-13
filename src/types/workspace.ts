@@ -13,6 +13,7 @@ export const workspaceSchema = z.object({
   ticker: z.string(),
   keywords: z.array(z.string()),
   created_at: z.string(),
+  updated_at: z.string(),
 });
 
 export const createWorkspaceSchema = z.object({
