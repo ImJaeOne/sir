@@ -8,6 +8,7 @@ import { useWorkspaces } from '@/hooks/workspace/useWorkspaceQuery';
 import { useCreateWorkspace } from '@/hooks/workspace/useWorkspaceMutation';
 import type { Workspace } from '@/types/workspace';
 import { PLATFORMS, PLATFORM_CATEGORIES, CATEGORY_LABELS } from '@/constants/platforms';
+import { getRelativeTime } from '@/utils/date';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -275,38 +276,40 @@ export default function DashboardPage() {
               >
                 <div className="flex flex-col gap-2 min-w-0">
                   <h3 className="text-base font-semibold text-slate-800 truncate">{ws.name}</h3>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="bg-slate-50 text-slate-500 text-xs px-2 py-0.5 rounded-full border border-slate-200">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="bg-blue-50 text-blue-700 text-xs px-2 py-0.5 rounded-full font-medium">
                       {ws.company_name}
                     </span>
-                    <span className="bg-slate-50 text-slate-500 text-xs px-2 py-0.5 rounded-full border border-slate-200">
+                    <span className="bg-violet-50 text-violet-600 text-xs px-2 py-0.5 rounded-full font-medium">
                       {ws.ticker}
                     </span>
                     {ws.keywords.map((kw) => (
                       <span
                         key={kw}
-                        className="bg-slate-100 text-slate-600 text-xs px-2 py-0.5 rounded-full"
+                        className="bg-amber-50 text-amber-700 text-xs px-2 py-0.5 rounded-full"
                       >
                         {kw}
                       </span>
                     ))}
                   </div>
-                  <span className="text-xs text-slate-400">
-                    {new Date(ws.created_at).toLocaleDateString('ko-KR')}
-                  </span>
                 </div>
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 16 16"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  className="text-slate-400 shrink-0"
-                >
-                  <path d="M6 4l4 4-4 4" />
-                </svg>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-xs text-slate-400 whitespace-nowrap">
+                    {getRelativeTime(ws.updated_at)}
+                  </span>
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 16 16"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    className="text-slate-300 shrink-0"
+                  >
+                    <path d="M6 4l4 4-4 4" />
+                  </svg>
+                </div>
               </button>
             );
 
