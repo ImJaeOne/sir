@@ -37,3 +37,20 @@ export function getDaysInMonth(year: number, month: number): number {
 export function getFirstDayOfWeek(year: number, month: number): number {
   return new Date(year, month, 1).getDay();
 }
+
+export function getRelativeTime(dateStr: string): string {
+  const now = Date.now();
+  const past = new Date(dateStr).getTime();
+  const diff = now - past;
+
+  const minutes = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+  const days = Math.floor(diff / 86400000);
+
+  if (minutes < 1) return '방금 전';
+  if (minutes < 60) return `${minutes}분 전`;
+  if (hours < 24) return `${hours}시간 전`;
+  if (days < 30) return `${days}일 전`;
+
+  return new Date(dateStr).toLocaleDateString('ko-KR');
+}
