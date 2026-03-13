@@ -1,7 +1,15 @@
-import type { Workspace } from '@/types/workspace';
+import type { DateRange } from '@/types/workspace';
 
 // TODO: API 연동 후 제거
-export const MOCK_WORKSPACES: Workspace[] = [
+export interface MockWorkspace {
+  id: string;
+  name: string;
+  keywords: string[];
+  dateRange: DateRange;
+  createdAt: string;
+}
+
+export const MOCK_WORKSPACES: MockWorkspace[] = [
   {
     id: 'ws-1',
     name: '삼성전자 평판 분석',

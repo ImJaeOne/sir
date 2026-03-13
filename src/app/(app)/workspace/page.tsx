@@ -6,9 +6,9 @@ import { useRouter } from 'next/navigation';
 import { MOCK_WORKSPACES } from '@/constants/workspaces';
 import { CompanySearch } from '@/components/ui/CompanySearch';
 // import { DateRangePicker } from '@/components/ui/DateRangePicker';
-import type { Workspace } from '@/types/workspace';
+import type { MockWorkspace } from '@/constants/workspaces';
 import { formatDateRange } from '@/utils/date';
-import { PLATFORMS, PLATFORM_CATEGORIES } from '@/constants/platforms';
+import { PLATFORMS, PLATFORM_CATEGORIES, CATEGORY_LABELS } from '@/constants/platforms';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -53,7 +53,7 @@ export default function DashboardPage() {
   const [isComposing, setIsComposing] = useState(false);
 
 
-  const handleSelect = (ws: Workspace) => {
+  const handleSelect = (ws: MockWorkspace) => {
     const params = new URLSearchParams();
     params.set('completed', 'true');
     params.set('company', ws.name);
@@ -200,7 +200,7 @@ export default function DashboardPage() {
                         onChange={() => toggleCategory(category)}
                         className="w-3.5 h-3.5 rounded accent-blue-600 cursor-pointer"
                       />
-                      <span className="text-xs font-semibold text-slate-700">{category}</span>
+                      <span className="text-xs font-semibold text-slate-700">{CATEGORY_LABELS[category] ?? category}</span>
                     </label>
                     <div className="flex flex-wrap gap-x-4 gap-y-1 ml-5.5">
                       {items.map((platform) => (
@@ -270,7 +270,7 @@ export default function DashboardPage() {
               ? MOCK_WORKSPACES.filter((ws) => !matched.includes(ws))
               : [];
 
-            const renderCard = (ws: Workspace) => (
+            const renderCard = (ws: MockWorkspace) => (
               <button
                 key={ws.id}
                 onClick={() => handleSelect(ws)}
