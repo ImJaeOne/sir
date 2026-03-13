@@ -3,19 +3,18 @@
 import { useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import { MOCK_WORKSPACES } from '@/constants/workspaces';
 import { CompanySearch } from '@/components/ui/CompanySearch';
+import { useWorkspaces } from '@/hooks/workspace/useWorkspaceQuery';
 import { useCreateWorkspace } from '@/hooks/workspace/useWorkspaceMutation';
-// import { DateRangePicker } from '@/components/ui/DateRangePicker';
-import type { MockWorkspace } from '@/constants/workspaces';
-import { formatDateRange } from '@/utils/date';
+import type { Workspace } from '@/types/workspace';
 import { PLATFORMS, PLATFORM_CATEGORIES, CATEGORY_LABELS } from '@/constants/platforms';
 
 export default function DashboardPage() {
   const router = useRouter();
   const [showCreate, setShowCreate] = useState(false);
-  const [workspaceSearch, setContextSearch] = useState('');
+  const [workspaceSearch, setWorkspaceSearch] = useState('');
 
+  const { data: workspaces = [], isLoading } = useWorkspaces();
   const createWorkspace = useCreateWorkspace();
 
   // 회사명
@@ -48,24 +47,15 @@ export default function DashboardPage() {
   };
 
   // 워크스페이스명
-  const [workspaceName, setContextName] = useState('');
+  const [workspaceName, setWorkspaceName] = useState('');
 
   // 키워드
   const [keywordInput, setKeywordInput] = useState('');
   const [keywords, setKeywords] = useState<string[]>([]);
   const [isComposing, setIsComposing] = useState(false);
 
-
-  const handleSelect = (ws: MockWorkspace) => {
-    const params = new URLSearchParams();
-    params.set('completed', 'true');
-    params.set('company', ws.name);
-    params.set('startDate', ws.dateRange.start);
-    params.set('endDate', ws.dateRange.end);
-    if (ws.keywords.length > 0) {
-      params.set('keywords', ws.keywords.join(','));
-    }
-    router.push(`/workspace/${ws.id}?${params.toString()}`);
+  const handleSelect = (ws: Workspace) => {
+    router.push(`/workspace/${ws.id}`);
   };
 
   const handleCreate = () => {
@@ -133,7 +123,7 @@ export default function DashboardPage() {
               <input
                 type="text"
                 value={workspaceName}
-                onChange={(e) => setContextName(e.target.value)}
+                onChange={(e) => setWorkspaceName(e.target.value)}
                 placeholder="예: 삼성전자 3월 여론 분석"
                 className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2.5 outline-none focus:border-blue-400 transition-colors"
               />
@@ -247,32 +237,37 @@ export default function DashboardPage() {
 
         {/* Existing workspaces */}
         <div className="flex flex-col gap-3">
-          {MOCK_WORKSPACES.length > 0 && (
+          {workspaces.length > 0 && (
             <input
               type="text"
               value={workspaceSearch}
-              onChange={(e) => setContextSearch(e.target.value)}
+              onChange={(e) => setWorkspaceSearch(e.target.value)}
               placeholder="워크스페이스 검색"
               className="w-full text-sm bg-white border border-slate-200 rounded-lg px-3 py-2.5 outline-none focus:border-blue-400 transition-colors"
             />
           )}
-          {MOCK_WORKSPACES.length === 0 && !showCreate && (
+          {isLoading && (
+            <div className="text-center py-12">
+              <p className="text-slate-400 text-sm">불러오는 중...</p>
+            </div>
+          )}
+          {!isLoading && workspaces.length === 0 && !showCreate && (
             <div className="text-center py-12">
               <p className="text-slate-400 text-sm">아직 생성된 워크스페이스가 없습니다.</p>
             </div>
           )}
           {(() => {
             const isSearching = workspaceSearch.trim().length > 0;
-            const matched = MOCK_WORKSPACES.filter(
+            const matched = workspaces.filter(
               (ws) =>
                 ws.name.includes(workspaceSearch) ||
                 ws.keywords.some((kw) => kw.includes(workspaceSearch))
             );
             const rest = isSearching
-              ? MOCK_WORKSPACES.filter((ws) => !matched.includes(ws))
+              ? workspaces.filter((ws) => !matched.includes(ws))
               : [];
 
-            const renderCard = (ws: MockWorkspace) => (
+            const renderCard = (ws: Workspace) => (
               <button
                 key={ws.id}
                 onClick={() => handleSelect(ws)}
@@ -282,7 +277,10 @@ export default function DashboardPage() {
                   <h3 className="text-base font-semibold text-slate-800 truncate">{ws.name}</h3>
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="bg-slate-50 text-slate-500 text-xs px-2 py-0.5 rounded-full border border-slate-200">
-                      {formatDateRange(ws.dateRange)}
+                      {ws.company_name}
+                    </span>
+                    <span className="bg-slate-50 text-slate-500 text-xs px-2 py-0.5 rounded-full border border-slate-200">
+                      {ws.ticker}
                     </span>
                     {ws.keywords.map((kw) => (
                       <span
@@ -293,30 +291,27 @@ export default function DashboardPage() {
                       </span>
                     ))}
                   </div>
-                  <span className="text-xs text-slate-400">{ws.createdAt}</span>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className="text-xs font-medium text-green-600 bg-green-50 px-2.5 py-1 rounded-full">
-                    완료
+                  <span className="text-xs text-slate-400">
+                    {new Date(ws.created_at).toLocaleDateString('ko-KR')}
                   </span>
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 16 16"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    className="text-slate-400"
-                  >
-                    <path d="M6 4l4 4-4 4" />
-                  </svg>
                 </div>
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  className="text-slate-400 shrink-0"
+                >
+                  <path d="M6 4l4 4-4 4" />
+                </svg>
               </button>
             );
 
             if (!isSearching) {
-              return MOCK_WORKSPACES.map(renderCard);
+              return workspaces.map(renderCard);
             }
 
             return (
