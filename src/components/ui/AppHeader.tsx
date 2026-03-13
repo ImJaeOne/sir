@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useSidebarStore } from '@/store/sidebar';
 import { logout } from '@/app/auth/actions';
+import Link from 'next/link';
 import { Bell, ChevronDown, LogOut, PanelLeftClose, PanelLeftOpen, User } from 'lucide-react';
 import type { AuthUser } from '@/types/auth';
 
@@ -36,10 +37,10 @@ export function AppHeader({ user }: AppHeaderProps) {
               <PanelLeftOpen size={14} className="text-white absolute opacity-0 group-hover:opacity-100 transition-opacity" />
             )}
           </button>
-          <a href="/" className="hidden sm:flex items-baseline gap-1.5 hover:opacity-70 transition-opacity">
+          <Link href="/" className="hidden sm:flex items-baseline gap-1.5 hover:opacity-70 transition-opacity">
             <span className="text-slate-400 font-medium text-sm tracking-tight">InnoPlan</span>
             <span className="text-slate-800 font-bold text-lg tracking-tight">SIR</span>
-          </a>
+          </Link>
         </div>
         <div className="flex items-center gap-2">
           {/* 알림 */}
