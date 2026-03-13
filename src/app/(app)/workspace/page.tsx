@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { MOCK_CONTEXTS } from '@/constants/contexts';
-import { MOCK_COMPANIES } from '@/constants/companies';
+import { CompanySearch } from '@/components/ui/CompanySearch';
 import { DateRangePicker } from '@/components/ui/DateRangePicker';
 import type { AnalysisContext, DateRange } from '@/types/context';
 import { todayStr, yesterdayStr, formatDateRange } from '@/utils/date';
@@ -14,18 +14,8 @@ export default function DashboardPage() {
   const router = useRouter();
   const [showCreate, setShowCreate] = useState(false);
 
-  // 회사명 autocomplete
-  const [companyInput, setCompanyInput] = useState('');
+  // 회사명
   const [selectedCompany, setSelectedCompany] = useState('');
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const suggestionsRef = useRef<HTMLDivElement>(null);
-
-  const suggestions =
-    companyInput.length > 0
-      ? MOCK_COMPANIES.filter(
-          (c) => c.name.includes(companyInput) || c.ticker.includes(companyInput)
-        )
-      : [];
 
   // 크롤링 기간
   const [dateRange, setDateRange] = useState<DateRange>(() => ({
@@ -61,22 +51,6 @@ export default function DashboardPage() {
   const [keywords, setKeywords] = useState<string[]>([]);
   const [isComposing, setIsComposing] = useState(false);
 
-  // 외부 클릭 시 suggestions 닫기
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (suggestionsRef.current && !suggestionsRef.current.contains(e.target as Node)) {
-        setShowSuggestions(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const handleSelectCompany = (name: string) => {
-    setSelectedCompany(name);
-    setCompanyInput(name);
-    setShowSuggestions(false);
-  };
 
   const handleSelect = (ctx: AnalysisContext) => {
     const params = new URLSearchParams();
@@ -162,49 +136,7 @@ export default function DashboardPage() {
             </div>
 
             {/* 회사명 with autocomplete */}
-            <div className="flex flex-col gap-2">
-              <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
-                회사명
-              </label>
-              <div className="relative" ref={suggestionsRef}>
-                <input
-                  type="text"
-                  value={companyInput}
-                  onChange={(e) => {
-                    setCompanyInput(e.target.value);
-                    setSelectedCompany('');
-                    setShowSuggestions(true);
-                  }}
-                  onFocus={() => companyInput.length > 0 && setShowSuggestions(true)}
-                  placeholder="회사명 또는 종목코드 검색"
-                  className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2.5 outline-none focus:border-blue-400 transition-colors"
-                />
-                {showSuggestions && suggestions.length > 0 && (
-                  <div className="absolute z-10 top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-48 overflow-y-auto">
-                    {suggestions.map((company) => (
-                      <button
-                        key={company.ticker}
-                        onClick={() => handleSelectCompany(company.name)}
-                        className="w-full flex items-center justify-between px-3 py-2.5 text-sm hover:bg-blue-50 transition-colors cursor-pointer text-left"
-                      >
-                        <span className="font-medium text-slate-800">{company.name}</span>
-                        <span className="text-xs text-slate-400">{company.ticker}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-              {selectedCompany && (
-                <div className="flex items-center gap-1.5">
-                  <span className="bg-blue-50 text-blue-700 text-xs px-2.5 py-1 rounded-full font-medium">
-                    {selectedCompany}
-                  </span>
-                  <span className="text-xs text-slate-400">
-                    {MOCK_COMPANIES.find((c) => c.name === selectedCompany)?.ticker}
-                  </span>
-                </div>
-              )}
-            </div>
+            <CompanySearch value={selectedCompany} onChange={setSelectedCompany} />
 
             {/* 키워드 */}
             <div className="flex flex-col gap-2">
