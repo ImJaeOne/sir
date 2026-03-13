@@ -18,11 +18,11 @@ import type { StageId } from '@/types/pipeline';
 export function PipelineStages() {
   const router = useRouter();
   const params = useParams();
-  const contextId = params?.contextId as string;
+  const workspaceId = params?.workspaceId as string;
   const searchParams = useSearchParams();
   const isCompleted = searchParams?.get('completed') === 'true';
-  const contextName =
-    searchParams?.get('contextName') ?? searchParams?.get('company') ?? 'Company';
+  const workspaceName =
+    searchParams?.get('workspaceName') ?? searchParams?.get('company') ?? 'Company';
 
   // zustand store
   const store = usePipelineStore();
@@ -42,9 +42,9 @@ export function PipelineStages() {
     (stageId: StageId) => {
       const p = new URLSearchParams(searchParams?.toString());
       p.set('step', stageId);
-      router.replace(`/workspace/${contextId}?${p.toString()}`, { scroll: false });
+      router.replace(`/workspace/${workspaceId}?${p.toString()}`, { scroll: false });
     },
-    [router, contextId, searchParams]
+    [router, workspaceId, searchParams]
   );
 
   // step 변경 시 스크롤
@@ -197,7 +197,7 @@ export function PipelineStages() {
                 <div className="flex flex-col">
                   <span className="text-base font-bold text-slate-800">작업 완료</span>
                   <span className="text-sm text-slate-500">
-                    <span className="font-semibold text-slate-700">{contextName}</span> 작업이
+                    <span className="font-semibold text-slate-700">{workspaceName}</span> 작업이
                     완료되었습니다.
                   </span>
                 </div>

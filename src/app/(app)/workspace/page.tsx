@@ -3,25 +3,26 @@
 import { useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import { MOCK_CONTEXTS } from '@/constants/contexts';
+import { MOCK_WORKSPACES } from '@/constants/workspaces';
 import { CompanySearch } from '@/components/ui/CompanySearch';
-import { DateRangePicker } from '@/components/ui/DateRangePicker';
-import type { AnalysisContext, DateRange } from '@/types/context';
-import { todayStr, yesterdayStr, formatDateRange } from '@/utils/date';
+// import { DateRangePicker } from '@/components/ui/DateRangePicker';
+import type { Workspace } from '@/types/workspace';
+import { formatDateRange } from '@/utils/date';
 import { PLATFORMS, PLATFORM_CATEGORIES } from '@/constants/platforms';
 
 export default function DashboardPage() {
   const router = useRouter();
   const [showCreate, setShowCreate] = useState(false);
+  const [workspaceSearch, setContextSearch] = useState('');
 
   // 회사명
   const [selectedCompany, setSelectedCompany] = useState('');
 
-  // 크롤링 기간
-  const [dateRange, setDateRange] = useState<DateRange>(() => ({
-    start: yesterdayStr(),
-    end: todayStr(),
-  }));
+  // TODO: 크롤링 기간 - 기능 확정 후 활성화
+  // const [dateRange, setDateRange] = useState<DateRange>(() => ({
+  //   start: yesterdayStr(),
+  //   end: todayStr(),
+  // }));
 
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(() =>
     PLATFORMS.map((p) => p.id)
@@ -43,8 +44,8 @@ export default function DashboardPage() {
     );
   };
 
-  // 컨텍스트명
-  const [contextName, setContextName] = useState('');
+  // 워크스페이스명
+  const [workspaceName, setContextName] = useState('');
 
   // 키워드
   const [keywordInput, setKeywordInput] = useState('');
@@ -52,28 +53,29 @@ export default function DashboardPage() {
   const [isComposing, setIsComposing] = useState(false);
 
 
-  const handleSelect = (ctx: AnalysisContext) => {
+  const handleSelect = (ws: Workspace) => {
     const params = new URLSearchParams();
     params.set('completed', 'true');
-    params.set('company', ctx.name);
-    params.set('startDate', ctx.dateRange.start);
-    params.set('endDate', ctx.dateRange.end);
-    if (ctx.keywords.length > 0) {
-      params.set('keywords', ctx.keywords.join(','));
+    params.set('company', ws.name);
+    params.set('startDate', ws.dateRange.start);
+    params.set('endDate', ws.dateRange.end);
+    if (ws.keywords.length > 0) {
+      params.set('keywords', ws.keywords.join(','));
     }
-    router.push(`/workspace/${ctx.id}?${params.toString()}`);
+    router.push(`/workspace/${ws.id}?${params.toString()}`);
   };
 
   const handleCreate = () => {
-    if (!selectedCompany.trim() || !contextName.trim()) return;
-    // TODO: API로 context 생성 후 반환된 id로 이동
-    const newId = `ctx-${Date.now()}`;
+    if (!selectedCompany.trim() || !workspaceName.trim()) return;
+    // TODO: API로 workspace 생성 후 반환된 id로 이동
+    const newId = `ws-${Date.now()}`;
     const params = new URLSearchParams();
     params.set('step', 'crawling');
-    params.set('contextName', contextName.trim());
+    params.set('workspaceName', workspaceName.trim());
     params.set('company', selectedCompany);
-    params.set('startDate', dateRange.start);
-    params.set('endDate', dateRange.end);
+    // TODO: 크롤링 기간 - 기능 확정 후 활성화
+    // params.set('startDate', dateRange.start);
+    // params.set('endDate', dateRange.end);
     if (keywords.length > 0) {
       params.set('keywords', keywords.join(','));
     }
@@ -107,7 +109,7 @@ export default function DashboardPage() {
       <main className="max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-12 flex flex-col gap-8">
         {/* Title */}
         <div className="flex items-center justify-between">
-          <h1 className="text-xl sm:text-2xl font-bold text-slate-900">분석 컨텍스트</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900">워크스페이스</h1>
           <button
             onClick={() => setShowCreate(!showCreate)}
             className="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-blue-700 active:scale-95 transition-all duration-150 cursor-pointer"
@@ -119,24 +121,24 @@ export default function DashboardPage() {
         {/* Create form */}
         {showCreate && (
           <div className="bg-white rounded-2xl border border-blue-200 shadow-md p-5 sm:p-6 flex flex-col gap-4">
-            <h2 className="text-base font-bold text-slate-800">새 컨텍스트 생성</h2>
+            <h2 className="text-base font-bold text-slate-800">새 워크스페이스 생성</h2>
 
-            {/* 컨텍스트명 */}
+            {/* 워크스페이스명 */}
             <div className="flex flex-col gap-2">
               <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
-                컨텍스트명
+                워크스페이스명
               </label>
               <input
                 type="text"
-                value={contextName}
+                value={workspaceName}
                 onChange={(e) => setContextName(e.target.value)}
-                placeholder="예: 삼성전자 3월 감성 분석"
+                placeholder="예: 삼성전자 3월 여론 분석"
                 className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2.5 outline-none focus:border-blue-400 transition-colors"
               />
             </div>
 
             {/* 회사명 with autocomplete */}
-            <CompanySearch value={selectedCompany} onChange={setSelectedCompany} />
+            <CompanySearch onChange={setSelectedCompany} />
 
             {/* 키워드 */}
             <div className="flex flex-col gap-2">
@@ -222,17 +224,17 @@ export default function DashboardPage() {
             </div>
 
             <div className="flex justify-between items-end">
-              {/* 크롤링 기간 */}
-              <div className="flex flex-col gap-2">
+              {/* TODO: 크롤링 기간 - 기능 확정 후 활성화 */}
+              {/* <div className="flex flex-col gap-2">
                 <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
                   크롤링 기간
                 </label>
                 <DateRangePicker value={dateRange} onChange={setDateRange} />
-              </div>
+              </div> */}
 
               <button
                 onClick={handleCreate}
-                disabled={!selectedCompany.trim() || !contextName.trim()}
+                disabled={!selectedCompany.trim() || !workspaceName.trim()}
                 className="bg-blue-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-700 active:scale-95 transition-all duration-150 cursor-pointer disabled:opacity-40 disabled:cursor-default shrink-0"
               >
                 생성
@@ -241,55 +243,101 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Existing contexts */}
+        {/* Existing workspaces */}
         <div className="flex flex-col gap-3">
-          {MOCK_CONTEXTS.length === 0 && !showCreate && (
+          {MOCK_WORKSPACES.length > 0 && (
+            <input
+              type="text"
+              value={workspaceSearch}
+              onChange={(e) => setContextSearch(e.target.value)}
+              placeholder="워크스페이스 검색"
+              className="w-full text-sm bg-white border border-slate-200 rounded-lg px-3 py-2.5 outline-none focus:border-blue-400 transition-colors"
+            />
+          )}
+          {MOCK_WORKSPACES.length === 0 && !showCreate && (
             <div className="text-center py-12">
-              <p className="text-slate-400 text-sm">아직 생성된 컨텍스트가 없습니다.</p>
+              <p className="text-slate-400 text-sm">아직 생성된 워크스페이스가 없습니다.</p>
             </div>
           )}
-          {MOCK_CONTEXTS.map((ctx) => (
-            <button
-              key={ctx.id}
-              onClick={() => handleSelect(ctx)}
-              className="w-full bg-white rounded-2xl border border-slate-100 shadow-sm p-5 sm:p-6 flex items-center justify-between gap-4 hover:shadow-md hover:border-slate-200 transition-all duration-200 cursor-pointer text-left"
-            >
-              <div className="flex flex-col gap-2 min-w-0">
-                <h3 className="text-base font-semibold text-slate-800 truncate">{ctx.name}</h3>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="bg-slate-50 text-slate-500 text-xs px-2 py-0.5 rounded-full border border-slate-200">
-                    {formatDateRange(ctx.dateRange)}
-                  </span>
-                  {ctx.keywords.map((kw) => (
-                    <span
-                      key={kw}
-                      className="bg-slate-100 text-slate-600 text-xs px-2 py-0.5 rounded-full"
-                    >
-                      {kw}
+          {(() => {
+            const isSearching = workspaceSearch.trim().length > 0;
+            const matched = MOCK_WORKSPACES.filter(
+              (ws) =>
+                ws.name.includes(workspaceSearch) ||
+                ws.keywords.some((kw) => kw.includes(workspaceSearch))
+            );
+            const rest = isSearching
+              ? MOCK_WORKSPACES.filter((ws) => !matched.includes(ws))
+              : [];
+
+            const renderCard = (ws: Workspace) => (
+              <button
+                key={ws.id}
+                onClick={() => handleSelect(ws)}
+                className="w-full bg-white rounded-2xl border border-slate-100 shadow-sm p-5 sm:p-6 flex items-center justify-between gap-4 hover:shadow-md hover:border-slate-200 transition-all duration-200 cursor-pointer text-left"
+              >
+                <div className="flex flex-col gap-2 min-w-0">
+                  <h3 className="text-base font-semibold text-slate-800 truncate">{ws.name}</h3>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="bg-slate-50 text-slate-500 text-xs px-2 py-0.5 rounded-full border border-slate-200">
+                      {formatDateRange(ws.dateRange)}
                     </span>
-                  ))}
+                    {ws.keywords.map((kw) => (
+                      <span
+                        key={kw}
+                        className="bg-slate-100 text-slate-600 text-xs px-2 py-0.5 rounded-full"
+                      >
+                        {kw}
+                      </span>
+                    ))}
+                  </div>
+                  <span className="text-xs text-slate-400">{ws.createdAt}</span>
                 </div>
-                <span className="text-xs text-slate-400">{ctx.createdAt}</span>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <span className="text-xs font-medium text-green-600 bg-green-50 px-2.5 py-1 rounded-full">
-                  완료
-                </span>
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 16 16"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  className="text-slate-400"
-                >
-                  <path d="M6 4l4 4-4 4" />
-                </svg>
-              </div>
-            </button>
-          ))}
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-xs font-medium text-green-600 bg-green-50 px-2.5 py-1 rounded-full">
+                    완료
+                  </span>
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 16 16"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    className="text-slate-400"
+                  >
+                    <path d="M6 4l4 4-4 4" />
+                  </svg>
+                </div>
+              </button>
+            );
+
+            if (!isSearching) {
+              return MOCK_WORKSPACES.map(renderCard);
+            }
+
+            return (
+              <>
+                <div className="flex flex-col gap-3">
+                  <h3 className="text-sm font-semibold text-slate-600">
+                    검색 결과 {matched.length}건
+                  </h3>
+                  {matched.length > 0 ? (
+                    matched.map(renderCard)
+                  ) : (
+                    <p className="text-sm text-slate-400 py-4 text-center">검색 결과가 없습니다</p>
+                  )}
+                </div>
+                {rest.length > 0 && (
+                  <div className="flex flex-col gap-3 mt-4">
+                    <h3 className="text-sm font-semibold text-slate-600">내 워크스페이스</h3>
+                    {rest.map(renderCard)}
+                  </div>
+                )}
+              </>
+            );
+          })()}
         </div>
       </main>
     </div>

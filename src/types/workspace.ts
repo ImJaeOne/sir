@@ -3,7 +3,7 @@ export interface DateRange {
   end: string;   // YYYY-MM-DD
 }
 
-export interface AnalysisContext {
+export interface Workspace {
   id: string;
   name: string;
   keywords: string[];

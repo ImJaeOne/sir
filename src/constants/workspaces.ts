@@ -1,16 +1,16 @@
-import type { AnalysisContext } from '@/types/context';
+import type { Workspace } from '@/types/workspace';
 
 // TODO: API 연동 후 제거
-export const MOCK_CONTEXTS: AnalysisContext[] = [
+export const MOCK_WORKSPACES: Workspace[] = [
   {
-    id: 'ctx-1',
+    id: 'ws-1',
     name: '삼성전자 평판 분석',
     keywords: ['삼성전자', 'Samsung Electronics'],
     dateRange: { start: '2026-03-03', end: '2026-03-10' },
     createdAt: '2026-03-10',
   },
   {
-    id: 'ctx-2',
+    id: 'ws-2',
     name: 'LG에너지솔루션 이슈 모니터링',
     keywords: ['LG에너지솔루션', 'LGES'],
     dateRange: { start: '2026-03-10', end: '2026-03-11' },
