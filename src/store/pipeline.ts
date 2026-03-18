@@ -1,18 +1,7 @@
 import { create } from 'zustand';
 import type { StageId, StageStatus } from '@/types/pipeline';
-import { MOCK_ANALYSIS_RESULTS } from '@/constants/analysisResults';
 
 export const STAGE_IDS: StageId[] = ['crawling', 'analysis', 'content', 'report', 'email'];
-
-function getDefaultSelectedUrls(): Set<string> {
-  const urls = new Set<string>();
-  MOCK_ANALYSIS_RESULTS.forEach((platform) => {
-    platform.flagged.forEach((item) => {
-      urls.add(item.url);
-    });
-  });
-  return urls;
-}
 
 interface PipelineState {
   // stage
@@ -55,7 +44,7 @@ const initialStatuses: Record<StageId, StageStatus> = {
 export const usePipelineStore = create<PipelineState>((set, get) => ({
   currentStep: 'crawling',
   stageStatuses: { ...initialStatuses },
-  selectedUrls: getDefaultSelectedUrls(),
+  selectedUrls: new Set<string>(),
   dismissedComplete: false,
   backModalType: null,
 
@@ -126,7 +115,7 @@ export const usePipelineStore = create<PipelineState>((set, get) => ({
     set({
       currentStep: 'crawling',
       stageStatuses: { ...initialStatuses },
-      selectedUrls: getDefaultSelectedUrls(),
+      selectedUrls: new Set<string>(),
       dismissedComplete: false,
       backModalType: null,
     }),

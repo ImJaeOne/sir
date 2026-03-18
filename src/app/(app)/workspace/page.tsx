@@ -8,6 +8,7 @@ import { useWorkspaces } from '@/hooks/workspace/useWorkspaceQuery';
 import { useCreateWorkspace } from '@/hooks/workspace/useWorkspaceMutation';
 import type { Workspace } from '@/types/workspace';
 import { PLATFORMS, PLATFORM_CATEGORIES, CATEGORY_LABELS } from '@/constants/platforms';
+import { CompanyBadge, TickerBadge, KeywordBadge } from '@/components/ui/Badge';
 import { getRelativeTime } from '@/utils/date';
 
 export default function DashboardPage() {
@@ -277,19 +278,10 @@ export default function DashboardPage() {
                 <div className="flex flex-col gap-2 min-w-0">
                   <h3 className="text-base font-semibold text-slate-800 truncate">{ws.name}</h3>
                   <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="bg-blue-50 text-blue-700 text-xs px-2 py-0.5 rounded-full font-medium">
-                      {ws.company_name}
-                    </span>
-                    <span className="bg-violet-50 text-violet-600 text-xs px-2 py-0.5 rounded-full font-medium">
-                      {ws.ticker}
-                    </span>
+                    <CompanyBadge companyName={ws.company_name} />
+                    <TickerBadge ticker={ws.ticker} />
                     {ws.keywords.map((kw) => (
-                      <span
-                        key={kw}
-                        className="bg-amber-50 text-amber-700 text-xs px-2 py-0.5 rounded-full"
-                      >
-                        {kw}
-                      </span>
+                      <KeywordBadge key={kw} keyword={kw} />
                     ))}
                   </div>
                 </div>

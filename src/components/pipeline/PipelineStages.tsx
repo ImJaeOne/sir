@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useEffect, useCallback } from 'react';
+import { useRef, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams, useRouter, useParams } from 'next/navigation';
 import { StagePanel } from '@/components/ui/StagePanel';
 import { CrawlingResult } from '@/components/pipeline/CrawlingResult';
@@ -9,33 +9,57 @@ import { ContentResult } from '@/components/pipeline/ContentResult';
 import { ReportResult } from '@/components/pipeline/ReportResult';
 import { EmailResult } from '@/components/pipeline/EmailResult';
 import { PIPELINE_STAGES } from '@/constants/pipeline';
-import { MOCK_CRAWL_RESULTS } from '@/constants/crawlResults';
-import { MOCK_ANALYSIS_RESULTS } from '@/constants/analysisResults';
-import { MOCK_CONTENT_STRATEGIES } from '@/constants/contentStrategies';
 import { usePipelineStore, STAGE_IDS } from '@/store/pipeline';
+import { useCrawlData } from '@/hooks/crawl/useCrawlData';
 import type { StageId } from '@/types/pipeline';
 
 export function PipelineStages() {
   const router = useRouter();
   const params = useParams();
   const workspaceId = params?.workspaceId as string;
+  const sessionId = params?.sessionId as string;
   const searchParams = useSearchParams();
   const isCompleted = searchParams?.get('completed') === 'true';
   const workspaceName =
     searchParams?.get('workspaceName') ?? searchParams?.get('company') ?? 'Company';
 
-  // zustand store
   const store = usePipelineStore();
   const stageRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const initialized = useRef(false);
 
-  // URL → store 초기화 (한 번만)
+  // DB에서 세션 데이터 조회
+  const { data: crawlData } = useCrawlData(sessionId);
+
+  const hasCrawlData = (crawlData?.crawlItems?.length ?? 0) > 0;
+  const hasAnalysisData = (crawlData?.clusters?.length ?? 0) > 0 ||
+    crawlData?.crawlItems?.some((item) => item.sentiment) || false;
+  const hasStrategy = !!crawlData?.strategy;
+
+  // 단독 기사 (cluster_id 없는 것)
+  const standaloneItems = useMemo(
+    () => crawlData?.crawlItems?.filter((item) => !item.cluster_id) ?? [],
+    [crawlData]
+  );
+
+  // DB 데이터 로딩 후 스테이지 상태 초기화
   useEffect(() => {
+    // 데이터 로딩 중이면 대기
+    if (!crawlData) return;
     if (initialized.current) return;
     initialized.current = true;
+
     const step = searchParams?.get('step') as StageId | null;
+
+    if (hasCrawlData && !step && !isCompleted) {
+      store.initFromParams(null, false);
+      if (hasCrawlData) store.completeStage('crawling');
+      if (hasAnalysisData) store.completeStage('analysis');
+      if (hasStrategy) store.completeStage('content');
+      return;
+    }
+
     store.initFromParams(step, isCompleted);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [crawlData, hasCrawlData, hasAnalysisData, hasStrategy]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // store → URL 동기화
   const syncUrl = useCallback(
@@ -96,39 +120,31 @@ export function PipelineStages() {
   // derived
   const frontierIndex = store.getFrontierIndex();
   const allCompleted = store.isAllCompleted();
-  const { stageStatuses, selectedUrls, dismissedComplete, backModalType } = store;
+  const { stageStatuses, dismissedComplete, backModalType } = store;
 
-  const totalFlagged = MOCK_ANALYSIS_RESULTS.reduce((sum, p) => sum + p.flagged.length, 0);
-  const contentItems = MOCK_CONTENT_STRATEGIES.filter((s) => selectedUrls.has(s.url));
-  const responseCount = contentItems.filter((s) => !s.reportable).length;
-  const reportableCount = contentItems.filter((s) => s.reportable).length;
-  const totalArticles = MOCK_CRAWL_RESULTS.reduce((sum, p) => sum + p.articles.length, 0);
+  const totalArticles = crawlData?.crawlItems?.length ?? 0;
 
   const getStageBadge = (stageId: StageId) => {
-    if (stageId === 'crawling' && stageStatuses.crawling === 'completed') {
+    if (stageId === 'crawling' && stageStatuses.crawling === 'completed' && totalArticles > 0) {
       return (
         <span className="text-xs font-medium text-blue-600 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-full">
           {totalArticles}건 수집
         </span>
       );
     }
-    if (stageId === 'analysis' && stageStatuses.analysis === 'completed' && totalFlagged > 0) {
+    if (stageId === 'analysis' && stageStatuses.analysis === 'completed' && hasAnalysisData) {
+      const clusters = crawlData?.clusters?.length ?? 0;
       return (
-        <span className="text-xs font-medium text-red-600 bg-red-50 border border-red-100 px-2 py-0.5 rounded-full">
-          주의 {totalFlagged}건
+        <span className="text-xs font-medium text-green-600 bg-green-50 border border-green-100 px-2 py-0.5 rounded-full">
+          {clusters}개 클러스터 분석
         </span>
       );
     }
-    if (stageId === 'content' && stageStatuses.content === 'completed') {
+    if (stageId === 'content' && stageStatuses.content === 'completed' && hasStrategy) {
       return (
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs font-medium text-amber-600 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-full">
-            대응 {responseCount}건
-          </span>
-          <span className="text-xs font-medium text-red-600 bg-red-50 border border-red-100 px-2 py-0.5 rounded-full">
-            신고 {reportableCount}건
-          </span>
-        </div>
+        <span className="text-xs font-medium text-amber-600 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-full">
+          대응 전략 생성 완료
+        </span>
       );
     }
     return undefined;
@@ -153,11 +169,18 @@ export function PipelineStages() {
             badge={getStageBadge(stage.id)}
             defaultExpanded={isCompleted && index === 0}
           >
-            {stage.id === 'crawling' && <CrawlingResult />}
-            {stage.id === 'analysis' && (
-              <AnalysisResult selectedUrls={selectedUrls} onToggleUrl={store.toggleUrl} />
+            {stage.id === 'crawling' && hasCrawlData && (
+              <CrawlingResult crawlItems={crawlData!.crawlItems} />
             )}
-            {stage.id === 'content' && <ContentResult selectedUrls={selectedUrls} />}
+            {stage.id === 'analysis' && hasAnalysisData && (
+              <AnalysisResult
+                clusters={crawlData!.clusters}
+                standaloneItems={standaloneItems}
+              />
+            )}
+            {stage.id === 'content' && (
+              <ContentResult strategy={crawlData?.strategy ?? null} />
+            )}
             {stage.id === 'report' && <ReportResult />}
             {stage.id === 'email' && <EmailResult />}
           </StagePanel>
@@ -177,28 +200,15 @@ export function PipelineStages() {
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center shrink-0">
-                  <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 20 20"
-                    fill="none"
-                    className="text-green-600"
-                  >
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" className="text-green-600">
                     <circle cx="10" cy="10" r="9" stroke="currentColor" strokeWidth="1.5" />
-                    <path
-                      d="M6 10l3 3 5-5"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
+                    <path d="M6 10l3 3 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 </div>
                 <div className="flex flex-col">
                   <span className="text-base font-bold text-slate-800">작업 완료</span>
                   <span className="text-sm text-slate-500">
-                    <span className="font-semibold text-slate-700">{workspaceName}</span> 작업이
-                    완료되었습니다.
+                    <span className="font-semibold text-slate-700">{workspaceName}</span> 작업이 완료되었습니다.
                   </span>
                 </div>
               </div>
@@ -206,15 +216,7 @@ export function PipelineStages() {
                 onClick={() => store.setDismissedComplete(true)}
                 className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer shrink-0"
               >
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 14 14"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                >
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
                   <path d="M3 3l8 8M11 3l-8 8" />
                 </svg>
               </button>
@@ -232,36 +234,21 @@ export function PipelineStages() {
         </div>
       )}
 
-      {/* 뒤로가기 모달 — 1~3단계: 삭제 경고 */}
+      {/* 뒤로가기 모달 — 삭제 경고 */}
       {backModalType === 'delete' && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
           <div className="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-sm mx-4 p-6 flex flex-col gap-5">
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 20 20"
-                  fill="none"
-                  className="text-red-600"
-                >
-                  <path
-                    d="M10 2L2 18h16L10 2z"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinejoin="round"
-                  />
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" className="text-red-600">
+                  <path d="M10 2L2 18h16L10 2z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
                   <path d="M10 8v4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
                   <circle cx="10" cy="14.5" r="0.75" fill="currentColor" />
                 </svg>
               </div>
               <div className="flex flex-col gap-1">
-                <span className="text-base font-bold text-slate-800">
-                  진행 중인 작업이 삭제됩니다
-                </span>
-                <span className="text-sm text-slate-500">
-                  현재까지 진행된 크롤링, 분석, 컨텐츠 데이터가 모두 삭제됩니다.
-                </span>
+                <span className="text-base font-bold text-slate-800">진행 중인 작업이 삭제됩니다</span>
+                <span className="text-sm text-slate-500">현재까지 진행된 크롤링, 분석, 컨텐츠 데이터가 모두 삭제됩니다.</span>
                 <span className="text-sm text-slate-500">계속하시겠습니까?</span>
               </div>
             </div>
@@ -286,14 +273,12 @@ export function PipelineStages() {
         </div>
       )}
 
-      {/* 뒤로가기 모달 — 4단계 이후: 확인 */}
+      {/* 뒤로가기 모달 — 확인 */}
       {backModalType === 'confirm' && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
           <div className="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-sm mx-4 p-6 flex flex-col gap-5">
             <div className="flex flex-col gap-1">
-              <span className="text-base font-bold text-slate-800">
-                워크스페이스로 돌아가시겠습니까?
-              </span>
+              <span className="text-base font-bold text-slate-800">워크스페이스로 돌아가시겠습니까?</span>
               <span className="text-sm text-slate-500">현재 페이지를 벗어납니다.</span>
             </div>
             <div className="flex items-center gap-2">
