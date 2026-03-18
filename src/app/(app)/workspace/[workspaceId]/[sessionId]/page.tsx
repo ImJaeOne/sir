@@ -5,10 +5,13 @@ import { useParams, useRouter } from 'next/navigation';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { AnalysisResult } from '@/components/pipeline/AnalysisResult';
 import { ContentResult } from '@/components/pipeline/ContentResult';
+import { StockSirChart } from '@/components/pipeline/StockSirChart';
 import { useCrawlData } from '@/hooks/crawl/useCrawlData';
+import { useStockPrices } from '@/hooks/crawl/useStockQuery';
 import { useWorkspace } from '@/hooks/workspace/useWorkspaceQuery';
 import { Database, Radio, TrendingUp } from 'lucide-react';
 import { CompanyBadge, TickerBadge } from '@/components/ui/Badge';
+import { calculateSir } from '@/utils/sir';
 
 function SessionHeader({
   workspace,
@@ -87,6 +90,7 @@ export default function SessionPage() {
 
   const { data: workspace } = useWorkspace(workspaceId);
   const { data: crawlData, isLoading } = useCrawlData(sessionId);
+  const { data: stockPrices } = useStockPrices(workspaceId);
 
   const hasAnalysis = (crawlData?.clusters?.length ?? 0) > 0 ||
     crawlData?.crawlItems?.some((item) => item.sentiment) || false;
@@ -102,29 +106,12 @@ export default function SessionPage() {
     if (!crawlData) return null;
 
     const items = crawlData.crawlItems;
-    const clusters = crawlData.clusters;
-
     const totalItems = items.length;
     const channels = new Set(items.map((i) => i.platform_id).filter(Boolean));
     const channelCount = channels.size;
+    const sirScore = calculateSir(items);
 
-    const allSentiments = [
-      ...clusters.map((c) => c.sentiment),
-      ...items.filter((i) => !i.cluster_id && i.is_relevant !== false).map((i) => i.sentiment),
-    ].filter(Boolean);
-
-    const total = allSentiments.length || 1;
-    const posCount = allSentiments.filter((s) => s === 'positive').length;
-    const neuCount = allSentiments.filter((s) => s === 'neutral').length;
-    const negCount = allSentiments.filter((s) => s === 'negative').length;
-
-    const sirScore = Math.round((posCount * 100 + neuCount * 50) / total);
-
-    return {
-      totalItems,
-      channelCount,
-      sirScore,
-    };
+    return { totalItems, channelCount, sirScore };
   }, [crawlData]);
 
   const goBack = () => router.push(`/workspace/${workspaceId}`);
@@ -178,6 +165,16 @@ export default function SessionPage() {
               channelCount={stats.channelCount}
               sirScore={stats.sirScore}
             />
+          )}
+
+          {/* 주가 & SIR 차트 */}
+          {stockPrices && stockPrices.length > 0 && (
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 sm:p-6">
+              <StockSirChart
+                stockPrices={stockPrices}
+                crawlItems={crawlData?.crawlItems ?? []}
+              />
+            </div>
           )}
 
           {/* 분석 결과 */}

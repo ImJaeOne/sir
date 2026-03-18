@@ -7,6 +7,7 @@ import { AnalysisCharts } from '@/components/pipeline/AnalysisCharts';
 import { useToggleSet } from '@/hooks/useToggleSet';
 import type { CrawlItem, Cluster } from '@/types/news';
 import type { PlatformAnalysis, AnalysisArticle } from '@/types/pipeline';
+import { calculateSir } from '@/utils/sir';
 
 interface AnalysisResultProps {
   clusters: Cluster[];
@@ -37,26 +38,19 @@ function ScoreBadge({ score }: { score: number }) {
 }
 
 function buildAnalysisData(crawlItems: CrawlItem[]): PlatformAnalysis[] {
-  const allSentiments: string[] = [];
-
-  for (const item of crawlItems) {
-    if (item.is_relevant === false || !item.sentiment) continue;
-    allSentiments.push(item.sentiment);
-  }
-
-  const total = allSentiments.length;
+  const relevant = crawlItems.filter((i) => i.sentiment);
+  const total = relevant.length;
   if (total === 0) return [];
 
-  const posCount = allSentiments.filter((s) => s === 'positive').length;
-  const neuCount = allSentiments.filter((s) => s === 'neutral').length;
-  const negCount = allSentiments.filter((s) => s === 'negative').length;
+  const posCount = relevant.filter((i) => i.sentiment === 'positive').length;
+  const neuCount = relevant.filter((i) => i.sentiment === 'neutral').length;
+  const negCount = relevant.filter((i) => i.sentiment === 'negative').length;
 
   const positive = Math.round((posCount / total) * 100);
   const neutral = Math.round((neuCount / total) * 100);
   const negative = Math.round((negCount / total) * 100);
 
-  // SIR 점수: 긍정 비율 기반
-  const sirScore = Math.round((posCount * 100 + neuCount * 50) / total);
+  const sirScore = calculateSir(crawlItems);
 
   return [
     {
