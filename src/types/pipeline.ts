@@ -29,6 +29,7 @@ export interface AnalysisArticle {
   title: string;
   url: string;
   sentiment: 'positive' | 'neutral' | 'negative';
+  source: string | null;
 }
 
 export interface PlatformAnalysis {
