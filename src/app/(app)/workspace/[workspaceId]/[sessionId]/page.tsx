@@ -90,8 +90,8 @@ export default function SessionPage() {
   const sessionId = params?.sessionId as string;
 
   const { data: workspace } = useWorkspace(workspaceId);
-  const { data: session } = useSession(sessionId);
-  const { data: crawlData, isLoading, isError } = useCrawlData(sessionId);
+  const { data: session, isError: isSessionError } = useSession(sessionId);
+  const { data: crawlData, isLoading, isError: isCrawlError } = useCrawlData(sessionId);
   const { data: stockPrices } = useStockPrices(workspaceId);
 
   const sessionStatus = session?.status ?? 'crawling';
@@ -134,7 +134,7 @@ export default function SessionPage() {
     );
   }
 
-  if (isError) {
+  if (isSessionError || isCrawlError) {
     return (
       <>
         <DashboardHeader />
