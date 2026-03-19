@@ -58,12 +58,18 @@ export function PipelineStages() {
       store.initFromParams(null, false);
       store.completeStage('crawling');
       if (sessionStatus === 'done') store.completeStage('analysis');
-      if (hasStrategy) store.completeStage('content');
       return;
     }
 
     store.initFromParams(step, isCompleted);
-  }, [session, sessionStatus, hasStrategy]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [session, sessionStatus]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // strategy 데이터는 별도로 로드되므로 독립적으로 처리
+  useEffect(() => {
+    if (hasStrategy && store.stageStatuses.content !== 'completed') {
+      store.completeStage('content');
+    }
+  }, [hasStrategy]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // store → URL 동기화
   const syncUrl = useCallback(
