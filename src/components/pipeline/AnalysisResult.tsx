@@ -46,16 +46,16 @@ function buildAnalysisData(crawlItems: CrawlItem[]): PlatformAnalysis[] {
   const neuCount = relevant.filter((i) => i.sentiment === 'neutral').length;
   const negCount = relevant.filter((i) => i.sentiment === 'negative').length;
 
-  const positive = Math.round((posCount / total) * 100);
-  const neutral = Math.round((neuCount / total) * 100);
-  const negative = Math.round((negCount / total) * 100);
+  const positive = (posCount / total) * 100;
+  const neutral = (neuCount / total) * 100;
+  const negative = (negCount / total) * 100;
 
   const sirScore = calculateSir(crawlItems);
 
   return [
     {
-      platformId: 'naver_news',
-      platformLabel: '네이버 뉴스',
+      platformId: 'news',
+      platformLabel: '뉴스',
       category: 'news',
       sirScore,
       positive,
@@ -93,8 +93,8 @@ export function AnalysisResult({ clusters, standaloneItems, crawlItems }: Analys
     return <p className="text-sm text-slate-400">분석 데이터가 없습니다</p>;
   }
 
-  const totalScore = Math.round(
-    analysisData.reduce((sum, p) => sum + p.sirScore, 0) / analysisData.length
+  const totalScore = parseFloat(
+    (analysisData.reduce((sum, p) => sum + p.sirScore, 0) / analysisData.length).toFixed(1)
   );
 
   return (
@@ -120,8 +120,8 @@ export function AnalysisResult({ clusters, standaloneItems, crawlItems }: Analys
         const items = analysisData.filter((p) => p.category === category);
         if (items.length === 0) return null;
 
-        const categoryScore = Math.round(
-          items.reduce((sum, p) => sum + p.sirScore, 0) / items.length
+        const categoryScore = parseFloat(
+          (items.reduce((sum, p) => sum + p.sirScore, 0) / items.length).toFixed(1)
         );
         const isCategoryOpen = categories.has(category);
 

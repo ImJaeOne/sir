@@ -32,7 +32,7 @@ export async function getStandaloneItems(workspaceId: string): Promise<CrawlItem
     .from('crawl_items')
     .select('*')
     .eq('workspace_id', workspaceId)
-    .eq('platform_id', 'naver_news')
+    .eq('platform_id', 'news')
     .is('cluster_id', null)
     .order('published_at', { ascending: false });
 
@@ -45,7 +45,7 @@ export async function getLatestStrategy(workspaceId: string): Promise<Strategy |
     .from('strategies')
     .select('*')
     .eq('workspace_id', workspaceId)
-    .eq('platform_id', 'naver_news')
+    .eq('platform_id', 'news')
     .order('created_at', { ascending: false })
     .limit(1);
 

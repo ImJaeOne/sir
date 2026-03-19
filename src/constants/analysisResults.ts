@@ -3,8 +3,8 @@ import type { PlatformAnalysis } from '@/types/pipeline';
 // TODO: API 연동 후 제거
 export const MOCK_ANALYSIS_RESULTS: PlatformAnalysis[] = [
   {
-    platformId: 'naver-news',
-    platformLabel: '네이버 뉴스',
+    platformId: 'news',
+    platformLabel: '뉴스',
     category: '뉴스',
     sirScore: 78,
     positive: 72,

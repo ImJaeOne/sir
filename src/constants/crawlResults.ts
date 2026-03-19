@@ -3,8 +3,8 @@ import type { PlatformCrawlResult } from '@/types/pipeline';
 // TODO: API 연동 후 제거
 export const MOCK_CRAWL_RESULTS: PlatformCrawlResult[] = [
   {
-    platformId: 'naver-news',
-    platformLabel: '네이버 뉴스',
+    platformId: 'news',
+    platformLabel: '뉴스',
     category: '뉴스',
     articles: [
       { title: '삼성전자, 2분기 영업이익 시장 기대치 상회', url: 'https://news.naver.com/article/001' },

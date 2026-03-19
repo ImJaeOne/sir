@@ -23,8 +23,7 @@ const SENTIMENT_SCORES: Record<string, Record<string, number>> = {
 
 // 플랫폼 → 채널 매핑
 const PLATFORM_CHANNEL: Record<string, string> = {
-  naver_news: 'news',
-  google_news: 'news',
+  news: 'news',
   naver_blog: 'sns',
   youtube: 'sns',
   naver_cafe: 'community',

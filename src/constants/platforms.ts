@@ -5,7 +5,7 @@ export interface Platform {
 }
 
 export const PLATFORMS: Platform[] = [
-  { id: 'naver-news', label: '네이버 뉴스', category: 'news' },
+  { id: 'news', label: '뉴스', category: 'news' },
   { id: 'naver-stock-forum', label: '네이버증권 종목토론방', category: 'community' },
   { id: 'paxnet', label: '팍스넷', category: 'community' },
   { id: 'dcinside-stock', label: '디시인사이드 주식갤러리', category: 'community' },

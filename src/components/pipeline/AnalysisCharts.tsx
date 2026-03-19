@@ -31,9 +31,9 @@ function SentimentDonut({ data }: { data: PlatformAnalysis[] }) {
   if (len === 0) return null;
 
   const sentiment = {
-    positive: Math.round(data.reduce((s, p) => s + p.positive, 0) / len),
-    neutral: Math.round(data.reduce((s, p) => s + p.neutral, 0) / len),
-    negative: Math.round(data.reduce((s, p) => s + p.negative, 0) / len),
+    positive: data.reduce((s, p) => s + p.positive, 0) / len,
+    neutral: data.reduce((s, p) => s + p.neutral, 0) / len,
+    negative: data.reduce((s, p) => s + p.negative, 0) / len,
   };
 
   const pieData = [
@@ -65,7 +65,7 @@ function SentimentDonut({ data }: { data: PlatformAnalysis[] }) {
             ))}
           </Pie>
           <Tooltip
-            formatter={(value) => `${value}%`}
+            formatter={(value) => `${(value as number).toFixed(1)}%`}
             contentStyle={{
               borderRadius: '10px',
               border: '1px solid #e2e8f0',
@@ -80,7 +80,7 @@ function SentimentDonut({ data }: { data: PlatformAnalysis[] }) {
           <div key={d.name} className="flex items-center gap-1.5">
             <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: colors[i] }} />
             <span className="text-slate-500">
-              {d.name} {d.value}%
+              {d.name} {d.value.toFixed(1)}%
             </span>
           </div>
         ))}
@@ -94,7 +94,7 @@ function CategoryScoreBar({ data }: { data: PlatformAnalysis[] }) {
     const items = data.filter((p) => p.category === category);
     const score =
       items.length > 0
-        ? Math.round(items.reduce((sum, p) => sum + p.sirScore, 0) / items.length)
+        ? parseFloat((items.reduce((sum, p) => sum + p.sirScore, 0) / items.length).toFixed(1))
         : 0;
     return { name: CATEGORY_LABELS[category] ?? category, score };
   });
@@ -122,7 +122,7 @@ function CategoryScoreBar({ data }: { data: PlatformAnalysis[] }) {
           />
           <Tooltip
             cursor={{ fill: '#e0f2fe' }}
-            formatter={(value) => [`${value}점`, 'SIR 지수']}
+            formatter={(value) => [`${(value as number).toFixed(1)}점`, 'SIR 지수']}
             contentStyle={{
               borderRadius: '10px',
               border: '1px solid #e2e8f0',
@@ -220,7 +220,7 @@ function PlatformSentimentStack({ data }: { data: PlatformAnalysis[] }) {
                         />
                         <span style={{ color: '#64748b' }}>{entry.dataKey as string}</span>
                       </div>
-                      <span style={{ fontWeight: 600, color: '#334155' }}>{entry.value}%</span>
+                      <span style={{ fontWeight: 600, color: '#334155' }}>{(entry.value as number).toFixed(1)}%</span>
                     </div>
                   ))}
                 </div>
