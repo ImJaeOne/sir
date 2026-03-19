@@ -76,9 +76,9 @@ export function PipelineStages() {
     (stageId: StageId) => {
       const p = new URLSearchParams(searchParams?.toString());
       p.set('step', stageId);
-      router.replace(`/workspace/${workspaceId}?${p.toString()}`, { scroll: false });
+      router.replace(`/workspace/${workspaceId}/${sessionId}?${p.toString()}`, { scroll: false });
     },
-    [router, workspaceId, searchParams]
+    [router, workspaceId, sessionId, searchParams]
   );
 
   // step 변경 시 스크롤
