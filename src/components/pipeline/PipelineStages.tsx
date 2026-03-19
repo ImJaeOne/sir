@@ -11,7 +11,9 @@ import { EmailResult } from '@/components/pipeline/EmailResult';
 import { PIPELINE_STAGES } from '@/constants/pipeline';
 import { usePipelineStore, STAGE_IDS } from '@/store/pipeline';
 import { useCrawlData } from '@/hooks/crawl/useCrawlData';
+import { useSession } from '@/hooks/crawl/useSessionQuery';
 import type { StageId } from '@/types/pipeline';
+import type { CrawlStatus } from '@/types/news';
 
 export function PipelineStages() {
   const router = useRouter();
@@ -28,11 +30,14 @@ export function PipelineStages() {
   const initialized = useRef(false);
 
   // DB에서 세션 데이터 조회
+  const { data: session } = useSession(sessionId);
   const { data: crawlData } = useCrawlData(sessionId);
+  const sessionStatus: CrawlStatus = session?.status ?? 'crawling';
 
-  const hasCrawlData = (crawlData?.crawlItems?.length ?? 0) > 0;
-  const hasAnalysisData = (crawlData?.clusters?.length ?? 0) > 0 ||
-    crawlData?.crawlItems?.some((item) => item.sentiment) || false;
+  // status 기반 판단: analyzing 완료 후 crawlItems가 DB에 존재
+  const hasCrawlData = sessionStatus !== 'crawling' && (crawlData?.crawlItems?.length ?? 0) > 0;
+  // clustering 이후 감성 분석 + 클러스터 데이터 존재
+  const hasAnalysisData = (sessionStatus === 'clustering' || sessionStatus === 'done') && hasCrawlData;
   const hasStrategy = !!crawlData?.strategy;
 
   // 단독 기사 (cluster_id 없는 것)
@@ -41,25 +46,24 @@ export function PipelineStages() {
     [crawlData]
   );
 
-  // DB 데이터 로딩 후 스테이지 상태 초기화
+  // 세션 status 기반 스테이지 상태 초기화
   useEffect(() => {
-    // 데이터 로딩 중이면 대기
-    if (!crawlData) return;
+    if (!session) return;
     if (initialized.current) return;
     initialized.current = true;
 
     const step = searchParams?.get('step') as StageId | null;
 
-    if (hasCrawlData && !step && !isCompleted) {
+    if (sessionStatus !== 'crawling' && !step && !isCompleted) {
       store.initFromParams(null, false);
-      if (hasCrawlData) store.completeStage('crawling');
-      if (hasAnalysisData) store.completeStage('analysis');
+      store.completeStage('crawling');
+      if (sessionStatus === 'done') store.completeStage('analysis');
       if (hasStrategy) store.completeStage('content');
       return;
     }
 
     store.initFromParams(step, isCompleted);
-  }, [crawlData, hasCrawlData, hasAnalysisData, hasStrategy]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [session, sessionStatus, hasStrategy]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // store → URL 동기화
   const syncUrl = useCallback(
@@ -176,6 +180,7 @@ export function PipelineStages() {
               <AnalysisResult
                 clusters={crawlData!.clusters}
                 standaloneItems={standaloneItems}
+                crawlItems={crawlData!.crawlItems}
               />
             )}
             {stage.id === 'content' && (

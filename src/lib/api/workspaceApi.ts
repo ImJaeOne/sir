@@ -44,7 +44,12 @@ export async function createWorkspace(dto: CreateWorkspaceDto): Promise<Workspac
   const result = workspaceSchema.parse(workspace);
 
   if (platform_ids.length > 0) {
-    await createPlatforms(result.id, platform_ids);
+    try {
+      await createPlatforms(result.id, platform_ids);
+    } catch (e) {
+      await supabase.from('workspaces').delete().eq('id', result.id);
+      throw e;
+    }
   }
 
   return result;

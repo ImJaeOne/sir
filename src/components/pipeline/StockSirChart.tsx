@@ -89,7 +89,8 @@ export function StockSirChart({ stockPrices, crawlItems }: StockSirChartProps) {
                 fontSize: '12px',
                 boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
               }}
-              formatter={(value: number, name: string) => {
+              formatter={(value: number | null, name: string) => {
+                if (value == null) return ['—', name];
                 if (name === '주가') return [`${value.toLocaleString()}원`, name];
                 return [`${value}점`, name];
               }}
