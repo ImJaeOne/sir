@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
+import { crawlItemSchema, clusterSchema, strategySchema } from '@/types/news';
 import type { CrawlItem, Cluster, Strategy } from '@/types/news';
 
 const supabase = createClient();
@@ -32,10 +33,10 @@ async function fetchCrawlData(sessionId: string): Promise<CrawlData> {
   ]);
 
   return {
-    crawlItems: (itemsRes.data ?? []) as CrawlItem[],
-    clusters: (clustersRes.data ?? []) as Cluster[],
+    crawlItems: (itemsRes.data ?? []).map((row) => crawlItemSchema.parse(row)),
+    clusters: (clustersRes.data ?? []).map((row) => clusterSchema.parse(row)),
     strategy: strategyRes.data && strategyRes.data.length > 0
-      ? strategyRes.data[0] as Strategy
+      ? strategySchema.parse(strategyRes.data[0])
       : null,
   };
 }

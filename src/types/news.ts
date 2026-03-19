@@ -3,6 +3,7 @@ import { z } from 'zod';
 export const crawlItemSchema = z.object({
   id: z.string().uuid(),
   workspace_id: z.string().uuid(),
+  session_id: z.string().uuid(),
   platform_id: z.string(),
   title: z.string(),
   link: z.string(),
@@ -18,6 +19,7 @@ export const crawlItemSchema = z.object({
 export const clusterSchema = z.object({
   id: z.string().uuid(),
   workspace_id: z.string().uuid(),
+  session_id: z.string().uuid(),
   representative_title: z.string(),
   summary: z.string().nullable(),
   sentiment: z.enum(['positive', 'neutral', 'negative']).nullable(),
@@ -30,6 +32,7 @@ export const clusterSchema = z.object({
 export const strategySchema = z.object({
   id: z.string().uuid(),
   workspace_id: z.string().uuid(),
+  session_id: z.string().uuid(),
   platform_id: z.string(),
   strategy_positive: z.string().nullable(),
   strategy_negative: z.string().nullable(),
