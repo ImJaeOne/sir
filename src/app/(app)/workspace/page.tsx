@@ -8,7 +8,7 @@ import { useWorkspaces } from '@/hooks/workspace/useWorkspaceQuery';
 import { useCreateWorkspace } from '@/hooks/workspace/useWorkspaceMutation';
 import type { Workspace } from '@/types/workspace';
 import { PLATFORMS, PLATFORM_CATEGORIES, CATEGORY_LABELS } from '@/constants/platforms';
-import { CompanyBadge, TickerBadge, KeywordBadge } from '@/components/ui/Badge';
+import { CompanyBadge, TickerBadge, KeywordBadge, SirLevelBadge } from '@/components/ui/Badge';
 import { getRelativeTime } from '@/utils/date';
 
 export default function DashboardPage() {
@@ -20,7 +20,9 @@ export default function DashboardPage() {
   const createWorkspace = useCreateWorkspace();
 
   // 회사명
-  const [selectedCompany, setSelectedCompany] = useState<{ name: string; ticker: string } | null>(null);
+  const [selectedCompany, setSelectedCompany] = useState<{ name: string; ticker: string } | null>(
+    null
+  );
 
   // TODO: 크롤링 기간 - 기능 확정 후 활성화
   // const [dateRange, setDateRange] = useState<DateRange>(() => ({
@@ -194,7 +196,9 @@ export default function DashboardPage() {
                         onChange={() => toggleCategory(category)}
                         className="w-3.5 h-3.5 rounded accent-blue-600 cursor-pointer"
                       />
-                      <span className="text-xs font-semibold text-slate-700">{CATEGORY_LABELS[category] ?? category}</span>
+                      <span className="text-xs font-semibold text-slate-700">
+                        {CATEGORY_LABELS[category] ?? category}
+                      </span>
                     </label>
                     <div className="flex flex-wrap gap-x-4 gap-y-1 ml-5.5">
                       {items.map((platform) => (
@@ -265,9 +269,7 @@ export default function DashboardPage() {
                 ws.name.includes(workspaceSearch) ||
                 ws.keywords.some((kw) => kw.includes(workspaceSearch))
             );
-            const rest = isSearching
-              ? workspaces.filter((ws) => !matched.includes(ws))
-              : [];
+            const rest = isSearching ? workspaces.filter((ws) => !matched.includes(ws)) : [];
 
             const renderCard = (ws: Workspace) => (
               <button
@@ -276,7 +278,10 @@ export default function DashboardPage() {
                 className="w-full bg-white rounded-2xl border border-slate-100 shadow-sm p-5 sm:p-6 flex items-center justify-between gap-4 hover:shadow-md hover:border-slate-200 transition-all duration-200 cursor-pointer text-left"
               >
                 <div className="flex flex-col gap-2 min-w-0">
-                  <h3 className="text-base font-semibold text-slate-800 truncate">{ws.name}</h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base font-semibold text-slate-800 truncate">{ws.name}</h3>
+                    <SirLevelBadge score={ws.sir_score} />
+                  </div>
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <CompanyBadge companyName={ws.company_name} />
                     <TickerBadge ticker={ws.ticker} />

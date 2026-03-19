@@ -36,6 +36,9 @@ export const strategySchema = z.object({
   created_at: z.string(),
 });
 
+export const crawlStatusEnum = z.enum(['crawling', 'analyzing', 'clustering', 'done', 'failed']);
+export const crawlFailedAtEnum = z.enum(['crawling', 'analyzing', 'clustering']);
+
 export const crawlSessionSchema = z.object({
   id: z.string().uuid(),
   workspace_id: z.string().uuid(),
@@ -44,9 +47,13 @@ export const crawlSessionSchema = z.object({
   total_items: z.number(),
   sir_score: z.number().nullable(),
   created_at: z.string(),
+  status: crawlStatusEnum,
+  failed_at: crawlFailedAtEnum.nullable(),
 });
 
 export type CrawlItem = z.infer<typeof crawlItemSchema>;
 export type Cluster = z.infer<typeof clusterSchema>;
 export type Strategy = z.infer<typeof strategySchema>;
 export type CrawlSession = z.infer<typeof crawlSessionSchema>;
+export type CrawlStatus = z.infer<typeof crawlStatusEnum>;
+export type CrawlFailedAt = z.infer<typeof crawlFailedAtEnum>;

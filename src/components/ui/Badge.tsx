@@ -58,6 +58,30 @@ export function CountBadge({ count, label }: { count: number; label: string }) {
   );
 }
 
+export function SirLevelBadge({ score }: { score: number | null }) {
+  if (score === null) return null;
+  const config = score >= 70
+    ? { label: '양호', variant: 'green' as BadgeVariant }
+    : score >= 50
+    ? { label: '안정', variant: 'yellow' as BadgeVariant }
+    : score >= 30
+    ? { label: '주의', variant: 'amber' as BadgeVariant }
+    : { label: '위험', variant: 'red' as BadgeVariant };
+  return <Badge variant={config.variant}>SIR {score} · {config.label}</Badge>;
+}
+
+export function StatusBadge({ status }: { status: string }) {
+  const config: Record<string, { label: string; variant: BadgeVariant }> = {
+    crawling: { label: '크롤링 중', variant: 'blue' },
+    analyzing: { label: '분석 중', variant: 'amber' },
+    clustering: { label: '클러스터링 중', variant: 'violet' },
+    done: { label: '완료', variant: 'green' },
+    failed: { label: '실패', variant: 'red' },
+  };
+  const { label, variant } = config[status] ?? { label: status, variant: 'slate' as BadgeVariant };
+  return <Badge variant={variant}>{label}</Badge>;
+}
+
 export function SentimentBadge({ sentiment }: { sentiment: 'positive' | 'neutral' | 'negative' }) {
   const config = {
     positive: { label: '긍정', variant: 'green' as BadgeVariant },

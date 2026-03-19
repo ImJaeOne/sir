@@ -12,6 +12,7 @@ export const workspaceSchema = z.object({
   company_name: z.string(),
   ticker: z.string(),
   keywords: z.array(z.string()),
+  sir_score: z.number().nullable(),
   created_at: z.string(),
   updated_at: z.string(),
 });
