@@ -1,16 +1,16 @@
 import { createClient } from '@/lib/supabase/client';
-import { crawlItemSchema } from '@/types/news';
-import type { CrawlItem } from '@/types/news';
+import { newsItemSchema } from '@/types/news';
+import type { NewsItem } from '@/types/news';
 
 const supabase = createClient();
 
-export async function getClusterItems(clusterId: string): Promise<CrawlItem[]> {
+export async function getClusterItems(clusterId: string): Promise<NewsItem[]> {
   const { data, error } = await supabase
-    .from('crawl_items')
+    .from('news_items')
     .select('*')
     .eq('cluster_id', clusterId)
     .order('published_at', { ascending: false });
 
   if (error) throw error;
-  return crawlItemSchema.array().parse(data);
+  return newsItemSchema.array().parse(data);
 }
