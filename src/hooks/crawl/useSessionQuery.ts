@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { getSessions, getSession } from '@/lib/api/sessionApi';
+import { getSessions, getSession, getSessionsByDate } from '@/lib/api/sessionApi';
 
 export function useSessions(workspaceId: string) {
   return useQuery({
@@ -14,5 +14,13 @@ export function useSession(sessionId: string) {
     queryKey: ['session', sessionId],
     queryFn: () => getSession(sessionId),
     enabled: !!sessionId,
+  });
+}
+
+export function useSessionsByDate(workspaceId: string, dateKey: string) {
+  return useQuery({
+    queryKey: ['sessions', workspaceId, dateKey],
+    queryFn: () => getSessionsByDate(workspaceId, dateKey),
+    enabled: !!workspaceId && !!dateKey,
   });
 }

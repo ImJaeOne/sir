@@ -23,11 +23,13 @@ const SENTIMENT_SCORES: Record<string, Record<string, number>> = {
 
 // 플랫폼 → 채널 매핑
 const PLATFORM_CHANNEL: Record<string, string> = {
-  news: 'news',
-  naver_blog: 'sns',
-  youtube: 'sns',
-  naver_cafe: 'community',
-  stock_discussion: 'community',
+  'news': 'news',
+  'naver-blog': 'sns',
+  'youtube': 'sns',
+  'naver-stock-forum': 'community',
+  'dcinside-stock': 'community',
+  'ppomppu-stock': 'community',
+  'paxnet': 'community',
 };
 
 interface SirItem {
@@ -64,16 +66,18 @@ export function calculateSir(items: SirItem[]): number {
   const channels = groupByChannel(items);
   if (channels.length === 0) return 50; // 데이터 없으면 중립
 
-  // 활성 채널 가중치 재정규화
-  const totalWeight = channels.reduce(
-    (sum, ch) => sum + (CHANNEL_WEIGHTS[ch.channel] ?? 2),
-    0
-  );
+  // 활성 채널 가중치 = 신뢰도 가중치 × 건수 (건수가 많을수록 영향력 증가)
+  const channelWeights = channels.map(({ channel, items: channelItems }) => ({
+    channel,
+    weight: (CHANNEL_WEIGHTS[channel] ?? 2) * channelItems.length,
+  }));
+  const totalWeight = channelWeights.reduce((sum, cw) => sum + cw.weight, 0);
 
   let sir = 0;
   for (const { channel, items: channelItems } of channels) {
     const scores = SENTIMENT_SCORES[channel] ?? SENTIMENT_SCORES.news;
-    const weight = (CHANNEL_WEIGHTS[channel] ?? 2) / totalWeight;
+    const cw = channelWeights.find(w => w.channel === channel)!;
+    const weight = cw.weight / totalWeight;
 
     const sentimentSum = channelItems.reduce((sum, item) => {
       return sum + (scores[item.sentiment ?? 'neutral'] ?? 0);
@@ -89,10 +93,14 @@ export function calculateSir(items: SirItem[]): number {
 }
 
 /**
- * 일별 SIR 지수 계산
+ * 일별 SIR 지수 계산 (누적 이동 방식)
+ *
+ * 첫날 SIR = 50(중립)에서 시작, 이후 당일 감성 점수만큼 점진적으로 이동.
+ * smoothing: 반응 속도 (0.3 = 느림/안정, 0.5 = 중간, 0.7 = 빠름)
  */
 export function calculateDailySir(
-  items: { platform_id: string; sentiment: string | null; published_at: string | null }[]
+  items: { platform_id: string; sentiment: string | null; published_at: string | null }[],
+  smoothing: number = 0.3
 ): Record<string, number> {
   const grouped = new Map<string, SirItem[]>();
 
@@ -104,9 +112,16 @@ export function calculateDailySir(
     grouped.set(date, list);
   }
 
+  const sortedDates = [...grouped.keys()].sort();
   const result: Record<string, number> = {};
-  for (const [date, dateItems] of grouped.entries()) {
-    result[date] = calculateSir(dateItems);
+  let prevSir = 50; // 기준점: 중립
+
+  for (const date of sortedDates) {
+    const dailyScore = calculateSir(grouped.get(date)!);
+    const sir = prevSir + (dailyScore - prevSir) * smoothing;
+    result[date] = Math.round(sir * 10) / 10;
+    prevSir = result[date];
   }
+
   return result;
 }

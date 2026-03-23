@@ -1,50 +1,63 @@
 import { useQuery } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
-import { newsItemSchema, clusterSchema, strategySchema } from '@/types/news';
-import type { NewsItem, Cluster, Strategy } from '@/types/news';
+import { newsItemSchema, clusterSchema, strategySchema, communityItemSchema } from '@/types/news';
+import type { NewsItem, Cluster, Strategy, CommunityItem } from '@/types/news';
 
 const supabase = createClient();
 
 export interface CrawlData {
   newsItems: NewsItem[];
+  communityItems: CommunityItem[];
   clusters: Cluster[];
-  strategy: Strategy | null;
+  strategies: Strategy[];
 }
 
-async function fetchCrawlData(sessionId: string): Promise<CrawlData> {
-  const [itemsRes, clustersRes, strategyRes] = await Promise.all([
+async function fetchCrawlDataMulti(sessionIds: string[]): Promise<CrawlData> {
+  const [newsRes, communityRes, clustersRes, strategyRes] = await Promise.all([
     supabase
       .from('news_items')
       .select('*')
-      .eq('session_id', sessionId)
+      .in('session_id', sessionIds)
+      .order('published_at', { ascending: false }),
+    supabase
+      .from('community_items')
+      .select('*')
+      .in('session_id', sessionIds)
       .order('published_at', { ascending: false }),
     supabase
       .from('clusters')
       .select('*')
-      .eq('session_id', sessionId)
+      .in('session_id', sessionIds)
       .eq('is_relevant', true)
       .order('article_count', { ascending: false }),
     supabase
       .from('strategies')
       .select('*')
-      .eq('session_id', sessionId)
-      .order('created_at', { ascending: false })
-      .limit(1),
+      .in('session_id', sessionIds)
+      .order('created_at', { ascending: false }),
   ]);
 
   return {
-    newsItems: (itemsRes.data ?? []).map((row) => newsItemSchema.parse(row)),
+    newsItems: (newsRes.data ?? []).map((row) => newsItemSchema.parse(row)),
+    communityItems: (communityRes.data ?? []).map((row) => communityItemSchema.parse(row)),
     clusters: (clustersRes.data ?? []).map((row) => clusterSchema.parse(row)),
-    strategy: strategyRes.data && strategyRes.data.length > 0
-      ? strategySchema.parse(strategyRes.data[0])
-      : null,
+    strategies: (strategyRes.data ?? []).map((row) => strategySchema.parse(row)),
   };
 }
 
 export function useCrawlData(sessionId: string) {
   return useQuery({
     queryKey: ['crawlData', sessionId],
-    queryFn: () => fetchCrawlData(sessionId),
+    queryFn: () => fetchCrawlDataMulti([sessionId]),
     enabled: !!sessionId,
+  });
+}
+
+export function useCrawlDataMulti(sessionIds: string[]) {
+  const key = sessionIds.sort().join(',');
+  return useQuery({
+    queryKey: ['crawlData', key],
+    queryFn: () => fetchCrawlDataMulti(sessionIds),
+    enabled: sessionIds.length > 0,
   });
 }

@@ -12,8 +12,13 @@ import {
   ResponsiveContainer,
   Legend,
 } from 'recharts';
-import type { CrawlItem } from '@/types/news';
 import { calculateDailySir } from '@/utils/sir';
+
+interface SirChartItem {
+  platform_id: string;
+  sentiment: string | null;
+  published_at: string | null;
+}
 
 interface StockPrice {
   date: string;
@@ -22,27 +27,44 @@ interface StockPrice {
 
 interface StockSirChartProps {
   stockPrices: StockPrice[];
-  crawlItems: CrawlItem[];
+  crawlItems: SirChartItem[];
 }
 
 export function StockSirChart({ stockPrices, crawlItems }: StockSirChartProps) {
   const chartData = useMemo(() => {
     const dailySir = calculateDailySir(crawlItems);
-    const allDates = new Set<string>();
 
-    for (const p of stockPrices) allDates.add(p.date);
-    for (const d of Object.keys(dailySir)) allDates.add(d);
+    // 최소~최대 날짜 사이 모든 날짜 생성
+    const dateSources = [...stockPrices.map(p => p.date), ...Object.keys(dailySir)];
+    if (dateSources.length === 0) return [];
+    const minDate = dateSources.sort()[0];
+    const maxDate = dateSources.sort().reverse()[0];
+
+    const sorted: string[] = [];
+    const d = new Date(minDate);
+    const end = new Date(maxDate);
+    while (d <= end) {
+      sorted.push(d.toISOString().slice(0, 10));
+      d.setDate(d.getDate() + 1);
+    }
 
     const priceMap = new Map(stockPrices.map((p) => [p.date, p.close]));
-    const sorted = [...allDates].sort();
 
-    return sorted.map((date) => ({
-      date,
-      label: date.slice(5), // MM-DD
-      price: priceMap.get(date) ?? null,
-      sir: dailySir[date] ?? null,
-    }));
+    let lastSir: number | null = null;
+    return sorted.map((date) => {
+      if (dailySir[date] !== undefined) {
+        lastSir = dailySir[date];
+      }
+      return {
+        date,
+        label: date.slice(5), // MM-DD
+        price: priceMap.get(date) ?? null,
+        sir: lastSir,
+      };
+    });
   }, [stockPrices, crawlItems]);
+
+  console.log('[StockSirChart] chartData:', chartData);
 
   if (chartData.length === 0) return null;
 

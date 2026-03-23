@@ -6,13 +6,21 @@ import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { AnalysisResult } from '@/components/pipeline/AnalysisResult';
 import { ContentResult } from '@/components/pipeline/ContentResult';
 import { StockSirChart } from '@/components/pipeline/StockSirChart';
-import { useCrawlData } from '@/hooks/crawl/useCrawlData';
-import { useSession } from '@/hooks/crawl/useSessionQuery';
+import { useCrawlDataMulti } from '@/hooks/crawl/useCrawlData';
+import { useSessionsByDate, useSession } from '@/hooks/crawl/useSessionQuery';
 import { useStockPrices } from '@/hooks/crawl/useStockQuery';
 import { useWorkspace } from '@/hooks/workspace/useWorkspaceQuery';
 import { Database, Radio, TrendingUp } from 'lucide-react';
-import { CompanyBadge, TickerBadge } from '@/components/ui/Badge';
+import { CompanyBadge, TickerBadge, StatusBadge } from '@/components/ui/Badge';
+import { PLATFORMS } from '@/constants/platforms';
 import { calculateSir } from '@/utils/sir';
+
+const isDateKey = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s);
+
+function getPlatformLabel(platformId: string | null): string {
+  if (!platformId) return '기타';
+  return PLATFORMS.find((p) => p.id === platformId)?.label ?? platformId;
+}
 
 function SessionHeader({
   workspace,
@@ -89,36 +97,53 @@ export default function SessionPage() {
   const workspaceId = params?.workspaceId as string;
   const sessionId = params?.sessionId as string;
 
+  const isDate = isDateKey(sessionId);
+
   const { data: workspace } = useWorkspace(workspaceId);
-  const { data: session, isError: isSessionError } = useSession(sessionId);
-  const { data: crawlData, isLoading, isError: isCrawlError } = useCrawlData(sessionId);
+
+  // 날짜 기반: 해당 날짜 세션 전부 조회 / UUID: 단일 세션
+  const { data: dateSessions } = useSessionsByDate(
+    isDate ? workspaceId : '', isDate ? sessionId : ''
+  );
+  const { data: singleSession } = useSession(!isDate ? sessionId : '');
+
+  const sessions = isDate ? dateSessions : (singleSession ? [singleSession] : []);
+  const sessionIds = sessions?.map((s) => s.id) ?? [];
+
+  const { data: crawlData, isLoading, isError } = useCrawlDataMulti(sessionIds);
   const { data: stockPrices } = useStockPrices(workspaceId);
 
-  const sessionStatus = session?.status ?? 'crawling';
-  const hasAnalysis = sessionStatus === 'done' || sessionStatus === 'clustering';
-  const hasStrategy = !!crawlData?.strategy;
+  const allDone = sessions?.every((s) => s.status === 'done') ?? false;
+  const hasAnalysis = sessions?.some((s) => s.status === 'done' || s.status === 'clustering') ?? false;
+  const hasStrategy = (crawlData?.strategies?.length ?? 0) > 0;
 
   const standaloneItems = useMemo(
-    () => crawlData?.crawlItems?.filter((item) => !item.cluster_id) ?? [],
+    () => crawlData?.newsItems?.filter((item) => !item.cluster_id) ?? [],
     [crawlData]
   );
 
-  // 통계 계산
   const stats = useMemo(() => {
     if (!crawlData) return null;
 
-    const items = crawlData.crawlItems;
-    const totalItems = items.length;
-    const channels = new Set(items.map((i) => i.platform_id).filter(Boolean));
-    const channelCount = channels.size;
-    const sirScore = calculateSir(items);
+    const newsCount = crawlData.newsItems.length;
+    const communityCount = crawlData.communityItems.length;
+    const totalItems = newsCount + communityCount;
 
-    return { totalItems, channelCount, sirScore };
+    // SIR 계산용: 뉴스 + 커뮤니티 통합
+    const allSirItems = [
+      ...crawlData.newsItems.map(i => ({ platform_id: i.platform_id, sentiment: i.sentiment })),
+      ...crawlData.communityItems.map(i => ({ platform_id: i.platform_id, sentiment: i.sentiment })),
+    ];
+    const channels = new Set(allSirItems.map(i => i.platform_id).filter(Boolean));
+    const channelCount = channels.size;
+    const sirScore = calculateSir(allSirItems);
+
+    return { totalItems, newsCount, communityCount, channelCount, sirScore };
   }, [crawlData]);
 
   const goBack = () => router.push(`/workspace/${workspaceId}`);
 
-  if (isLoading) {
+  if (isLoading || (!sessions || sessions.length === 0)) {
     return (
       <>
         <DashboardHeader />
@@ -134,7 +159,7 @@ export default function SessionPage() {
     );
   }
 
-  if (isSessionError || isCrawlError) {
+  if (isError) {
     return (
       <>
         <DashboardHeader />
@@ -156,24 +181,12 @@ export default function SessionPage() {
     );
   }
 
-  if (!hasAnalysis) {
-    return (
-      <>
-        <DashboardHeader />
-        <div className="p-4 sm:p-6 lg:p-8">
-          <div className="max-w-2xl mx-auto flex flex-col gap-6">
-            {workspace && <SessionHeader workspace={workspace} onBack={goBack} />}
-            <div className="flex flex-col items-center justify-center py-16 gap-4">
-              <p className="text-sm text-slate-500">아직 분석이 진행되지 않았습니다</p>
-              <button className="bg-blue-600 text-white px-6 py-3 rounded-xl text-sm font-semibold hover:bg-blue-700 active:scale-95 transition-all cursor-pointer">
-                분석 시작하기
-              </button>
-            </div>
-          </div>
-        </div>
-      </>
-    );
-  }
+  console.log('[SessionPage] sessions:', sessions);
+  console.log('[SessionPage] newsItems:', crawlData?.newsItems?.length, crawlData?.newsItems);
+  console.log('[SessionPage] communityItems:', crawlData?.communityItems?.length, crawlData?.communityItems);
+  console.log('[SessionPage] clusters:', crawlData?.clusters);
+  console.log('[SessionPage] strategies:', crawlData?.strategies);
+  console.log('[SessionPage] stats:', stats);
 
   return (
     <>
@@ -182,8 +195,20 @@ export default function SessionPage() {
         <div className="max-w-2xl mx-auto flex flex-col gap-6">
           {workspace && <SessionHeader workspace={workspace} onBack={goBack} />}
 
+          {/* 세션 상태 요약 */}
+          {sessions && sessions.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {sessions.map((s) => (
+                <div key={s.id} className="flex items-center gap-1.5">
+                  <span className="text-xs text-slate-500">{getPlatformLabel(s.platform_id)}</span>
+                  <StatusBadge status={s.status} />
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* 요약 카드 */}
-          {stats && (
+          {stats && hasAnalysis && (
             <StatCards
               totalItems={stats.totalItems}
               channelCount={stats.channelCount}
@@ -192,28 +217,48 @@ export default function SessionPage() {
           )}
 
           {/* 주가 & SIR 차트 */}
-          {stockPrices && stockPrices.length > 0 && (
+          {stockPrices && stockPrices.length > 0 && hasAnalysis && (
             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 sm:p-6">
               <StockSirChart
                 stockPrices={stockPrices}
-                crawlItems={crawlData?.crawlItems ?? []}
+                crawlItems={[
+                  ...(crawlData?.newsItems ?? []).map(i => ({
+                    platform_id: i.platform_id,
+                    sentiment: i.sentiment,
+                    published_at: i.published_at,
+                  })),
+                  ...(crawlData?.communityItems ?? []).map(i => ({
+                    platform_id: i.platform_id,
+                    sentiment: i.sentiment,
+                    published_at: i.published_at ? i.published_at.replace(/\./g, '-').split(' ')[0] : null,
+                  })),
+                ]}
               />
             </div>
           )}
 
           {/* 분석 결과 */}
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 sm:p-6">
-            <AnalysisResult
-              clusters={crawlData?.clusters ?? []}
-              standaloneItems={standaloneItems}
-              crawlItems={crawlData?.crawlItems ?? []}
-            />
-          </div>
+          {hasAnalysis && (
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 sm:p-6">
+              <AnalysisResult
+                clusters={crawlData?.clusters ?? []}
+                standaloneItems={standaloneItems}
+                crawlItems={crawlData?.newsItems ?? []}
+              />
+            </div>
+          )}
 
           {/* 대응 전략 */}
           {hasStrategy && (
             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 sm:p-6">
-              <ContentResult strategy={crawlData?.strategy ?? null} />
+              <ContentResult strategy={crawlData?.strategies?.[0] ?? null} />
+            </div>
+          )}
+
+          {/* 분석 미완료 */}
+          {!hasAnalysis && (
+            <div className="flex flex-col items-center justify-center py-16 gap-4">
+              <p className="text-sm text-slate-500">아직 분석이 진행되지 않았습니다</p>
             </div>
           )}
         </div>

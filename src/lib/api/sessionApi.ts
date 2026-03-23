@@ -25,3 +25,20 @@ export async function getSession(sessionId: string): Promise<CrawlSession> {
   if (error) throw error;
   return crawlSessionSchema.parse(data);
 }
+
+export async function getSessionsByDate(workspaceId: string, dateKey: string): Promise<CrawlSession[]> {
+  const nextDay = new Date(dateKey);
+  nextDay.setDate(nextDay.getDate() + 1);
+  const nextDayStr = nextDay.toISOString().split('T')[0];
+
+  const { data, error } = await supabase
+    .from('crawl_sessions')
+    .select('*')
+    .eq('workspace_id', workspaceId)
+    .gte('created_at', `${dateKey}T00:00:00`)
+    .lt('created_at', `${nextDayStr}T00:00:00`)
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return (data ?? []).map((row) => crawlSessionSchema.parse(row));
+}
