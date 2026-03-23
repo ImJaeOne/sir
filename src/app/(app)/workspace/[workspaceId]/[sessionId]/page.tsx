@@ -244,6 +244,7 @@ export default function SessionPage() {
                 clusters={crawlData?.clusters ?? []}
                 standaloneItems={standaloneItems}
                 crawlItems={crawlData?.newsItems ?? []}
+                communityItems={crawlData?.communityItems ?? []}
               />
             </div>
           )}

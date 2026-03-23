@@ -5,14 +5,16 @@ import { PLATFORM_CATEGORIES, CATEGORY_LABELS } from '@/constants/platforms';
 import { ChevronIcon } from '@/components/ui/ChevronIcon';
 import { AnalysisCharts } from '@/components/pipeline/AnalysisCharts';
 import { useToggleSet } from '@/hooks/useToggleSet';
-import type { CrawlItem, Cluster } from '@/types/news';
+import type { CrawlItem, Cluster, CommunityItem } from '@/types/news';
 import type { PlatformAnalysis, AnalysisArticle } from '@/types/pipeline';
 import { calculateSir } from '@/utils/sir';
+import { PLATFORMS } from '@/constants/platforms';
 
 interface AnalysisResultProps {
   clusters: Cluster[];
   standaloneItems: CrawlItem[];
   crawlItems: CrawlItem[];
+  communityItems: CommunityItem[];
 }
 
 function SentimentTag({ sentiment }: { sentiment: 'positive' | 'neutral' | 'negative' }) {
@@ -37,45 +39,63 @@ function ScoreBadge({ score }: { score: number }) {
   return <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${color}`}>{score}</span>;
 }
 
-function buildAnalysisData(crawlItems: CrawlItem[]): PlatformAnalysis[] {
-  const relevant = crawlItems.filter((i) => i.sentiment);
-  const total = relevant.length;
-  if (total === 0) return [];
+function buildAnalysisData(crawlItems: CrawlItem[], communityItems: CommunityItem[]): PlatformAnalysis[] {
+  const result: PlatformAnalysis[] = [];
 
-  const posCount = relevant.filter((i) => i.sentiment === 'positive').length;
-  const neuCount = relevant.filter((i) => i.sentiment === 'neutral').length;
-  const negCount = relevant.filter((i) => i.sentiment === 'negative').length;
-
-  const positive = (posCount / total) * 100;
-  const neutral = (neuCount / total) * 100;
-  const negative = (negCount / total) * 100;
-
-  const sirScore = calculateSir(crawlItems);
-
-  return [
-    {
+  // 뉴스
+  const newsRelevant = crawlItems.filter((i) => i.sentiment);
+  if (newsRelevant.length > 0) {
+    const total = newsRelevant.length;
+    result.push({
       platformId: 'news',
       platformLabel: '뉴스',
       category: 'news',
-      sirScore,
-      positive,
-      neutral,
-      negative,
+      sirScore: calculateSir(newsRelevant),
+      positive: (newsRelevant.filter((i) => i.sentiment === 'positive').length / total) * 100,
+      neutral: (newsRelevant.filter((i) => i.sentiment === 'neutral').length / total) * 100,
+      negative: (newsRelevant.filter((i) => i.sentiment === 'negative').length / total) * 100,
       articles: [],
       flagged: [],
-    },
-  ];
+    });
+  }
+
+  // 커뮤니티 (플랫폼별)
+  const communityByPlatform = new Map<string, CommunityItem[]>();
+  for (const item of communityItems) {
+    if (!item.sentiment) continue;
+    const list = communityByPlatform.get(item.platform_id) ?? [];
+    list.push(item);
+    communityByPlatform.set(item.platform_id, list);
+  }
+
+  for (const [platformId, items] of communityByPlatform) {
+    const total = items.length;
+    const platform = PLATFORMS.find(p => p.id === platformId);
+    result.push({
+      platformId,
+      platformLabel: platform?.label ?? platformId,
+      category: platform?.category ?? 'community',
+      sirScore: calculateSir(items.map(i => ({ platform_id: i.platform_id, sentiment: i.sentiment }))),
+      positive: (items.filter((i) => i.sentiment === 'positive').length / total) * 100,
+      neutral: (items.filter((i) => i.sentiment === 'neutral').length / total) * 100,
+      negative: (items.filter((i) => i.sentiment === 'negative').length / total) * 100,
+      articles: [],
+      flagged: [],
+    });
+  }
+
+  return result;
 }
 
-export function AnalysisResult({ clusters, standaloneItems, crawlItems }: AnalysisResultProps) {
+export function AnalysisResult({ clusters, standaloneItems, crawlItems, communityItems }: AnalysisResultProps) {
   const categories = useToggleSet();
   const platforms = useToggleSet();
   const clusterToggles = useToggleSet();
   const [sentimentFilter, setSentimentFilter] = useState<Record<string, string | null>>({});
 
   const analysisData = useMemo(
-    () => buildAnalysisData(crawlItems),
-    [crawlItems]
+    () => buildAnalysisData(crawlItems, communityItems),
+    [crawlItems, communityItems]
   );
 
   const clusterItemsMap = useMemo(() => {
@@ -93,9 +113,11 @@ export function AnalysisResult({ clusters, standaloneItems, crawlItems }: Analys
     return <p className="text-sm text-slate-400">분석 데이터가 없습니다</p>;
   }
 
-  const totalScore = parseFloat(
-    (analysisData.reduce((sum, p) => sum + p.sirScore, 0) / analysisData.length).toFixed(1)
-  );
+  const allSirItems = [
+    ...crawlItems.filter(i => i.sentiment).map(i => ({ platform_id: i.platform_id, sentiment: i.sentiment })),
+    ...communityItems.filter(i => i.sentiment).map(i => ({ platform_id: i.platform_id, sentiment: i.sentiment })),
+  ];
+  const totalScore = calculateSir(allSirItems);
 
   return (
     <div className="flex flex-col gap-4">
@@ -162,22 +184,21 @@ export function AnalysisResult({ clusters, standaloneItems, crawlItems }: Analys
                         <div className="flex items-center gap-2">
                           <span className="text-sm text-slate-600">{platform.platformLabel}</span>
                           <ScoreBadge score={platform.sirScore} />
-                          <span className="text-xs text-slate-400">{crawlItems.length}건</span>
+                          <span className="text-xs text-slate-400">
+                            {platform.category === 'news'
+                              ? `${crawlItems.filter(i => i.sentiment).length}건`
+                              : `${communityItems.filter(i => i.platform_id === platform.platformId && i.sentiment).length}건`
+                            }
+                          </span>
                         </div>
                         <ChevronIcon open={isPlatformOpen} />
                       </button>
 
                       {isPlatformOpen && (() => {
+                        const isNews = platform.category === 'news';
                         const filter = sentimentFilter[platform.platformId] ?? null;
                         const setFilter = (v: string | null) =>
                           setSentimentFilter((prev) => ({ ...prev, [platform.platformId]: v }));
-
-                        const filteredClusters = filter
-                          ? clusters.filter((c) => c.sentiment === filter)
-                          : clusters;
-                        const filteredStandalone = standaloneItems
-                          .filter((item) => item.is_relevant !== false && item.sentiment)
-                          .filter((item) => !filter || item.sentiment === filter);
 
                         return (
                         <div className="px-4 pl-6 pb-3 flex flex-col gap-2">
@@ -203,87 +224,85 @@ export function AnalysisResult({ clusters, standaloneItems, crawlItems }: Analys
                             ))}
                           </div>
 
-                          {/* 클러스터 */}
-                          {filteredClusters.map((cluster) => {
-                            const isClusterOpen = clusterToggles.has(cluster.id);
-                            const items = clusterItemsMap.get(cluster.id) ?? [];
-
-                            return (
-                              <div key={cluster.id} className="rounded-lg border border-slate-100 overflow-hidden">
-                                <button
-                                  onClick={() => clusterToggles.toggle(cluster.id)}
-                                  className="w-full flex flex-col gap-1 px-3 py-2 hover:bg-slate-50 transition-colors cursor-pointer text-left"
-                                >
-                                  <div className="flex items-center gap-2 w-full">
-                                    <span className="text-sm text-slate-700 truncate flex-1">
-                                      {cluster.representative_title}
-                                    </span>
-                                    <span className="text-xs text-slate-400 shrink-0">{cluster.article_count}건</span>
-                                    <ChevronIcon open={isClusterOpen} />
-                                  </div>
-                                  {cluster.summary && (
-                                    <p className="text-xs text-slate-500 pl-1 pr-8">
-                                      {cluster.summary}
-                                    </p>
-                                  )}
-                                </button>
-
-                                {isClusterOpen && (
-                                  <div className="border-t border-slate-50">
-                                  <ul className="divide-y divide-slate-50">
-                                    {items.map((item) => (
-                                      <li
-                                        key={item.id}
-                                        className="flex items-center gap-2 px-3 py-2 pl-5 min-w-0"
-                                      >
-                                        {item.sentiment && <SentimentTag sentiment={item.sentiment} />}
-                                        <a
-                                          href={item.link}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="text-sm text-slate-700 hover:text-blue-600 hover:underline truncate flex-1 transition-colors"
-                                        >
-                                          {item.title}
-                                        </a>
-                                        {item.source && (
-                                          <span className="text-xs text-slate-400 shrink-0">{item.source}</span>
-                                        )}
-                                      </li>
-                                    ))}
-                                  </ul>
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
-
-                          {/* 개별 기사 */}
-                          <ul className="flex flex-col gap-1">
-                            {filteredStandalone.map((item) => (
-                                <li
-                                  key={item.id}
-                                  className="flex flex-col gap-1 px-3 py-2 rounded-lg hover:bg-slate-50 transition-colors min-w-0"
-                                >
-                                  <div className="flex items-center gap-2">
-                                    <SentimentTag sentiment={item.sentiment!} />
-                                    <a
-                                      href={item.link}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="text-sm text-slate-700 hover:text-blue-600 hover:underline truncate flex-1 transition-colors"
+                          {isNews ? (
+                            <>
+                              {/* 뉴스: 클러스터 + 단독 기사 */}
+                              {(filter ? clusters.filter(c => c.sentiment === filter) : clusters).map((cluster) => {
+                                const isClusterOpen = clusterToggles.has(cluster.id);
+                                const items = clusterItemsMap.get(cluster.id) ?? [];
+                                return (
+                                  <div key={cluster.id} className="rounded-lg border border-slate-100 overflow-hidden">
+                                    <button
+                                      onClick={() => clusterToggles.toggle(cluster.id)}
+                                      className="w-full flex flex-col gap-1 px-3 py-2 hover:bg-slate-50 transition-colors cursor-pointer text-left"
                                     >
-                                      {item.title}
-                                    </a>
-                                    {item.source && (
-                                      <span className="text-xs text-slate-400 shrink-0">{item.source}</span>
+                                      <div className="flex items-center gap-2 w-full">
+                                        <span className="text-sm text-slate-700 truncate flex-1">{cluster.representative_title}</span>
+                                        <span className="text-xs text-slate-400 shrink-0">{cluster.article_count}건</span>
+                                        <ChevronIcon open={isClusterOpen} />
+                                      </div>
+                                      {cluster.summary && <p className="text-xs text-slate-500 pl-1 pr-8">{cluster.summary}</p>}
+                                    </button>
+                                    {isClusterOpen && (
+                                      <div className="border-t border-slate-50">
+                                        <ul className="divide-y divide-slate-50">
+                                          {items.map((item) => (
+                                            <li key={item.id} className="flex items-center gap-2 px-3 py-2 pl-5 min-w-0">
+                                              {item.sentiment && <SentimentTag sentiment={item.sentiment} />}
+                                              <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-sm text-slate-700 hover:text-blue-600 hover:underline truncate flex-1 transition-colors">{item.title}</a>
+                                              {item.source && <span className="text-xs text-slate-400 shrink-0">{item.source}</span>}
+                                            </li>
+                                          ))}
+                                        </ul>
+                                      </div>
                                     )}
                                   </div>
-                                  {item.summary && (
-                                    <p className="text-xs text-slate-500 pl-9 pr-8">{item.summary}</p>
-                                  )}
-                                </li>
-                              ))}
-                          </ul>
+                                );
+                              })}
+                              <ul className="flex flex-col gap-1">
+                                {standaloneItems
+                                  .filter(item => item.sentiment && (!filter || item.sentiment === filter))
+                                  .map((item) => (
+                                    <li key={item.id} className="flex flex-col gap-1 px-3 py-2 rounded-lg hover:bg-slate-50 transition-colors min-w-0">
+                                      <div className="flex items-center gap-2">
+                                        <SentimentTag sentiment={item.sentiment!} />
+                                        <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-sm text-slate-700 hover:text-blue-600 hover:underline truncate flex-1 transition-colors">{item.title}</a>
+                                        {item.source && <span className="text-xs text-slate-400 shrink-0">{item.source}</span>}
+                                      </div>
+                                      {item.summary && <p className="text-xs text-slate-500 pl-9 pr-8">{item.summary}</p>}
+                                    </li>
+                                  ))}
+                              </ul>
+                            </>
+                          ) : (
+                            <>
+                              {/* 커뮤니티: 게시글 목록 */}
+                              <ul className="flex flex-col gap-1">
+                                {communityItems
+                                  .filter(item => item.platform_id === platform.platformId && item.sentiment && (!filter || item.sentiment === filter))
+                                  .map((item) => (
+                                    <li key={item.id} className="flex flex-col gap-1 px-3 py-2 rounded-lg hover:bg-slate-50 transition-colors min-w-0">
+                                      <div className="flex items-center gap-2">
+                                        <SentimentTag sentiment={item.sentiment!} />
+                                        {item.critical_type && (
+                                          <span className="text-xs font-bold px-1.5 py-0.5 rounded bg-orange-50 text-orange-700 shrink-0">
+                                            {item.critical_type === 'market_manipulation' ? '시세조종'
+                                              : item.critical_type === 'rumor' ? '루머'
+                                              : item.critical_type === 'legal_risk' ? '법적위험'
+                                              : item.critical_type === 'threat' ? '위협' : item.critical_type}
+                                          </span>
+                                        )}
+                                        {item.is_cleanbot && (
+                                          <span className="text-xs font-bold px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 shrink-0">클린봇</span>
+                                        )}
+                                        <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-sm text-slate-700 hover:text-blue-600 hover:underline truncate flex-1 transition-colors">{item.title}</a>
+                                        {item.views > 0 && <span className="text-xs text-slate-400 shrink-0">조회 {item.views}</span>}
+                                      </div>
+                                    </li>
+                                  ))}
+                              </ul>
+                            </>
+                          )}
                         </div>
                         );
                       })()}
