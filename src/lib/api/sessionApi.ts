@@ -31,12 +31,13 @@ export async function getSessionsByDate(workspaceId: string, dateKey: string): P
   nextDay.setDate(nextDay.getDate() + 1);
   const nextDayStr = nextDay.toISOString().split('T')[0];
 
+  // KST(UTC+9) 기준으로 쿼리
   const { data, error } = await supabase
     .from('crawl_sessions')
     .select('*')
     .eq('workspace_id', workspaceId)
-    .gte('created_at', `${dateKey}T00:00:00`)
-    .lt('created_at', `${nextDayStr}T00:00:00`)
+    .gte('created_at', `${dateKey}T00:00:00+09:00`)
+    .lt('created_at', `${nextDayStr}T00:00:00+09:00`)
     .order('created_at', { ascending: false });
 
   if (error) throw error;
