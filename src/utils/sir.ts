@@ -34,8 +34,6 @@ const PLATFORM_CHANNEL: Record<string, string> = {
   'youtube': 'sns',
   'naver-stock-forum': 'community',
   'dcinside-stock': 'community',
-  'ppomppu-stock': 'community',
-  'paxnet': 'community',
 };
 
 interface SirItem {
