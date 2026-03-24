@@ -1,25 +1,23 @@
 /**
  * SIR(Social Investment Risk) 지수 계산
  *
- * 연구 기반 가중치:
- * - Negativity bias: 부정 감성이 주가에 2~3배 강한 영향 (Akhtar et al.)
- * - 한국 시장: 뉴스 감성이 주가 방향성 선행, 커뮤니티는 변동성과 상관 (PMC 11076966)
- * - 커뮤니티 부정 감성: 주가 하락과 강한 상관 (네이버 종토방 논문, DBpia)
- * - EMA 방식 누적: 주별 예측이 일별보다 정확 (62% 정확도)
+ * 최적 파라미터 (넵튠 1개월 데이터 기반 시뮬레이션, 일치율 61.1%):
+ * - 뉴스 캡: 무제한 (신작 흥행 등 실제 호재 반영)
+ * - 커뮤니티 캡: 12건 (노이즈 과다 방지)
+ * - 부정 스케일: 1.5 (넓은 범위, EMA 24.6~61.8)
+ * - 신뢰도 k: 3 (적은 건수에서도 반영)
+ * - EMA 기간: 3 (빠른 반응)
  *
  * 결과: 0~100 (50 = 중립, 100 = 최상, 0 = 최악)
  */
 
-// 채널별 신뢰도 가중치 (건수와 곱해져서 최종 가중치 결정)
 const CHANNEL_WEIGHTS: Record<string, number> = {
   report: 5,
-  news: 3,       // 4→3: 뉴스 1건이 커뮤니티 다수를 압도하는 현상 완화
+  news: 3,
   sns: 2,
-  community: 3,  // 2→3: 커뮤니티 감성의 실제 주가 영향력 반영 (종토방 논문)
+  community: 3,
 };
 
-// 채널별 감성 점수 매트릭스
-// negativity bias 반영: 부정 가중치를 긍정의 약 2배로 설정
 const SENTIMENT_SCORES: Record<string, Record<string, number>> = {
   report:    { positive: 1.0, neutral: 0, negative: -2.0, critical: -3.0 },
   news:      { positive: 1.0, neutral: 0, negative: -2.0, critical: -3.0 },
@@ -27,7 +25,14 @@ const SENTIMENT_SCORES: Record<string, Record<string, number>> = {
   community: { positive: 0.5, neutral: 0, negative: -1.2, critical: -2.5 },
 };
 
-// 플랫폼 → 채널 매핑
+// 채널별 일일 건수 캡 (뉴스 무제한, 커뮤니티 노이즈 방지)
+const DAILY_CAPS: Record<string, number> = {
+  news: 999,
+  community: 12,
+  sns: 20,
+  report: 999,
+};
+
 const PLATFORM_CHANNEL: Record<string, string> = {
   'news': 'news',
   'naver-blog': 'sns',
@@ -65,17 +70,21 @@ function groupByChannel(items: SirItem[]): ChannelData[] {
 
 /**
  * SIR 지수 계산 (0~100 스케일)
- * 채널 가중치 = 신뢰도 × 건수 (건수가 많을수록 영향력 증가)
  */
 export function calculateSir(items: SirItem[]): number {
   const channels = groupByChannel(items);
   if (channels.length === 0) return 50;
 
-  // 활성 채널 가중치 = 신뢰도 × 건수
-  const channelWeights = channels.map(({ channel, items: channelItems }) => ({
-    channel,
-    weight: (CHANNEL_WEIGHTS[channel] ?? 2) * channelItems.length,
-  }));
+  // 채널별 가중치 = 신뢰도 × min(건수, 캡)
+  const channelWeights = channels.map(({ channel, items: channelItems }) => {
+    const cap = DAILY_CAPS[channel] ?? 999;
+    const count = Math.min(channelItems.length, cap);
+    return {
+      channel,
+      count,
+      weight: (CHANNEL_WEIGHTS[channel] ?? 2) * count,
+    };
+  });
   const totalWeight = channelWeights.reduce((sum, cw) => sum + cw.weight, 0);
 
   let sir = 0;
@@ -84,25 +93,25 @@ export function calculateSir(items: SirItem[]): number {
     const cw = channelWeights.find(w => w.channel === channel)!;
     const weight = cw.weight / totalWeight;
 
-    const sentimentSum = channelItems.reduce((sum, item) => {
+    const sentimentSum = channelItems.slice(0, cw.count).reduce((sum, item) => {
       return sum + (scores[item.sentiment ?? 'neutral'] ?? 0);
     }, 0);
 
-    const channelScore = sentimentSum / channelItems.length;
+    const channelScore = sentimentSum / cw.count;
     sir += weight * channelScore;
   }
 
-  // 0~100 스케일 변환 (비대칭: 중립=50 기준)
+  // 비대칭 스케일 (부정 /1.5 → 넓은 범위)
   let sir100: number;
   if (sir >= 0) {
     sir100 = 50 + (sir / 1.0) * 50;
   } else {
-    sir100 = 50 + (sir / 3.0) * 50;
+    sir100 = 50 + (sir / 1.5) * 50;
   }
 
-  // 신뢰도 보정: 건수가 적을수록 50(중립)에 가깝게
-  const totalCount = items.filter(i => i.sentiment).length;
-  const confidence = 1 - 1 / (1 + totalCount / 10);
+  // 신뢰도 보정 (k=3)
+  const totalCount = channelWeights.reduce((sum, cw) => sum + cw.count, 0);
+  const confidence = 1 - 1 / (1 + totalCount / 3);
   sir100 = 50 + (sir100 - 50) * confidence;
 
   sir100 = Math.round(sir100 * 10) / 10;
@@ -111,13 +120,11 @@ export function calculateSir(items: SirItem[]): number {
 
 /**
  * 일별 SIR 지수 계산 (EMA 누적 이동 방식)
- *
- * EMA smoothing factor = 2 / (N + 1)
- * N=7 (주간 기준, 논문에서 주별 예측이 더 정확) → factor ≈ 0.25
+ * EMA period=3 (smoothing=0.5, 빠른 반응)
  */
 export function calculateDailySir(
   items: { platform_id: string; sentiment: string | null; published_at: string | null }[],
-  emaPeriod: number = 7
+  emaPeriod: number = 3
 ): Record<string, number> {
   const grouped = new Map<string, SirItem[]>();
 
@@ -131,8 +138,8 @@ export function calculateDailySir(
 
   const sortedDates = [...grouped.keys()].sort();
   const result: Record<string, number> = {};
-  const smoothing = 2 / (emaPeriod + 1); // EMA factor
-  let prevSir = 50; // 기준점: 중립
+  const smoothing = 2 / (emaPeriod + 1);
+  let prevSir = 50;
 
   for (const date of sortedDates) {
     const dailyScore = calculateSir(grouped.get(date)!);
