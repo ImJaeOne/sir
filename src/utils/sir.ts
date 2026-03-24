@@ -27,7 +27,7 @@ const SENTIMENT_SCORES: Record<string, Record<string, number>> = {
 
 // 채널별 일일 건수 캡 (뉴스 무제한, 커뮤니티 노이즈 방지)
 const DAILY_CAPS: Record<string, number> = {
-  news: 999,
+  news: 20,
   community: 12,
   sns: 20,
   report: 999,
