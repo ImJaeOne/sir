@@ -41,6 +41,7 @@ export const clusterSchema = z.object({
   session_id: z.string().uuid(),
   representative_title: z.string(),
   summary: z.string().nullable(),
+  sentiment: z.enum(['positive', 'neutral', 'negative']).nullable(),
   article_count: z.number(),
   is_relevant: z.boolean().nullable(),
   created_at: z.string(),
@@ -79,6 +80,26 @@ export const communityItemSchema = z.object({
   created_at: z.string(),
 });
 
+// ── SNS ──
+
+export const postTypeEnum = z.enum(['analysis', 'opinion', 'promotion', 'irrelevant']);
+
+export const snsItemSchema = z.object({
+  id: z.string().uuid(),
+  workspace_id: z.string().uuid(),
+  session_id: z.string().uuid().nullable(),
+  platform_id: z.string(),
+  title: z.string(),
+  link: z.string(),
+  content: z.string().nullable(),
+  author: z.string().nullable(),
+  published_at: z.string().nullable(),
+  sentiment: z.enum(['positive', 'neutral', 'negative']).nullable(),
+  post_type: postTypeEnum.nullable(),
+  is_relevant: z.boolean().nullable(),
+  created_at: z.string(),
+});
+
 // ── 타입 export ──
 
 export type CrawlSession = z.infer<typeof crawlSessionSchema>;
@@ -88,6 +109,8 @@ export type NewsItem = z.infer<typeof newsItemSchema>;
 export type Cluster = z.infer<typeof clusterSchema>;
 export type Strategy = z.infer<typeof strategySchema>;
 export type CommunityItem = z.infer<typeof communityItemSchema>;
+export type SnsItem = z.infer<typeof snsItemSchema>;
+export type PostType = z.infer<typeof postTypeEnum>;
 export type CriticalType = z.infer<typeof criticalTypeEnum>;
 
 /** @deprecated crawlItemSchema → newsItemSchema로 변경됨 */
