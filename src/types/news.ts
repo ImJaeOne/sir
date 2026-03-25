@@ -59,7 +59,7 @@ export const strategySchema = z.object({
 
 // ── 커뮤니티 ──
 
-export const criticalTypeEnum = z.enum(['market_manipulation', 'rumor', 'legal_risk', 'threat']);
+export const criticalTypeEnum = z.enum(['market_manipulation', 'rumor', 'legal_risk', 'threat', 'ad', 'spam']);
 
 export const communityItemSchema = z.object({
   id: z.string().uuid(),
@@ -82,8 +82,6 @@ export const communityItemSchema = z.object({
 
 // ── SNS ──
 
-export const postTypeEnum = z.enum(['analysis', 'opinion', 'promotion', 'irrelevant']);
-
 export const snsItemSchema = z.object({
   id: z.string().uuid(),
   workspace_id: z.string().uuid(),
@@ -95,7 +93,7 @@ export const snsItemSchema = z.object({
   author: z.string().nullable(),
   published_at: z.string().nullable(),
   sentiment: z.enum(['positive', 'neutral', 'negative']).nullable(),
-  post_type: postTypeEnum.nullable(),
+  critical_type: criticalTypeEnum.nullable(),
   is_relevant: z.boolean().nullable(),
   created_at: z.string(),
 });
@@ -110,7 +108,6 @@ export type Cluster = z.infer<typeof clusterSchema>;
 export type Strategy = z.infer<typeof strategySchema>;
 export type CommunityItem = z.infer<typeof communityItemSchema>;
 export type SnsItem = z.infer<typeof snsItemSchema>;
-export type PostType = z.infer<typeof postTypeEnum>;
 export type CriticalType = z.infer<typeof criticalTypeEnum>;
 
 /** @deprecated crawlItemSchema → newsItemSchema로 변경됨 */

@@ -30,7 +30,7 @@ async function fetchCrawlDataMulti(sessionIds: string[]): Promise<CrawlData> {
       .from('sns_items')
       .select('*')
       .in('session_id', sessionIds)
-      .eq('is_relevant', true)
+      .neq('is_relevant', false)
       .order('published_at', { ascending: false }),
     supabase
       .from('clusters')

@@ -322,7 +322,9 @@ export function AnalysisResult({ clusters, standaloneItems, crawlItems, communit
                                             {item.critical_type === 'market_manipulation' ? '시세조종'
                                               : item.critical_type === 'rumor' ? '루머'
                                               : item.critical_type === 'legal_risk' ? '법적위험'
-                                              : item.critical_type === 'threat' ? '위협' : item.critical_type}
+                                              : item.critical_type === 'threat' ? '위협'
+                                              : item.critical_type === 'ad' ? '광고'
+                                              : item.critical_type === 'spam' ? '스팸' : item.critical_type}
                                           </span>
                                         )}
                                         {item.is_cleanbot && (
@@ -346,13 +348,19 @@ export function AnalysisResult({ clusters, standaloneItems, crawlItems, communit
                                   .sort((a, b) => (b.published_at ?? '').localeCompare(a.published_at ?? ''))
                                   .map((item) => {
                                     const shortDate = item.published_at ? `${item.published_at.slice(5)}` : '';
-                                    const postTypeLabel = item.post_type === 'analysis' ? '분석' : item.post_type === 'opinion' ? '의견' : null;
                                     return (
                                     <li key={item.id} className="flex flex-col gap-1 px-3 py-2 rounded-lg hover:bg-slate-50 transition-colors min-w-0">
                                       <div className="flex items-center gap-2">
                                         <SentimentTag sentiment={item.sentiment!} />
-                                        {postTypeLabel && (
-                                          <span className="text-xs font-bold px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 shrink-0">{postTypeLabel}</span>
+                                        {item.critical_type && (
+                                          <span className="text-xs font-bold px-1.5 py-0.5 rounded bg-orange-50 text-orange-700 shrink-0">
+                                            {item.critical_type === 'market_manipulation' ? '시세조종'
+                                              : item.critical_type === 'rumor' ? '루머'
+                                              : item.critical_type === 'legal_risk' ? '법적위험'
+                                              : item.critical_type === 'threat' ? '위협'
+                                              : item.critical_type === 'ad' ? '광고'
+                                              : item.critical_type === 'spam' ? '스팸' : item.critical_type}
+                                          </span>
                                         )}
                                         <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-sm text-slate-700 hover:text-blue-600 hover:underline truncate flex-1 transition-colors">{item.title}</a>
                                         {item.author && <span className="text-xs text-slate-400 shrink-0">{item.author}</span>}
