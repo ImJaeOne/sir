@@ -127,18 +127,20 @@ export default function SessionPage() {
 
     const newsCount = crawlData.newsItems.length;
     const communityCount = crawlData.communityItems.length;
-    const totalItems = newsCount + communityCount;
+    const snsCount = crawlData.snsItems.length;
+    const totalItems = newsCount + communityCount + snsCount;
 
-    // SIR 계산용: 뉴스 + 커뮤니티 통합
+    // SIR 계산용: 뉴스 + 커뮤니티 + SNS 통합
     const allSirItems = [
       ...crawlData.newsItems.map(i => ({ platform_id: i.platform_id, sentiment: i.sentiment })),
       ...crawlData.communityItems.map(i => ({ platform_id: i.platform_id, sentiment: i.sentiment })),
+      ...crawlData.snsItems.map(i => ({ platform_id: i.platform_id, sentiment: i.sentiment })),
     ];
     const channels = new Set(allSirItems.map(i => i.platform_id).filter(Boolean));
     const channelCount = channels.size;
     const sirScore = calculateSir(allSirItems);
 
-    return { totalItems, newsCount, communityCount, channelCount, sirScore };
+    return { totalItems, newsCount, communityCount, snsCount, channelCount, sirScore };
   }, [crawlData]);
 
   const goBack = () => router.push(`/workspace/${workspaceId}`);
@@ -180,13 +182,6 @@ export default function SessionPage() {
       </>
     );
   }
-
-  console.log('[SessionPage] sessions:', sessions);
-  console.log('[SessionPage] newsItems:', crawlData?.newsItems?.length, crawlData?.newsItems);
-  console.log('[SessionPage] communityItems:', crawlData?.communityItems?.length, crawlData?.communityItems);
-  console.log('[SessionPage] clusters:', crawlData?.clusters);
-  console.log('[SessionPage] strategies:', crawlData?.strategies);
-  console.log('[SessionPage] stats:', stats);
 
   return (
     <>
@@ -232,6 +227,11 @@ export default function SessionPage() {
                     sentiment: i.sentiment,
                     published_at: i.published_at ? i.published_at.replace(/\./g, '-').split(' ')[0] : null,
                   })),
+                  ...(crawlData?.snsItems ?? []).map(i => ({
+                    platform_id: i.platform_id,
+                    sentiment: i.sentiment,
+                    published_at: i.published_at,
+                  })),
                 ]}
               />
             </div>
@@ -245,6 +245,7 @@ export default function SessionPage() {
                 standaloneItems={standaloneItems}
                 crawlItems={crawlData?.newsItems ?? []}
                 communityItems={crawlData?.communityItems ?? []}
+                snsItems={crawlData?.snsItems ?? []}
               />
             </div>
           )}

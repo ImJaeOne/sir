@@ -64,8 +64,6 @@ export function StockSirChart({ stockPrices, crawlItems }: StockSirChartProps) {
     });
   }, [stockPrices, crawlItems]);
 
-  console.log('[StockSirChart] chartData:', chartData);
-
   if (chartData.length === 0) return null;
 
   const prices = chartData.filter((d) => d.price !== null).map((d) => d.price as number);

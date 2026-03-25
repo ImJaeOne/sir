@@ -5,16 +5,18 @@ import { PLATFORM_CATEGORIES, CATEGORY_LABELS } from '@/constants/platforms';
 import { ChevronIcon } from '@/components/ui/ChevronIcon';
 import { AnalysisCharts } from '@/components/pipeline/AnalysisCharts';
 import { useToggleSet } from '@/hooks/useToggleSet';
-import type { CrawlItem, Cluster, CommunityItem } from '@/types/news';
+import type { CrawlItem, Cluster, CommunityItem, SnsItem } from '@/types/news';
 import type { PlatformAnalysis, AnalysisArticle } from '@/types/pipeline';
 import { calculateSir } from '@/utils/sir';
 import { PLATFORMS } from '@/constants/platforms';
+import { Eye } from 'lucide-react';
 
 interface AnalysisResultProps {
   clusters: Cluster[];
   standaloneItems: CrawlItem[];
   crawlItems: CrawlItem[];
   communityItems: CommunityItem[];
+  snsItems: SnsItem[];
 }
 
 function SentimentTag({ sentiment }: { sentiment: 'positive' | 'neutral' | 'negative' }) {
@@ -39,7 +41,7 @@ function ScoreBadge({ score }: { score: number }) {
   return <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${color}`}>{score}</span>;
 }
 
-function buildAnalysisData(crawlItems: CrawlItem[], communityItems: CommunityItem[]): PlatformAnalysis[] {
+function buildAnalysisData(crawlItems: CrawlItem[], communityItems: CommunityItem[], snsItems: SnsItem[]): PlatformAnalysis[] {
   const result: PlatformAnalysis[] = [];
 
   // 뉴스
@@ -84,18 +86,43 @@ function buildAnalysisData(crawlItems: CrawlItem[], communityItems: CommunityIte
     });
   }
 
+  // SNS (플랫폼별)
+  const snsByPlatform = new Map<string, SnsItem[]>();
+  for (const item of snsItems) {
+    if (!item.sentiment) continue;
+    const list = snsByPlatform.get(item.platform_id) ?? [];
+    list.push(item);
+    snsByPlatform.set(item.platform_id, list);
+  }
+
+  for (const [platformId, items] of snsByPlatform) {
+    const total = items.length;
+    const platform = PLATFORMS.find(p => p.id === platformId);
+    result.push({
+      platformId,
+      platformLabel: platform?.label ?? platformId,
+      category: platform?.category ?? 'sns',
+      sirScore: calculateSir(items.map(i => ({ platform_id: i.platform_id, sentiment: i.sentiment }))),
+      positive: (items.filter((i) => i.sentiment === 'positive').length / total) * 100,
+      neutral: (items.filter((i) => i.sentiment === 'neutral').length / total) * 100,
+      negative: (items.filter((i) => i.sentiment === 'negative').length / total) * 100,
+      articles: [],
+      flagged: [],
+    });
+  }
+
   return result;
 }
 
-export function AnalysisResult({ clusters, standaloneItems, crawlItems, communityItems }: AnalysisResultProps) {
+export function AnalysisResult({ clusters, standaloneItems, crawlItems, communityItems, snsItems }: AnalysisResultProps) {
   const categories = useToggleSet();
   const platforms = useToggleSet();
   const clusterToggles = useToggleSet();
   const [sentimentFilter, setSentimentFilter] = useState<Record<string, string | null>>({});
 
   const analysisData = useMemo(
-    () => buildAnalysisData(crawlItems, communityItems),
-    [crawlItems, communityItems]
+    () => buildAnalysisData(crawlItems, communityItems, snsItems),
+    [crawlItems, communityItems, snsItems]
   );
 
   const clusterItemsMap = useMemo(() => {
@@ -116,6 +143,7 @@ export function AnalysisResult({ clusters, standaloneItems, crawlItems, communit
   const allSirItems = [
     ...crawlItems.filter(i => i.sentiment).map(i => ({ platform_id: i.platform_id, sentiment: i.sentiment })),
     ...communityItems.filter(i => i.sentiment).map(i => ({ platform_id: i.platform_id, sentiment: i.sentiment })),
+    ...snsItems.filter(i => i.sentiment).map(i => ({ platform_id: i.platform_id, sentiment: i.sentiment })),
   ];
   const totalScore = calculateSir(allSirItems);
 
@@ -187,7 +215,9 @@ export function AnalysisResult({ clusters, standaloneItems, crawlItems, communit
                           <span className="text-xs text-slate-400">
                             {platform.category === 'news'
                               ? `${crawlItems.filter(i => i.sentiment).length}건`
-                              : `${communityItems.filter(i => i.platform_id === platform.platformId && i.sentiment).length}건`
+                              : platform.category === 'community'
+                                ? `${communityItems.filter(i => i.platform_id === platform.platformId && i.sentiment).length}건`
+                                : `${snsItems.filter(i => i.platform_id === platform.platformId && i.sentiment).length}건`
                             }
                           </span>
                         </div>
@@ -195,7 +225,6 @@ export function AnalysisResult({ clusters, standaloneItems, crawlItems, communit
                       </button>
 
                       {isPlatformOpen && (() => {
-                        const isNews = platform.category === 'news';
                         const filter = sentimentFilter[platform.platformId] ?? null;
                         const setFilter = (v: string | null) =>
                           setSentimentFilter((prev) => ({ ...prev, [platform.platformId]: v }));
@@ -224,7 +253,7 @@ export function AnalysisResult({ clusters, standaloneItems, crawlItems, communit
                             ))}
                           </div>
 
-                          {isNews ? (
+                          {platform.category === 'news' ? (
                             <>
                               {/* 뉴스: 클러스터 + 단독 기사 */}
                               {(filter ? clusters.filter(c => c.sentiment === filter) : clusters).map((cluster) => {
@@ -237,6 +266,7 @@ export function AnalysisResult({ clusters, standaloneItems, crawlItems, communit
                                       className="w-full flex flex-col gap-1 px-3 py-2 hover:bg-slate-50 transition-colors cursor-pointer text-left"
                                     >
                                       <div className="flex items-center gap-2 w-full">
+                                        {cluster.sentiment && <SentimentTag sentiment={cluster.sentiment} />}
                                         <span className="text-sm text-slate-700 truncate flex-1">{cluster.representative_title}</span>
                                         <span className="text-xs text-slate-400 shrink-0">{cluster.article_count}건</span>
                                         <ChevronIcon open={isClusterOpen} />
@@ -248,7 +278,6 @@ export function AnalysisResult({ clusters, standaloneItems, crawlItems, communit
                                         <ul className="divide-y divide-slate-50">
                                           {items.map((item) => (
                                             <li key={item.id} className="flex items-center gap-2 px-3 py-2 pl-5 min-w-0">
-                                              {item.sentiment && <SentimentTag sentiment={item.sentiment} />}
                                               <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-sm text-slate-700 hover:text-blue-600 hover:underline truncate flex-1 transition-colors">{item.title}</a>
                                               {item.source && <span className="text-xs text-slate-400 shrink-0">{item.source}</span>}
                                             </li>
@@ -274,13 +303,17 @@ export function AnalysisResult({ clusters, standaloneItems, crawlItems, communit
                                   ))}
                               </ul>
                             </>
-                          ) : (
+                          ) : platform.category === 'community' ? (
                             <>
-                              {/* 커뮤니티: 게시글 목록 */}
+                              {/* 커뮤니티: 게시글 목록 (최신순) */}
                               <ul className="flex flex-col gap-1">
                                 {communityItems
                                   .filter(item => item.platform_id === platform.platformId && item.sentiment && (!filter || item.sentiment === filter))
-                                  .map((item) => (
+                                  .sort((a, b) => (b.published_at ?? '').localeCompare(a.published_at ?? ''))
+                                  .map((item) => {
+                                    const dateStr = item.published_at ? item.published_at.slice(0, 10).replace(/\./g, '-') : '';
+                                    const shortDate = dateStr ? `${dateStr.slice(5)}` : '';
+                                    return (
                                     <li key={item.id} className="flex flex-col gap-1 px-3 py-2 rounded-lg hover:bg-slate-50 transition-colors min-w-0">
                                       <div className="flex items-center gap-2">
                                         <SentimentTag sentiment={item.sentiment!} />
@@ -296,10 +329,38 @@ export function AnalysisResult({ clusters, standaloneItems, crawlItems, communit
                                           <span className="text-xs font-bold px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 shrink-0">클린봇</span>
                                         )}
                                         <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-sm text-slate-700 hover:text-blue-600 hover:underline truncate flex-1 transition-colors">{item.title}</a>
-                                        {item.views > 0 && <span className="text-xs text-slate-400 shrink-0">조회 {item.views}</span>}
+                                        {item.views > 0 && <span className="text-xs text-slate-400 shrink-0 flex items-center gap-0.5"><Eye size={12} />{item.views}</span>}
+                                        <span className="text-xs text-slate-300 shrink-0 w-12 text-right">{shortDate}</span>
                                       </div>
                                     </li>
-                                  ))}
+                                    );
+                                  })}
+                              </ul>
+                            </>
+                          ) : (
+                            <>
+                              {/* SNS: 블로그 등 게시글 목록 (최신순) */}
+                              <ul className="flex flex-col gap-1">
+                                {snsItems
+                                  .filter(item => item.platform_id === platform.platformId && item.sentiment && (!filter || item.sentiment === filter))
+                                  .sort((a, b) => (b.published_at ?? '').localeCompare(a.published_at ?? ''))
+                                  .map((item) => {
+                                    const shortDate = item.published_at ? `${item.published_at.slice(5)}` : '';
+                                    const postTypeLabel = item.post_type === 'analysis' ? '분석' : item.post_type === 'opinion' ? '의견' : null;
+                                    return (
+                                    <li key={item.id} className="flex flex-col gap-1 px-3 py-2 rounded-lg hover:bg-slate-50 transition-colors min-w-0">
+                                      <div className="flex items-center gap-2">
+                                        <SentimentTag sentiment={item.sentiment!} />
+                                        {postTypeLabel && (
+                                          <span className="text-xs font-bold px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 shrink-0">{postTypeLabel}</span>
+                                        )}
+                                        <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-sm text-slate-700 hover:text-blue-600 hover:underline truncate flex-1 transition-colors">{item.title}</a>
+                                        {item.author && <span className="text-xs text-slate-400 shrink-0">{item.author}</span>}
+                                        <span className="text-xs text-slate-300 shrink-0 w-12 text-right">{shortDate}</span>
+                                      </div>
+                                    </li>
+                                    );
+                                  })}
                               </ul>
                             </>
                           )}
