@@ -2,7 +2,6 @@
 
 import { useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { AnalysisResult } from '@/components/pipeline/AnalysisResult';
 import { ContentResult } from '@/components/pipeline/ContentResult';
 import { StockSirChart } from '@/components/pipeline/StockSirChart';
@@ -147,46 +146,38 @@ export default function SessionPage() {
 
   if (isLoading || (!sessions || sessions.length === 0)) {
     return (
-      <>
-        <DashboardHeader />
-        <div className="p-4 sm:p-6 lg:p-8">
-          <div className="max-w-2xl mx-auto flex flex-col items-center justify-center py-24 gap-4">
-            <svg className="animate-spin h-8 w-8 text-blue-600" viewBox="0 0 24 24">
-              <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="4" strokeDasharray="47 16" strokeLinecap="round" />
-            </svg>
-            <span className="text-sm text-slate-500">데이터 불러오는 중...</span>
-          </div>
+      <div className="p-4 sm:p-6 lg:p-8">
+        <div className="max-w-2xl mx-auto flex flex-col items-center justify-center py-24 gap-4">
+          <svg className="animate-spin h-8 w-8 text-blue-600" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="4" strokeDasharray="47 16" strokeLinecap="round" />
+          </svg>
+          <span className="text-sm text-slate-500">데이터 불러오는 중...</span>
         </div>
-      </>
+      </div>
     );
   }
 
   if (isError) {
     return (
-      <>
-        <DashboardHeader />
-        <div className="p-4 sm:p-6 lg:p-8">
-          <div className="max-w-2xl mx-auto flex flex-col gap-6">
-            {workspace && <SessionHeader workspace={workspace} onBack={goBack} />}
-            <div className="flex flex-col items-center justify-center py-16 gap-4">
-              <p className="text-sm text-red-500">데이터를 불러오는 중 오류가 발생했습니다</p>
-              <button
-                onClick={goBack}
-                className="border border-slate-200 text-slate-600 px-6 py-3 rounded-xl text-sm font-semibold hover:bg-slate-50 transition-all cursor-pointer"
-              >
-                돌아가기
-              </button>
-            </div>
+      <div className="p-4 sm:p-6 lg:p-8">
+        <div className="max-w-2xl mx-auto flex flex-col gap-6">
+          {workspace && <SessionHeader workspace={workspace} onBack={goBack} />}
+          <div className="flex flex-col items-center justify-center py-16 gap-4">
+            <p className="text-sm text-red-500">데이터를 불러오는 중 오류가 발생했습니다</p>
+            <button
+              onClick={goBack}
+              className="border border-slate-200 text-slate-600 px-6 py-3 rounded-xl text-sm font-semibold hover:bg-slate-50 transition-all cursor-pointer"
+            >
+              돌아가기
+            </button>
           </div>
         </div>
-      </>
+      </div>
     );
   }
 
   return (
-    <>
-      <DashboardHeader />
-      <div className="p-4 sm:p-6 lg:p-8">
+    <div className="p-4 sm:p-6 lg:p-8">
         <div className="max-w-2xl mx-auto flex flex-col gap-6">
           {workspace && <SessionHeader workspace={workspace} onBack={goBack} />}
 
@@ -265,6 +256,6 @@ export default function SessionPage() {
           )}
         </div>
       </div>
-    </>
+    </div>
   );
 }
