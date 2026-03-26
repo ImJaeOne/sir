@@ -1,15 +1,126 @@
 'use client';
 
 import { useState } from 'react';
-import type { KeyboardEvent } from 'react';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import { CompanySearch } from '@/components/ui/CompanySearch';
+import { Tooltip } from '@/components/ui/Tooltip';
 import { useWorkspaces } from '@/hooks/workspace/useWorkspaceQuery';
 import { useCreateWorkspace } from '@/hooks/workspace/useWorkspaceMutation';
 import type { Workspace } from '@/types/workspace';
-import { PLATFORMS, PLATFORM_CATEGORIES, CATEGORY_LABELS } from '@/constants/platforms';
-import { CompanyBadge, TickerBadge, KeywordBadge, SirLevelBadge } from '@/components/ui/Badge';
+import { CompanyBadge, TickerBadge, SirLevelBadge } from '@/components/ui/Badge';
 import { getRelativeTime } from '@/utils/date';
+
+function CreateWorkspaceModal({
+  onClose,
+  onCreated,
+}: {
+  onClose: () => void;
+  onCreated: (workspace: Workspace) => void;
+}) {
+  const createWorkspace = useCreateWorkspace();
+  const [selectedCompany, setSelectedCompany] = useState<{ name: string; ticker: string } | null>(null);
+  const [industry, setIndustry] = useState('');
+  const [businessSummary, setBusinessSummary] = useState('');
+
+  const handleCreate = () => {
+    if (!selectedCompany) return;
+
+    createWorkspace.mutate(
+      {
+        company_name: selectedCompany.name,
+        ticker: selectedCompany.ticker,
+        profile: {
+          industry: industry.trim() || undefined,
+          business_summary: businessSummary.trim() || undefined,
+        },
+      },
+      {
+        onSuccess: (workspace) => {
+          toast.success('워크스페이스가 생성되었습니다.');
+          onCreated(workspace);
+        },
+        onError: (error: any) => {
+          if (error?.status === 403 || error?.code === '42501') {
+            toast.error('관리자 권한이 없습니다.');
+          } else {
+            toast.error('워크스페이스 생성에 실패했습니다.');
+          }
+        },
+      }
+    );
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      {/* backdrop */}
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+
+      {/* modal */}
+      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 p-6 flex flex-col gap-4 max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-bold text-slate-800">새 워크스페이스 생성</h2>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors cursor-pointer">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+              <path d="M5 5l10 10M15 5L5 15" />
+            </svg>
+          </button>
+        </div>
+
+        {/* 회사명 */}
+        <CompanySearch onChange={(company) => setSelectedCompany(company)} />
+
+        {/* 회사 프로필 */}
+        <div className="flex flex-col gap-4 pt-2">
+          <div className="flex items-center gap-1.5">
+            <label className="text-xs font-semibold text-slate-700 uppercase tracking-wide">
+              회사 프로필
+            </label>
+            <Tooltip text="AI 분석의 정확도 향상을 위한 필드입니다." />
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide">업종</label>
+            <input
+              type="text"
+              value={industry}
+              onChange={(e) => setIndustry(e.target.value)}
+              placeholder="예: 게임, 반도체, 바이오"
+              className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2.5 outline-none focus:border-blue-400 transition-colors"
+            />
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide">사업 개요</label>
+            <textarea
+              value={businessSummary}
+              onChange={(e) => setBusinessSummary(e.target.value)}
+              placeholder="주요 사업 내용, 매출 구조, 자회사 등"
+              rows={3}
+              className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2.5 outline-none focus:border-blue-400 transition-colors resize-none"
+            />
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-2 pt-2">
+          <button
+            onClick={onClose}
+            className="px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-500 hover:bg-slate-100 transition-colors cursor-pointer"
+          >
+            취소
+          </button>
+          <button
+            onClick={handleCreate}
+            disabled={!selectedCompany || createWorkspace.isPending}
+            className="bg-blue-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-700 active:scale-95 transition-all duration-150 cursor-pointer disabled:opacity-40 disabled:cursor-default"
+          >
+            생성
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -17,87 +128,9 @@ export default function DashboardPage() {
   const [workspaceSearch, setWorkspaceSearch] = useState('');
 
   const { data: workspaces = [], isLoading } = useWorkspaces();
-  const createWorkspace = useCreateWorkspace();
-
-  // 회사명
-  const [selectedCompany, setSelectedCompany] = useState<{ name: string; ticker: string } | null>(
-    null
-  );
-
-  // TODO: 크롤링 기간 - 기능 확정 후 활성화
-  // const [dateRange, setDateRange] = useState<DateRange>(() => ({
-  //   start: yesterdayStr(),
-  //   end: todayStr(),
-  // }));
-
-  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(() =>
-    PLATFORMS.map((p) => p.id)
-  );
-
-  const togglePlatform = (id: string) => {
-    setSelectedPlatforms((prev) =>
-      prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]
-    );
-  };
-
-  const toggleCategory = (category: string) => {
-    const categoryIds = PLATFORMS.filter((p) => p.category === category).map((p) => p.id);
-    const allSelected = categoryIds.every((id) => selectedPlatforms.includes(id));
-    setSelectedPlatforms((prev) =>
-      allSelected
-        ? prev.filter((id) => !categoryIds.includes(id))
-        : [...new Set([...prev, ...categoryIds])]
-    );
-  };
-
-  // 워크스페이스명
-  const [workspaceName, setWorkspaceName] = useState('');
-
-  // 키워드
-  const [keywordInput, setKeywordInput] = useState('');
-  const [keywords, setKeywords] = useState<string[]>([]);
-  const [isComposing, setIsComposing] = useState(false);
 
   const handleSelect = (ws: Workspace) => {
     router.push(`/workspace/${ws.id}`);
-  };
-
-  const handleCreate = () => {
-    if (!selectedCompany || !workspaceName.trim()) return;
-
-    createWorkspace.mutate(
-      {
-        name: workspaceName.trim(),
-        company_name: selectedCompany.name,
-        ticker: selectedCompany.ticker,
-        keywords,
-        platform_ids: selectedPlatforms,
-      },
-      {
-        onSuccess: (workspace) => {
-          router.push(`/workspace/${workspace.id}`);
-        },
-      }
-    );
-  };
-
-  const addKeyword = () => {
-    const trimmed = keywordInput.trim();
-    if (trimmed && !keywords.includes(trimmed)) {
-      setKeywords((prev) => [...prev, trimmed]);
-    }
-    setKeywordInput('');
-  };
-
-  const handleKeywordKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && !isComposing) {
-      e.preventDefault();
-      addKeyword();
-    }
-  };
-
-  const removeKeyword = (kw: string) => {
-    setKeywords((prev) => prev.filter((k) => k !== kw));
   };
 
   return (
@@ -107,138 +140,22 @@ export default function DashboardPage() {
         <div className="flex items-center justify-between">
           <h1 className="text-xl sm:text-2xl font-bold text-slate-900">워크스페이스</h1>
           <button
-            onClick={() => setShowCreate(!showCreate)}
+            onClick={() => setShowCreate(true)}
             className="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-blue-700 active:scale-95 transition-all duration-150 cursor-pointer"
           >
-            {showCreate ? '취소' : '+ 새로 만들기'}
+            + 새로 만들기
           </button>
         </div>
 
-        {/* Create form */}
+        {/* Create modal */}
         {showCreate && (
-          <div className="bg-white rounded-2xl border border-blue-200 shadow-md p-5 sm:p-6 flex flex-col gap-4">
-            <h2 className="text-base font-bold text-slate-800">새 워크스페이스 생성</h2>
-
-            {/* 워크스페이스명 */}
-            <div className="flex flex-col gap-2">
-              <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
-                워크스페이스명
-              </label>
-              <input
-                type="text"
-                value={workspaceName}
-                onChange={(e) => setWorkspaceName(e.target.value)}
-                placeholder="예: 삼성전자 3월 여론 분석"
-                className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2.5 outline-none focus:border-blue-400 transition-colors"
-              />
-            </div>
-
-            {/* 회사명 with autocomplete */}
-            <CompanySearch onChange={(company) => setSelectedCompany(company)} />
-
-            {/* 키워드 */}
-            <div className="flex flex-col gap-2">
-              <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
-                키워드
-              </label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={keywordInput}
-                  onChange={(e) => setKeywordInput(e.target.value)}
-                  onKeyDown={handleKeywordKeyDown}
-                  onCompositionStart={() => setIsComposing(true)}
-                  onCompositionEnd={() => setIsComposing(false)}
-                  placeholder="키워드 입력 후 Enter"
-                  className="flex-1 min-w-0 text-sm border border-slate-200 rounded-lg px-3 py-2.5 outline-none focus:border-blue-400 transition-colors"
-                />
-                <button
-                  onClick={addKeyword}
-                  className="text-sm bg-slate-100 text-slate-600 px-3 rounded-lg hover:bg-slate-200 transition-colors cursor-pointer font-bold shrink-0"
-                >
-                  +
-                </button>
-              </div>
-              {keywords.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 mt-1">
-                  {keywords.map((kw) => (
-                    <span
-                      key={kw}
-                      className="flex items-center gap-1 bg-blue-50 text-blue-700 text-xs px-2.5 py-1 rounded-full"
-                    >
-                      {kw}
-                      <button
-                        onClick={() => removeKeyword(kw)}
-                        className="text-blue-400 hover:text-blue-700 transition-colors cursor-pointer leading-none"
-                      >
-                        ×
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* 수집 플랫폼 */}
-            <div className="flex flex-col gap-3">
-              <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
-                수집 플랫폼
-              </label>
-              {PLATFORM_CATEGORIES.map((category) => {
-                const items = PLATFORMS.filter((p) => p.category === category);
-                const allChecked = items.every((p) => selectedPlatforms.includes(p.id));
-                return (
-                  <div key={category} className="flex flex-col gap-1.5">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={allChecked}
-                        onChange={() => toggleCategory(category)}
-                        className="w-3.5 h-3.5 rounded accent-blue-600 cursor-pointer"
-                      />
-                      <span className="text-xs font-semibold text-slate-700">
-                        {CATEGORY_LABELS[category] ?? category}
-                      </span>
-                    </label>
-                    <div className="flex flex-wrap gap-x-4 gap-y-1 ml-5.5">
-                      {items.map((platform) => (
-                        <label
-                          key={platform.id}
-                          className="flex items-center gap-1.5 cursor-pointer"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={selectedPlatforms.includes(platform.id)}
-                            onChange={() => togglePlatform(platform.id)}
-                            className="w-3 h-3 rounded accent-blue-600 cursor-pointer"
-                          />
-                          <span className="text-xs text-slate-500">{platform.label}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="flex justify-between items-end">
-              {/* TODO: 크롤링 기간 - 기능 확정 후 활성화 */}
-              {/* <div className="flex flex-col gap-2">
-                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
-                  크롤링 기간
-                </label>
-                <DateRangePicker value={dateRange} onChange={setDateRange} />
-              </div> */}
-
-              <button
-                onClick={handleCreate}
-                disabled={!selectedCompany || !workspaceName.trim() || createWorkspace.isPending}
-                className="bg-blue-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-700 active:scale-95 transition-all duration-150 cursor-pointer disabled:opacity-40 disabled:cursor-default shrink-0"
-              >
-                생성
-              </button>
-            </div>
-          </div>
+          <CreateWorkspaceModal
+            onClose={() => setShowCreate(false)}
+            onCreated={(workspace) => {
+              setShowCreate(false);
+              router.push(`/workspace/${workspace.id}`);
+            }}
+          />
         )}
 
         {/* Existing workspaces */}
@@ -265,9 +182,7 @@ export default function DashboardPage() {
           {(() => {
             const isSearching = workspaceSearch.trim().length > 0;
             const matched = workspaces.filter(
-              (ws) =>
-                ws.name.includes(workspaceSearch) ||
-                ws.keywords.some((kw) => kw.includes(workspaceSearch))
+              (ws) => ws.company_name.includes(workspaceSearch) || ws.ticker.includes(workspaceSearch)
             );
             const rest = isSearching ? workspaces.filter((ws) => !matched.includes(ws)) : [];
 
@@ -279,15 +194,12 @@ export default function DashboardPage() {
               >
                 <div className="flex flex-col gap-2 min-w-0">
                   <div className="flex items-center gap-2">
-                    <h3 className="text-base font-semibold text-slate-800 truncate">{ws.name}</h3>
+                    <h3 className="text-base font-semibold text-slate-800 truncate">{ws.company_name}</h3>
                     <SirLevelBadge score={ws.sir_score} />
                   </div>
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <CompanyBadge companyName={ws.company_name} />
                     <TickerBadge ticker={ws.ticker} />
-                    {ws.keywords.map((kw) => (
-                      <KeywordBadge key={kw} keyword={kw} />
-                    ))}
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">

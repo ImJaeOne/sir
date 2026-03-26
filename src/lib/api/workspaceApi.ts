@@ -1,5 +1,4 @@
 import { createClient } from '@/lib/supabase/client';
-import { createPlatforms } from '@/lib/api/platformApi';
 import { workspaceSchema, createWorkspaceSchema } from '@/types/workspace';
 import type { Workspace, CreateWorkspaceDto } from '@/types/workspace';
 
@@ -28,14 +27,15 @@ export async function getWorkspace(id: string): Promise<Workspace> {
 
 export async function createWorkspace(dto: CreateWorkspaceDto): Promise<Workspace> {
   const validated = createWorkspaceSchema.parse(dto);
-  const { platform_ids, ...workspaceData } = validated;
+  const { profile, ...workspaceData } = validated;
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Unauthorized');
 
+  // 1. workspace 생성
   const { data: workspace, error: wsError } = await supabase
     .from('workspaces')
-    .insert({ ...workspaceData, auth_id: user.id })
+    .insert(workspaceData)
     .select()
     .single();
 
@@ -43,12 +43,24 @@ export async function createWorkspace(dto: CreateWorkspaceDto): Promise<Workspac
 
   const result = workspaceSchema.parse(workspace);
 
-  if (platform_ids.length > 0) {
-    try {
-      await createPlatforms(result.id, platform_ids);
-    } catch (e) {
+  // 2. 멤버 등록 (생성자를 owner로)
+  await supabase
+    .from('workspace_members')
+    .insert({ workspace_id: result.id, profile_id: user.id, role: 'owner' });
+
+  // 3. workspace_profiles upsert (프로필 데이터가 있으면)
+  if (profile && (profile.industry || profile.business_summary)) {
+    const { error: profileError } = await supabase
+      .from('workspace_profiles')
+      .upsert({
+        workspace_id: result.id,
+        industry: profile.industry ?? null,
+        business_summary: profile.business_summary ?? null,
+      }, { onConflict: 'workspace_id' });
+
+    if (profileError) {
       await supabase.from('workspaces').delete().eq('id', result.id);
-      throw e;
+      throw profileError;
     }
   }
 
