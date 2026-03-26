@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/client';
-import { workspaceSchema, createWorkspaceSchema } from '@/types/workspace';
-import type { Workspace, CreateWorkspaceDto } from '@/types/workspace';
+import { workspaceSchema, workspaceProfileSchema, createWorkspaceSchema } from '@/types/workspace';
+import type { Workspace, WorkspaceProfile, CreateWorkspaceDto } from '@/types/workspace';
 
 const supabase = createClient();
 
@@ -64,5 +64,35 @@ export async function createWorkspace(dto: CreateWorkspaceDto): Promise<Workspac
     }
   }
 
+  // 4. 주가 데이터 수집 (30일, 백그라운드)
+  fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/collect/stock-prices?workspace_id=${result.id}`)
+    .catch(() => {});
+
   return result;
+}
+
+export async function getWorkspaceProfile(workspaceId: string): Promise<WorkspaceProfile | null> {
+  const { data, error } = await supabase
+    .from('workspace_profiles')
+    .select('*')
+    .eq('workspace_id', workspaceId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data ? workspaceProfileSchema.parse(data) : null;
+}
+
+export async function updateWorkspaceProfile(
+  workspaceId: string,
+  profile: { industry?: string | null; business_summary?: string | null }
+): Promise<void> {
+  const { error } = await supabase
+    .from('workspace_profiles')
+    .upsert({
+      workspace_id: workspaceId,
+      industry: profile.industry ?? null,
+      business_summary: profile.business_summary ?? null,
+    }, { onConflict: 'workspace_id' });
+
+  if (error) throw error;
 }

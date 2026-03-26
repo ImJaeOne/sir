@@ -1,14 +1,112 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
+import { Tooltip } from '@/components/ui/Tooltip';
 import { TickerBadge, SirBadge, SirLevelBadge, CountBadge, StatusBadge } from '@/components/ui/Badge';
-import { useWorkspace } from '@/hooks/workspace/useWorkspaceQuery';
+import { useWorkspace, useWorkspaceProfile } from '@/hooks/workspace/useWorkspaceQuery';
+import { useUpdateWorkspaceProfile } from '@/hooks/workspace/useWorkspaceMutation';
 import { useSessions } from '@/hooks/crawl/useSessionQuery';
 import { getRelativeTime } from '@/utils/date';
 import { PLATFORMS, CATEGORY_LABELS } from '@/constants/platforms';
 import type { CrawlSession } from '@/types/news';
+import type { WorkspaceProfile } from '@/types/workspace';
+
+function EditProfileModal({
+  workspaceId,
+  profile,
+  onClose,
+}: {
+  workspaceId: string;
+  profile: WorkspaceProfile | null;
+  onClose: () => void;
+}) {
+  const updateProfile = useUpdateWorkspaceProfile(workspaceId);
+  const initialIndustry = profile?.industry ?? '';
+  const initialSummary = profile?.business_summary ?? '';
+  const [industry, setIndustry] = useState(initialIndustry);
+  const [businessSummary, setBusinessSummary] = useState(initialSummary);
+
+  const hasChanges = industry.trim() !== initialIndustry || businessSummary.trim() !== initialSummary;
+
+  const handleSave = () => {
+    if (!hasChanges) return;
+    updateProfile.mutate(
+      {
+        industry: industry.trim() || null,
+        business_summary: businessSummary.trim() || null,
+      },
+      {
+        onSuccess: () => {
+          toast.success('회사 프로필이 저장되었습니다.');
+          onClose();
+        },
+        onError: () => {
+          toast.error('저장에 실패했습니다.');
+        },
+      }
+    );
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 p-6 flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            <h2 className="text-base font-bold text-slate-800">회사 프로필 수정</h2>
+            <Tooltip text="AI 분석의 정확도 향상을 위한 필드입니다." />
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors cursor-pointer">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+              <path d="M5 5l10 10M15 5L5 15" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <label className="text-xs font-semibold text-slate-700 uppercase tracking-wide">업종</label>
+          <input
+            type="text"
+            value={industry}
+            onChange={(e) => setIndustry(e.target.value)}
+            placeholder="예: 게임, 반도체, 바이오"
+            className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2.5 outline-none focus:border-blue-400 transition-colors"
+          />
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <label className="text-xs font-semibold text-slate-700 uppercase tracking-wide">사업 개요</label>
+          <textarea
+            value={businessSummary}
+            onChange={(e) => setBusinessSummary(e.target.value)}
+            placeholder="주요 사업 내용, 매출 구조, 자회사 등"
+            rows={3}
+            className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2.5 outline-none focus:border-blue-400 transition-colors resize-none"
+          />
+        </div>
+
+        <div className="flex justify-end gap-2 pt-2">
+          <button
+            onClick={onClose}
+            className="px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-500 hover:bg-slate-100 transition-colors cursor-pointer"
+          >
+            취소
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={!hasChanges || updateProfile.isPending}
+            className="bg-blue-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-700 active:scale-95 transition-all duration-150 cursor-pointer disabled:opacity-40 disabled:cursor-default"
+          >
+            저장
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function getPlatformLabel(platformId: string | null): string {
   if (!platformId) return '기타';
@@ -37,7 +135,9 @@ export default function WorkspaceDetailPage() {
   const workspaceId = params?.workspaceId as string;
 
   const { data: workspace } = useWorkspace(workspaceId);
+  const { data: profile } = useWorkspaceProfile(workspaceId);
   const { data: sessions, isLoading } = useSessions(workspaceId);
+  const [showEditProfile, setShowEditProfile] = useState(false);
 
   // 날짜별 그룹핑
   const groupedByDate = useMemo<SessionGroup[]>(() => {
@@ -64,12 +164,30 @@ export default function WorkspaceDetailPage() {
         <div className="max-w-2xl mx-auto flex flex-col gap-6">
           {/* 워크스페이스 정보 */}
           {workspace && (
-            <div className="flex items-center gap-3 pb-2 border-b border-slate-100">
-              <h1 className="text-xl font-bold text-slate-800">{workspace.company_name}</h1>
-              <div className="flex items-center gap-1 flex-wrap">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <div className="flex items-center gap-3">
+                <h1 className="text-xl font-bold text-slate-800">{workspace.company_name}</h1>
                 <TickerBadge ticker={workspace.ticker} />
               </div>
+              <button
+                onClick={() => setShowEditProfile(true)}
+                className="text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+                title="회사 프로필 수정"
+              >
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M9 15h6.75" />
+                  <path d="M12.375 2.625a1.591 1.591 0 0 1 2.25 2.25L5.25 14.25l-3 .75.75-3 9.375-9.375z" />
+                </svg>
+              </button>
             </div>
+          )}
+
+          {showEditProfile && (
+            <EditProfileModal
+              workspaceId={workspaceId}
+              profile={profile ?? null}
+              onClose={() => setShowEditProfile(false)}
+            />
           )}
 
           {/* 세션 리스트 (날짜별 그룹핑) */}

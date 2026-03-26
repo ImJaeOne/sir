@@ -1,9 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
-import { getWorkspaces, getWorkspace } from '@/lib/api/workspaceApi';
+import { getWorkspaces, getWorkspace, getWorkspaceProfile } from '@/lib/api/workspaceApi';
 
 export const workspaceKeys = {
   all: ['workspaces'] as const,
   detail: (id: string) => ['workspaces', id] as const,
+  profile: (id: string) => ['workspaces', id, 'profile'] as const,
 };
 
 export function useWorkspaces() {
@@ -18,5 +19,13 @@ export function useWorkspace(id: string) {
     queryKey: workspaceKeys.detail(id),
     queryFn: () => getWorkspace(id),
     enabled: !!id,
+  });
+}
+
+export function useWorkspaceProfile(workspaceId: string) {
+  return useQuery({
+    queryKey: workspaceKeys.profile(workspaceId),
+    queryFn: () => getWorkspaceProfile(workspaceId),
+    enabled: !!workspaceId,
   });
 }
