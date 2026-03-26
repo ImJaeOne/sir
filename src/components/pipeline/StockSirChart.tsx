@@ -48,7 +48,7 @@ export function StockSirChart({ stockPrices, crawlItems }: StockSirChartProps) {
       d.setDate(d.getDate() + 1);
     }
 
-    const priceMap = new Map(stockPrices.map((p) => [p.date, p.close]));
+    const priceMap = new Map(stockPrices.map((p) => [p.date, p.close_price]));
 
     let lastSir: number | null = null;
     return sorted.map((date) => {

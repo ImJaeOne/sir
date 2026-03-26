@@ -6,7 +6,7 @@ const supabase = createClient();
 
 export async function getSessions(workspaceId: string): Promise<CrawlSession[]> {
   const { data, error } = await supabase
-    .from('crawl_sessions')
+    .from('sessions')
     .select('*')
     .eq('workspace_id', workspaceId)
     .order('created_at', { ascending: false });
@@ -17,7 +17,7 @@ export async function getSessions(workspaceId: string): Promise<CrawlSession[]> 
 
 export async function getSession(sessionId: string): Promise<CrawlSession> {
   const { data, error } = await supabase
-    .from('crawl_sessions')
+    .from('sessions')
     .select('*')
     .eq('id', sessionId)
     .single();
@@ -33,7 +33,7 @@ export async function getSessionsByDate(workspaceId: string, dateKey: string): P
 
   // KST(UTC+9) 기준으로 쿼리
   const { data, error } = await supabase
-    .from('crawl_sessions')
+    .from('sessions')
     .select('*')
     .eq('workspace_id', workspaceId)
     .gte('created_at', `${dateKey}T00:00:00+09:00`)

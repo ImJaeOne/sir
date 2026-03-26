@@ -33,13 +33,13 @@ async function fetchCrawlDataMulti(sessionIds: string[]): Promise<CrawlData> {
       .neq('is_relevant', false)
       .order('published_at', { ascending: false }),
     supabase
-      .from('clusters')
+      .from('news_clusters')
       .select('*')
       .in('session_id', sessionIds)
       .eq('is_relevant', true)
       .order('article_count', { ascending: false }),
     supabase
-      .from('strategies')
+      .from('session_strategies')
       .select('*')
       .in('session_id', sessionIds)
       .order('created_at', { ascending: false }),

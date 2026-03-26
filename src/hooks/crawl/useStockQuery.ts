@@ -5,13 +5,13 @@ const supabase = createClient();
 
 interface StockPrice {
   date: string;
-  close: number;
+  close_price: number;
 }
 
 async function fetchStockPrices(workspaceId: string): Promise<StockPrice[]> {
   const { data, error } = await supabase
-    .from('crawl_stock_prices')
-    .select('date, close')
+    .from('stock_prices')
+    .select('date, close_price')
     .eq('workspace_id', workspaceId)
     .order('date');
 
