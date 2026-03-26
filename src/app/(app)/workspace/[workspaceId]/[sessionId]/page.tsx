@@ -39,7 +39,7 @@ function SessionHeader({
           <path d="M12 4l-6 6 6 6" />
         </svg>
       </button>
-      <h1 className="text-xl font-bold text-slate-800">{workspace.name}</h1>
+      <h1 className="text-xl font-bold text-slate-800">{workspace.company_name}</h1>
       <div className="flex items-center gap-1">
         <CompanyBadge companyName={workspace.company_name} />
         <TickerBadge ticker={workspace.ticker} />

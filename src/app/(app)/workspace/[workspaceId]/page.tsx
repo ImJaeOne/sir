@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
-import { CompanyBadge, TickerBadge, KeywordBadge, SirBadge, SirLevelBadge, CountBadge, StatusBadge } from '@/components/ui/Badge';
+import { TickerBadge, SirBadge, SirLevelBadge, CountBadge, StatusBadge } from '@/components/ui/Badge';
 import { useWorkspace } from '@/hooks/workspace/useWorkspaceQuery';
 import { useSessions } from '@/hooks/crawl/useSessionQuery';
 import { getRelativeTime } from '@/utils/date';
@@ -65,13 +65,9 @@ export default function WorkspaceDetailPage() {
           {/* 워크스페이스 정보 */}
           {workspace && (
             <div className="flex items-center gap-3 pb-2 border-b border-slate-100">
-              <h1 className="text-xl font-bold text-slate-800">{workspace.name}</h1>
+              <h1 className="text-xl font-bold text-slate-800">{workspace.company_name}</h1>
               <div className="flex items-center gap-1 flex-wrap">
-                <CompanyBadge companyName={workspace.company_name} />
                 <TickerBadge ticker={workspace.ticker} />
-                {workspace.keywords.map((kw) => (
-                  <KeywordBadge key={kw} keyword={kw} />
-                ))}
               </div>
             </div>
           )}
