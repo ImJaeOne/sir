@@ -1,22 +1,8 @@
 'use client';
 
-import { Suspense, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
 import { login } from '@/app/auth/actions';
-
-function EmailMessage() {
-  const searchParams = useSearchParams();
-  const message = searchParams?.get('message');
-
-  if (message !== 'check_email') return null;
-
-  return (
-    <div className="mb-4 p-3 rounded-lg bg-blue-50 text-blue-700 text-sm">
-      이메일로 확인 링크를 보냈습니다. 메일을 확인해주세요.
-    </div>
-  );
-}
 
 export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
@@ -47,11 +33,6 @@ export default function LoginPage() {
           <h1 className="text-xl font-bold text-slate-800">InnoPlan SIR</h1>
           <p className="text-sm text-slate-400 mt-1">AI 기반 디지털 평판 관리 플랫폼</p>
         </div>
-
-        {/* 이메일 확인 메시지 */}
-        <Suspense>
-          <EmailMessage />
-        </Suspense>
 
         {/* 에러 메시지 */}
         {error && (
