@@ -10,6 +10,7 @@ import type { PlatformAnalysis, AnalysisArticle } from '@/types/pipeline';
 import { calculateSir } from '@/utils/sir';
 import { PLATFORMS } from '@/constants/platforms';
 import { Eye } from 'lucide-react';
+import { Tooltip } from '@/components/ui/Tooltip';
 
 interface AnalysisResultProps {
   clusters: Cluster[];
@@ -184,16 +185,7 @@ export function AnalysisResult({ clusters, standaloneItems, crawlItems, communit
               <div className="flex items-center gap-2">
                 <span className="text-sm font-semibold text-slate-700">{CATEGORY_LABELS[category] ?? category}</span>
                 <ScoreBadge score={categoryScore} />
-                <span className="relative group" onClick={(e) => e.stopPropagation()}>
-                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="text-slate-400 cursor-help">
-                    <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5" />
-                    <path d="M8 7v4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                    <circle cx="8" cy="5" r="0.75" fill="currentColor" />
-                  </svg>
-                  <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2.5 py-1.5 text-xs text-white bg-slate-800 rounded-lg whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50">
-                    같은 주제의 기사를 묶어놓았어요. 클릭하면 개별 기사를 확인할 수 있습니다.
-                  </span>
-                </span>
+                <Tooltip text="같은 주제의 기사를 묶어놓았어요. 클릭하면 개별 기사를 확인할 수 있습니다." />
               </div>
               <ChevronIcon open={isCategoryOpen} />
             </button>
