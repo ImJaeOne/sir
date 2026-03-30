@@ -3,7 +3,7 @@
 import { useParams } from 'next/navigation';
 import {
   useWorkspaceSir, useWeeklySummary, useSirStockData, useSirRanking,
-  useChannelItems, useChannelStats, useRiskItems, useStrategies,
+  useChannelItems, useChannelStats, useNewsClusters, useRiskItems, useStrategies,
 } from '@/hooks/report/useReportQuery';
 import { SectionHighlight } from '@/components/report/SectionHighlight';
 import { SectionReputation } from '@/components/report/SectionReputation';
@@ -32,6 +32,7 @@ export default function ReportPdfPage() {
   const { data: sirStockData } = useSirStockData(workspaceId);
   const { data: sirRanking } = useSirRanking(workspaceId);
   const { data: channelItems } = useChannelItems(workspaceId);
+  const { data: newsClusters } = useNewsClusters(workspaceId);
   const { data: riskItems } = useRiskItems(workspaceId);
   const { data: strategies } = useStrategies(workspaceId);
   const { data: channelStats } = useChannelStats(workspaceId, channelItems);
@@ -52,7 +53,7 @@ export default function ReportPdfPage() {
         </div>
         <div className="print-break">
           <PageHeader companyName={companyName} ticker={ticker} />
-          <SectionSentimentDetail pdfMode channelStats={channelStats ?? []} channelItems={channelItems ?? []} />
+          <SectionSentimentDetail pdfMode channelStats={channelStats ?? []} channelItems={channelItems ?? []} newsClusters={newsClusters ?? []} />
         </div>
         <div className="print-break">
           <PageHeader companyName={companyName} ticker={ticker} />

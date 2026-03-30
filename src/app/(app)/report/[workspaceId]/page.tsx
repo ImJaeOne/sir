@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useParams } from 'next/navigation';
 import {
   useWorkspaceSir, useWeeklySummary, useSirStockData, useSirRanking,
-  useChannelItems, useChannelStats, useRiskItems, useStrategies,
+  useChannelItems, useChannelStats, useNewsClusters, useRiskItems, useStrategies,
 } from '@/hooks/report/useReportQuery';
 import { SectionHighlight } from '@/components/report/SectionHighlight';
 import { SectionReputation } from '@/components/report/SectionReputation';
@@ -19,22 +19,38 @@ export default function ReportPage() {
   const [downloading, setDownloading] = useState(false);
 
   // 기초 쿼리 (네트워크 요청)
-  const { data: workspace } = useWorkspaceSir(workspaceId);           // workspace 캐시 재사용
-  const { data: summary } = useWeeklySummary(workspaceId);            // summary만 1건
-  const { data: sirStockData } = useSirStockData(workspaceId);        // daily_snapshots + stock_prices
-  const { data: sirRanking } = useSirRanking(workspaceId);            // 전체 워크스페이스 SIR
-  const { data: channelItems } = useChannelItems(workspaceId);        // 핵심: 모든 아이템 1번 fetch
-  const { data: riskItems } = useRiskItems(workspaceId);              // critical_type not null
-  const { data: strategies } = useStrategies(workspaceId);            // 전략
-  // TODO: const { data: naverTrend } = useSearchTrend(workspaceId, 30, '2026-03-26');
+  const { data: workspace, isLoading: wsLoading } = useWorkspaceSir(workspaceId);
+  const { data: summary } = useWeeklySummary(workspaceId);
+  const { data: sirStockData } = useSirStockData(workspaceId);
+  const { data: sirRanking } = useSirRanking(workspaceId);
+  const { data: channelItems, isLoading: itemsLoading } = useChannelItems(workspaceId);
+  const { data: newsClusters } = useNewsClusters(workspaceId);
+  const { data: riskItems } = useRiskItems(workspaceId);
+  const { data: strategies } = useStrategies(workspaceId);
 
-  // 파생 쿼리 — channelItems 캐시에서 stats 계산 (추가 네트워크 요청 최소화)
+  // 파생 쿼리 — channelItems 캐시에서 stats 계산
   const { data: channelStats } = useChannelStats(workspaceId, channelItems);
 
-  // highlight 데이터 — 캐시에서 조합
   const sirScore = workspace?.sir_score ?? null;
   const totalItems = channelItems?.length ?? 0;
   const riskCount = riskItems?.length ?? 0;
+
+  const loadingSteps = [
+    { loading: wsLoading, label: '워크스페이스 접근 중...' },
+    { loading: !channelItems && !itemsLoading === false, label: '세션 접근 중...' },
+    { loading: itemsLoading, label: '데이터 준비 중...' },
+    { loading: !channelStats, label: '보고서 준비 중...' },
+  ];
+  const currentStep = loadingSteps.find(s => s.loading);
+
+  if (currentStep) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[calc(100vh-49px)] gap-3">
+        <div className="w-6 h-6 border-2 border-slate-200 border-t-blue-500 rounded-full animate-spin" />
+        <p className="text-sm text-slate-400">{currentStep.label}</p>
+      </div>
+    );
+  }
 
   const handleDownloadPdf = async () => {
     setDownloading(true);
@@ -91,7 +107,7 @@ export default function ReportPage() {
         </div>
 
         <div className="print-break">
-          <SectionSentimentDetail channelStats={channelStats ?? []} channelItems={channelItems ?? []} />
+          <SectionSentimentDetail channelStats={channelStats ?? []} channelItems={channelItems ?? []} newsClusters={newsClusters ?? []} />
         </div>
 
         <div className="print-break">
