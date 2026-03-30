@@ -2,8 +2,10 @@
 
 import { useState } from 'react';
 import { useParams } from 'next/navigation';
-import { useSearchTrend } from '@/hooks/useSearchTrend';
-import { useReportHighlight, useSirStockData, useSirRanking } from '@/hooks/useReportData';
+import {
+  useWorkspaceSir, useWeeklySummary, useSirStockData, useSirRanking,
+  useChannelItems, useChannelStats, useRiskItems, useStrategies,
+} from '@/hooks/report/useReportQuery';
 import { SectionHighlight } from '@/components/report/SectionHighlight';
 import { SectionReputation } from '@/components/report/SectionReputation';
 import { SectionSentimentDetail } from '@/components/report/SectionSentimentDetail';
@@ -15,10 +17,24 @@ export default function ReportPage() {
   const params = useParams();
   const workspaceId = params?.workspaceId as string;
   const [downloading, setDownloading] = useState(false);
-  const { data: naverTrend } = useSearchTrend(workspaceId, 30, '2026-03-26');
-  const { data: highlight } = useReportHighlight(workspaceId);
-  const { data: sirStockData } = useSirStockData(workspaceId);
-  const { data: sirRanking } = useSirRanking(workspaceId);
+
+  // 기초 쿼리 (네트워크 요청)
+  const { data: workspace } = useWorkspaceSir(workspaceId);           // workspace 캐시 재사용
+  const { data: summary } = useWeeklySummary(workspaceId);            // summary만 1건
+  const { data: sirStockData } = useSirStockData(workspaceId);        // daily_snapshots + stock_prices
+  const { data: sirRanking } = useSirRanking(workspaceId);            // 전체 워크스페이스 SIR
+  const { data: channelItems } = useChannelItems(workspaceId);        // 핵심: 모든 아이템 1번 fetch
+  const { data: riskItems } = useRiskItems(workspaceId);              // critical_type not null
+  const { data: strategies } = useStrategies(workspaceId);            // 전략
+  // TODO: const { data: naverTrend } = useSearchTrend(workspaceId, 30, '2026-03-26');
+
+  // 파생 쿼리 — channelItems 캐시에서 stats 계산 (추가 네트워크 요청 최소화)
+  const { data: channelStats } = useChannelStats(workspaceId, channelItems);
+
+  // highlight 데이터 — 캐시에서 조합
+  const sirScore = workspace?.sir_score ?? null;
+  const totalItems = channelItems?.length ?? 0;
+  const riskCount = riskItems?.length ?? 0;
 
   const handleDownloadPdf = async () => {
     setDownloading(true);
@@ -46,7 +62,7 @@ export default function ReportPage() {
         {/* 헤더 */}
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-xl font-bold text-slate-800">DN오토모티브 (A007340)</h1>
+            <h1 className="text-xl font-bold text-slate-800">{workspace?.company_name ?? ''} ({workspace?.ticker ?? ''})</h1>
             <p className="text-sm text-slate-400 mt-1">
               분석 기간: 2026.02.24 ~ 2026.03.25 &nbsp;·&nbsp; 보고서 생성 기준일 2026.03.27 / 09:00
             </p>
@@ -60,32 +76,34 @@ export default function ReportPage() {
           </button>
         </div>
 
-        {/* P1. 주간 하이라이트 */}
-        <SectionHighlight sirScore={highlight.sirScore} totalItems={highlight.totalItems} riskCount={highlight.riskCount} summary={highlight.summary} sirStockData={sirStockData} sirRanking={sirRanking} companyName="DN오토모티브" />
+        <SectionHighlight
+          sirScore={sirScore}
+          totalItems={totalItems}
+          riskCount={riskCount}
+          summary={summary ?? []}
+          sirStockData={sirStockData ?? []}
+          sirRanking={sirRanking}
+          companyName={workspace?.company_name ?? ''}
+        />
 
-        {/* P2. 온라인 평판 종합 — 검색 추이, 수집량, SIR 지수 */}
         <div className="print-break">
-          <SectionReputation naverTrend={naverTrend} />
+          <SectionReputation naverTrend={[]} channelStats={channelStats ?? []} />
         </div>
 
-        {/* P3. 온라인 평판 종합 — 감성 분석 상세 */}
         <div className="print-break">
-          <SectionSentimentDetail />
+          <SectionSentimentDetail channelStats={channelStats ?? []} channelItems={channelItems ?? []} />
         </div>
 
-        {/* P4. 채널별 상위 콘텐츠 */}
         <div className="print-break">
-          <SectionTopContent />
+          <SectionTopContent channelItems={channelItems ?? []} />
         </div>
 
-        {/* P5. 리스크 콘텐츠 관리 */}
         <div className="print-break">
-          <SectionRiskContent />
+          <SectionRiskContent riskItems={riskItems ?? []} />
         </div>
 
-        {/* P6. 대응 전략 제안 */}
         <div className="print-break">
-          <SectionStrategy />
+          <SectionStrategy strategies={strategies ?? []} />
         </div>
       </div>
     </div>
