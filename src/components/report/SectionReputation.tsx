@@ -12,71 +12,12 @@ import {
 import { ResponsivePie } from '@nivo/pie';
 import { ReportCard } from '@/components/report/ReportCard';
 
+import type { ChannelStat } from '@/lib/api/reportApi';
+
 interface TrendPoint {
   date: string;
   ratio: number;
 }
-
-const channelPieData = [
-  { id: '뉴스', label: '뉴스', value: 119, color: '#6366f1' },
-  { id: '블로그', label: '블로그', value: 850, color: '#38bdf8' },
-  { id: '유튜브', label: '유튜브', value: 64, color: '#f43f5e' },
-  { id: '종목토론방', label: '종목토론방', value: 792, color: '#22c55e' },
-  { id: '디시인사이드', label: '디시인사이드', value: 13, color: '#f59e0b' },
-];
-
-const channelSirData = [
-  {
-    id: 'naver_news',
-    label: '뉴스',
-    sir: 21.0,
-    positive: 67,
-    negative: 33,
-    neutral: 19,
-    color: '#6366f1',
-    change: -8,
-  },
-  {
-    id: 'naver_blog',
-    label: '블로그',
-    sir: 50.0,
-    positive: 281,
-    negative: 10,
-    neutral: 31,
-    color: '#38bdf8',
-    change: 12,
-  },
-  {
-    id: 'youtube',
-    label: '유튜브',
-    sir: 50.0,
-    positive: 31,
-    negative: 5,
-    neutral: 0,
-    color: '#f43f5e',
-    change: 5,
-  },
-  {
-    id: 'naver_stock',
-    label: '종토방',
-    sir: 31.3,
-    positive: 308,
-    negative: 234,
-    neutral: 249,
-    color: '#22c55e',
-    change: -3,
-  },
-  {
-    id: 'dcinside',
-    label: '디시인사이드',
-    sir: 51.3,
-    positive: 8,
-    negative: 3,
-    neutral: 2,
-    color: '#f59e0b',
-    change: 7,
-  },
-];
 
 function sirDescription(sir: number): string {
   if (sir >= 81) return '긍정적 평판이 지배적입니다.';
@@ -121,9 +62,11 @@ function SirCard({
 export function SectionReputation({
   pdfMode = false,
   naverTrend = [],
+  channelStats = [],
 }: {
   pdfMode?: boolean;
   naverTrend?: TrendPoint[];
+  channelStats?: ChannelStat[];
 }) {
   const chartData = naverTrend.map((t) => ({
     date: t.date,
@@ -189,7 +132,7 @@ export function SectionReputation({
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-center">
           <div className={pdfMode ? 'h-48' : 'h-64'}>
             <ResponsivePie
-              data={channelPieData}
+              data={channelStats}
               margin={{ top: 20, right: 20, bottom: 20, left: 20 }}
               innerRadius={0.55}
               padAngle={1.5}
@@ -215,8 +158,8 @@ export function SectionReputation({
                 </tr>
               </thead>
               <tbody>
-                {channelPieData.map((ch) => {
-                  const total = channelPieData.reduce((s, c) => s + c.value, 0);
+                {channelStats.map((ch) => {
+                  const total = channelStats.reduce((s, c) => s + c.value, 0);
                   return (
                     <tr key={ch.id} className="border-b border-slate-50">
                       <td className="py-2.5 flex items-center gap-2">
@@ -245,7 +188,7 @@ export function SectionReputation({
         description="각 채널에서 수집된 콘텐츠의 감성 분석 결과를 SIR 점수로 확인합니다."
       >
         <div className="grid grid-cols-3 gap-3 mb-3">
-          {channelSirData.slice(0, 3).map((ch) => (
+          {channelStats.slice(0, 3).map((ch) => (
             <SirCard
               key={ch.id}
               label={ch.label}
@@ -254,12 +197,12 @@ export function SectionReputation({
               negative={ch.negative}
               neutral={ch.neutral}
               color={ch.color}
-              change={ch.change}
+              change={0}
             />
           ))}
         </div>
         <div className="grid grid-cols-3 gap-3">
-          {channelSirData.slice(3).map((ch) => (
+          {channelStats.slice(3).map((ch) => (
             <SirCard
               key={ch.id}
               label={ch.label}
@@ -268,10 +211,10 @@ export function SectionReputation({
               negative={ch.negative}
               neutral={ch.neutral}
               color={ch.color}
-              change={ch.change}
+              change={0}
             />
           ))}
-          <div />
+          {channelStats.slice(3).length < 3 && <div />}
         </div>
       </ReportCard>
     </section>

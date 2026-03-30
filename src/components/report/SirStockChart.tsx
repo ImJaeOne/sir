@@ -15,7 +15,7 @@ import {
   Rectangle,
 } from 'recharts';
 
-import type { SirStockPoint } from '@/hooks/useReportData';
+import type { SirStockPoint } from '@/lib/api/reportApi';
 
 type TimeFrame = 'daily' | 'weekly';
 

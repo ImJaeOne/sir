@@ -50,7 +50,7 @@ function getSirColor(score: number): string {
   return 'text-red-500';
 }
 
-import type { SirStockPoint, SirRanking, TierItem } from '@/hooks/useReportData';
+import type { SirStockPoint, SirRanking, TierItem } from '@/lib/api/reportApi';
 
 interface HighlightProps {
   pdfMode?: boolean;
