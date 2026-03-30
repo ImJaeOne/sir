@@ -33,7 +33,7 @@ export default function ReportPdfPage() {
         {/* P1. 주간 하이라이트 */}
         <div>
           <PageHeader />
-          <SectionHighlight pdfMode sirScore={highlight.sirScore} totalItems={highlight.totalItems} riskCount={highlight.riskCount} />
+          <SectionHighlight pdfMode sirScore={highlight.sirScore} totalItems={highlight.totalItems} riskCount={highlight.riskCount} summary={highlight.summary} />
         </div>
 
         {/* P2. 온라인 평판 종합 */}

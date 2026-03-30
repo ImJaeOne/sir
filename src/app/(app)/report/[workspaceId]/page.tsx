@@ -59,7 +59,7 @@ export default function ReportPage() {
         </div>
 
         {/* P1. 주간 하이라이트 */}
-        <SectionHighlight sirScore={highlight.sirScore} totalItems={highlight.totalItems} riskCount={highlight.riskCount} />
+        <SectionHighlight sirScore={highlight.sirScore} totalItems={highlight.totalItems} riskCount={highlight.riskCount} summary={highlight.summary} />
 
         {/* P2. 온라인 평판 종합 — 검색 추이, 수집량, SIR 지수 */}
         <div className="print-break">

@@ -68,9 +68,10 @@ interface HighlightProps {
   sirScore?: number | null;
   totalItems?: number;
   riskCount?: number;
+  summary?: string[];
 }
 
-export function SectionHighlight({ pdfMode = false, sirScore, totalItems = 0, riskCount = 0 }: HighlightProps) {
+export function SectionHighlight({ pdfMode = false, sirScore, totalItems = 0, riskCount = 0, summary = [] }: HighlightProps) {
   const [timeFrame, setTimeFrame] = useState<TimeFrame>('daily');
   const score = sirScore ?? 0;
 
@@ -115,17 +116,15 @@ export function SectionHighlight({ pdfMode = false, sirScore, totalItems = 0, ri
 
       {/* 이번 주 총평 */}
       <ReportCard title="이번 주 총평">
-        <ul className="text-sm text-slate-600 space-y-1.5 leading-relaxed">
-          <li>
-            • 뉴스·블로그·영상 등 긍정 비율이 유지되고 있으나, 종목토론방 및 커뮤니티 채널에서 부정
-            의견도 꾸준히 게시되고 있습니다.
-          </li>
-          <li>• 리스크 콘텐츠 5건 중 3건은 허위사실 유포 가능성이 높아 조기 검토가 권장됩니다.</li>
-          <li>
-            • 강력한 상승세와 SIR 지수 상승이 동반되며 관심도가 지속적으로 확대되고 있어, 선제적
-            콘텐츠 배포 시 회복 판돈을 얻을 수 있는 구간입니다.
-          </li>
-        </ul>
+        {summary.length > 0 ? (
+          <ul className="text-sm text-slate-600 space-y-1.5 leading-relaxed">
+            {summary.map((s, i) => (
+              <li key={i}>• {s}</li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-slate-400">총평 데이터가 없습니다. 총평 생성을 실행해주세요.</p>
+        )}
       </ReportCard>
 
       {/* SIR 지수 & 주가 차트 */}
