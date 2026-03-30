@@ -15,75 +15,7 @@ import {
   Rectangle,
 } from 'recharts';
 
-// 캔들스틱 커스텀 Shape
-function CandlestickShape(props: any) {
-  const { x, y, width, height, payload } = props;
-  if (!payload?.open_price) return null;
-
-  const { open_price, close_price, high_price, low_price } = payload;
-  const isUp = close_price >= open_price;
-  const color = isUp ? '#ef4444' : '#3b82f6'; // 상승: 빨강, 하락: 파랑
-
-  // y축 스케일 계산
-  const yAxis = props.yAxis || {};
-  const domain = yAxis.domain || [0, 100];
-  const chartHeight = yAxis.height || height;
-  const chartY = yAxis.y || 0;
-
-  const scale = (val: number) => {
-    const ratio = (val - domain[0]) / (domain[1] - domain[0]);
-    return chartY + chartHeight - ratio * chartHeight;
-  };
-
-  const bodyTop = scale(Math.max(open_price, close_price));
-  const bodyBottom = scale(Math.min(open_price, close_price));
-  const bodyHeight = Math.max(bodyBottom - bodyTop, 1);
-  const wickTop = scale(high_price);
-  const wickBottom = scale(low_price);
-  const centerX = x + width / 2;
-
-  return (
-    <g>
-      {/* 꼬리 (wick) */}
-      <line x1={centerX} y1={wickTop} x2={centerX} y2={wickBottom} stroke={color} strokeWidth={1} />
-      {/* 몸통 (body) */}
-      <rect
-        x={x + width * 0.15}
-        y={bodyTop}
-        width={width * 0.7}
-        height={bodyHeight}
-        fill={isUp ? color : color}
-        stroke={color}
-        strokeWidth={0.5}
-        rx={1}
-      />
-    </g>
-  );
-}
-
-// 목데이터
-const mockData = [
-  { date: '02-24', sir: 45, open_price: 30480, high_price: 30627, low_price: 29300, close_price: 29988 },
-  { date: '02-26', sir: 42, open_price: 29550, high_price: 29700, low_price: 27950, close_price: 28150 },
-  { date: '02-28', sir: 48, open_price: 27800, high_price: 28150, low_price: 26850, close_price: 27200 },
-  { date: '03-03', sir: 44, open_price: 26550, high_price: 28100, low_price: 26350, close_price: 26500 },
-  { date: '03-04', sir: 40, open_price: 25800, high_price: 25950, low_price: 22950, close_price: 23350 },
-  { date: '03-05', sir: 38, open_price: 24750, high_price: 25100, low_price: 24000, close_price: 24500 },
-  { date: '03-06', sir: 43, open_price: 24250, high_price: 25900, low_price: 24200, close_price: 25100 },
-  { date: '03-09', sir: 52, open_price: 24100, high_price: 26850, low_price: 23550, close_price: 26300 },
-  { date: '03-10', sir: 55, open_price: 27700, high_price: 28250, low_price: 26300, close_price: 27750 },
-  { date: '03-11', sir: 50, open_price: 27850, high_price: 28850, low_price: 27750, close_price: 28000 },
-  { date: '03-12', sir: 48, open_price: 28000, high_price: 28450, low_price: 27150, close_price: 27650 },
-  { date: '03-13', sir: 46, open_price: 26950, high_price: 28050, low_price: 26650, close_price: 27600 },
-  { date: '03-16', sir: 72, open_price: 29000, high_price: 35850, low_price: 28850, close_price: 35850 },
-  { date: '03-17', sir: 68, open_price: 35300, high_price: 37300, low_price: 35250, close_price: 35800 },
-  { date: '03-18', sir: 65, open_price: 37450, high_price: 39750, low_price: 36450, close_price: 37950 },
-  { date: '03-19', sir: 60, open_price: 36850, high_price: 40700, low_price: 36300, close_price: 39600 },
-  { date: '03-20', sir: 58, open_price: 39100, high_price: 39900, low_price: 37350, close_price: 39750 },
-  { date: '03-23', sir: 55, open_price: 37750, high_price: 38500, low_price: 36750, close_price: 37750 },
-  { date: '03-24', sir: 53, open_price: 38600, high_price: 40050, low_price: 38450, close_price: 39250 },
-  { date: '03-25', sir: 50, open_price: 39600, high_price: 41000, low_price: 38100, close_price: 39200 },
-];
+import type { SirStockPoint } from '@/hooks/useReportData';
 
 type TimeFrame = 'daily' | 'weekly';
 
@@ -98,34 +30,38 @@ function getWeekKey(dateStr: string): string {
   return `${String(monday.getMonth() + 1).padStart(2, '0')}-${String(monday.getDate()).padStart(2, '0')}`;
 }
 
-function aggregateWeekly(data: typeof mockData) {
-  const weeks = new Map<string, typeof mockData>();
+function aggregateWeekly(data: SirStockPoint[]) {
+  const weeks = new Map<string, SirStockPoint[]>();
   for (const d of data) {
     const key = getWeekKey(d.date);
     if (!weeks.has(key)) weeks.set(key, []);
     weeks.get(key)!.push(d);
   }
 
-  return Array.from(weeks.entries()).map(([weekStart, items]) => ({
-    date: `${weekStart}~`,
-    sir: Math.round(items.reduce((s, i) => s + i.sir, 0) / items.length),
-    open_price: items[0].open_price,
-    close_price: items[items.length - 1].close_price,
-    high_price: Math.max(...items.map(i => i.high_price)),
-    low_price: Math.min(...items.map(i => i.low_price)),
-  }));
+  return Array.from(weeks.entries()).map(([weekStart, items]) => {
+    const sirItems = items.filter(i => i.sir != null);
+    const priceItems = items.filter(i => i.high_price != null);
+    return {
+      date: `${weekStart}~`,
+      sir: sirItems.length ? Math.round(sirItems.reduce((s, i) => s + (i.sir ?? 0), 0) / sirItems.length) : null,
+      open_price: priceItems[0]?.open_price ?? null,
+      close_price: priceItems[priceItems.length - 1]?.close_price ?? null,
+      high_price: priceItems.length ? Math.max(...priceItems.map(i => i.high_price!)) : null,
+      low_price: priceItems.length ? Math.min(...priceItems.map(i => i.low_price!)) : null,
+    };
+  });
 }
 
-export function SirStockChart({ timeFrame = 'daily' as TimeFrame, pdfMode = false }: { timeFrame?: TimeFrame; pdfMode?: boolean }) {
+export function SirStockChart({ timeFrame = 'daily' as TimeFrame, pdfMode = false, data: chartInput = [] }: { timeFrame?: TimeFrame; pdfMode?: boolean; data?: SirStockPoint[] }) {
 
   const displayData = useMemo(() => {
-    const source = timeFrame === 'weekly' ? aggregateWeekly(mockData) : mockData;
+    const source = timeFrame === 'weekly' ? aggregateWeekly(chartInput) : chartInput;
     return source.map(d => ({ ...d, _candle: d.high_price }));
-  }, [timeFrame]);
+  }, [timeFrame, chartInput]);
 
-  const allPrices = displayData.flatMap(d => [d.low_price, d.high_price]);
-  const minPrice = Math.floor(Math.min(...allPrices) * 0.95);
-  const maxPrice = Math.ceil(Math.max(...allPrices) * 1.05);
+  const allPrices = displayData.flatMap(d => [d.low_price, d.high_price]).filter((v): v is number => v != null);
+  const minPrice = allPrices.length ? Math.floor(Math.min(...allPrices) * 0.95) : 0;
+  const maxPrice = allPrices.length ? Math.ceil(Math.max(...allPrices) * 1.05) : 100;
 
   return (
     <div>
@@ -178,7 +114,7 @@ export function SirStockChart({ timeFrame = 'daily' as TimeFrame, pdfMode = fals
               const isUp = d.close_price >= d.open_price;
               return (
                 <div className="bg-white border border-slate-200 rounded-lg px-3 py-2 shadow-md text-xs">
-                  <p className="font-semibold text-slate-700 mb-1">{label}</p>
+                  <p className="font-semibold text-slate-700 mb-1">{d.fullDate ? d.fullDate.replace(/-/g, '.') : label}</p>
                   <p className="text-indigo-600">SIR: {d.sir}점</p>
                   {d.open_price && (
                     <>
