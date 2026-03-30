@@ -29,19 +29,6 @@ function StatCard({
   );
 }
 
-const tierData = [
-  { tier: '하위 4구간 (0~9)', count: 2, isCurrent: 0 },
-  { tier: '하위 3구간 (10~19)', count: 5, isCurrent: 0 },
-  { tier: '하위 2구간 (20~29)', count: 10, isCurrent: 0 },
-  { tier: '하위 1구간 (30~39)', count: 15, isCurrent: 0 },
-  { tier: '중위 3구간 (40~49)', count: 20, isCurrent: 0 },
-  { tier: '중위 2구간 (50~59)', count: 25, isCurrent: 0 },
-  { tier: '중위 1구간 (60~69)', count: 18, isCurrent: 0 },
-  { tier: '상위 3구간 (70~79)', count: 12, isCurrent: 1 },
-  { tier: '상위 2구간 (80~89)', count: 8, isCurrent: 0 },
-  { tier: '상위 1구간 (90~100)', count: 3, isCurrent: 0 },
-];
-
 type TimeFrame = 'daily' | 'weekly';
 
 function getSirTier(score: number): string {
@@ -63,15 +50,22 @@ function getSirColor(score: number): string {
   return 'text-red-500';
 }
 
+import type { SirStockPoint, SirRanking, TierItem } from '@/hooks/useReportData';
+
 interface HighlightProps {
   pdfMode?: boolean;
   sirScore?: number | null;
   totalItems?: number;
   riskCount?: number;
   summary?: string[];
+  sirStockData?: SirStockPoint[];
+  sirRanking?: SirRanking;
+  companyName?: string;
 }
 
-export function SectionHighlight({ pdfMode = false, sirScore, totalItems = 0, riskCount = 0, summary = [] }: HighlightProps) {
+const defaultRanking: SirRanking = { tiers: [], rank: 0, total: 0, average: 0 };
+
+export function SectionHighlight({ pdfMode = false, sirScore, totalItems = 0, riskCount = 0, summary = [], sirStockData = [], sirRanking = defaultRanking, companyName = '' }: HighlightProps) {
   const [timeFrame, setTimeFrame] = useState<TimeFrame>('daily');
   const score = sirScore ?? 0;
 
@@ -154,7 +148,7 @@ export function SectionHighlight({ pdfMode = false, sirScore, totalItems = 0, ri
           </div>
         }
       >
-        <SirStockChart timeFrame={timeFrame} pdfMode={pdfMode} />
+        <SirStockChart timeFrame={timeFrame} pdfMode={pdfMode} data={sirStockData} />
       </ReportCard>
 
       {/* SIR 주간 순위 */}
@@ -166,16 +160,16 @@ export function SectionHighlight({ pdfMode = false, sirScore, totalItems = 0, ri
           {/* 왼쪽: 요약 지표 */}
           <div className="shrink-0 flex flex-col justify-evenly pr-6 border-r border-slate-100 gap-3">
             <div className="bg-slate-50 rounded-xl p-4 flex flex-col items-center gap-1.5 shadow-[0_0_0_1px_rgba(241,245,249,1)]">
-              <span className="text-xs text-slate-400">DN오토모티브 SIR 점수</span>
-              <span className="text-2xl font-bold text-blue-600">78점</span>
+              <span className="text-xs text-slate-400">{companyName} SIR 점수</span>
+              <span className="text-2xl font-bold text-blue-600">{Math.round(score)}점</span>
             </div>
             <div className="bg-slate-50 rounded-xl p-4 flex flex-col items-center gap-1.5 shadow-[0_0_0_1px_rgba(241,245,249,1)]">
-              <span className="text-xs text-slate-400">DN오토모티브 순위</span>
-              <span className="text-2xl font-bold text-slate-800">상위 3구간</span>
+              <span className="text-xs text-slate-400">{companyName} 순위</span>
+              <span className="text-2xl font-bold text-slate-800">{getSirTier(score)}</span>
             </div>
             <div className="bg-slate-50 rounded-xl p-4 flex flex-col items-center gap-1.5 shadow-[0_0_0_1px_rgba(241,245,249,1)]">
               <span className="text-xs text-slate-400">SIR 전체 평균 점수</span>
-              <span className="text-2xl font-bold text-slate-500">58점</span>
+              <span className="text-2xl font-bold text-slate-500">{sirRanking.average}점</span>
             </div>
           </div>
 
@@ -184,29 +178,33 @@ export function SectionHighlight({ pdfMode = false, sirScore, totalItems = 0, ri
             <p className="text-[10px] text-slate-400 text-right mb-1">(단위: 기업 수)</p>
             <div className={pdfMode ? 'h-56' : 'h-72'}>
               <ResponsiveBar
-                data={tierData}
+                data={sirRanking.tiers}
                 keys={['count']}
                 indexBy="tier"
                 layout="horizontal"
                 margin={{ top: 0, right: 40, bottom: 25, left: 140 }}
                 padding={0.3}
-                colors={({ data }) => (data.isCurrent ? '#3b82f6' : '#e2e8f0')}
+                colors={({ data }) => (Number(data.isCurrent) === 1 ? '#3b82f6' : '#e2e8f0')}
                 borderRadius={4}
                 axisLeft={{
                   tickSize: 0,
                   tickPadding: 8,
                 }}
-                axisBottom={{
-                  tickSize: 0,
-                  tickPadding: 5,
-                  tickValues: [0, 5, 10, 15, 20, 25, 30],
-                }}
+                axisBottom={(() => {
+                  const max = Math.ceil(Math.max(...sirRanking.tiers.map(t => t.count), 1) / 5) * 5 || 5;
+                  const ticks = Array.from({ length: max / 5 + 1 }, (_, i) => i * 5);
+                  return { tickSize: 0, tickPadding: 5, tickValues: ticks };
+                })()}
+                valueScale={{ type: 'linear', min: 0, max: Math.ceil(Math.max(...sirRanking.tiers.map(t => t.count), 1) / 5) * 5 || 5 }}
                 enableGridY={false}
                 enableGridX={true}
-                gridXValues={5}
+                gridXValues={(() => {
+                  const max = Math.ceil(Math.max(...sirRanking.tiers.map(t => t.count), 1) / 5) * 5 || 5;
+                  return Array.from({ length: max / 5 + 1 }, (_, i) => i * 5);
+                })()}
                 label={(d) => `${d.value}`}
-                labelSkipWidth={20}
-                labelTextColor={({ data }) => ((data as any).isCurrent ? '#ffffff' : '#64748b')}
+                labelSkipWidth={10}
+                labelTextColor={({ color }) => (color === '#3b82f6' ? '#ffffff' : '#64748b')}
                 theme={{
                   axis: {
                     ticks: { text: { fontSize: 11, fill: '#334155' } },
