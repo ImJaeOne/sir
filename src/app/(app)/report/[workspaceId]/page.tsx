@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useSearchTrend } from '@/hooks/useSearchTrend';
+import { useReportHighlight } from '@/hooks/useReportData';
 import { SectionHighlight } from '@/components/report/SectionHighlight';
 import { SectionReputation } from '@/components/report/SectionReputation';
 import { SectionSentimentDetail } from '@/components/report/SectionSentimentDetail';
@@ -15,6 +16,7 @@ export default function ReportPage() {
   const workspaceId = params?.workspaceId as string;
   const [downloading, setDownloading] = useState(false);
   const { data: naverTrend } = useSearchTrend(workspaceId, 30, '2026-03-26');
+  const { data: highlight } = useReportHighlight(workspaceId);
 
   const handleDownloadPdf = async () => {
     setDownloading(true);
@@ -57,7 +59,7 @@ export default function ReportPage() {
         </div>
 
         {/* P1. 주간 하이라이트 */}
-        <SectionHighlight />
+        <SectionHighlight sirScore={highlight.sirScore} totalItems={highlight.totalItems} riskCount={highlight.riskCount} />
 
         {/* P2. 온라인 평판 종합 — 검색 추이, 수집량, SIR 지수 */}
         <div className="print-break">

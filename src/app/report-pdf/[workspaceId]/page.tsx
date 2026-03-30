@@ -2,6 +2,7 @@
 
 import { useParams } from 'next/navigation';
 import { useSearchTrend } from '@/hooks/useSearchTrend';
+import { useReportHighlight } from '@/hooks/useReportData';
 import { SectionHighlight } from '@/components/report/SectionHighlight';
 import { SectionReputation } from '@/components/report/SectionReputation';
 import { SectionSentimentDetail } from '@/components/report/SectionSentimentDetail';
@@ -24,6 +25,7 @@ export default function ReportPdfPage() {
   const params = useParams();
   const workspaceId = params?.workspaceId as string;
   const { data: naverTrend } = useSearchTrend(workspaceId, 30, '2026-03-26');
+  const { data: highlight } = useReportHighlight(workspaceId);
 
   return (
     <div className="p-8 bg-slate-50 min-h-screen">
@@ -31,7 +33,7 @@ export default function ReportPdfPage() {
         {/* P1. 주간 하이라이트 */}
         <div>
           <PageHeader />
-          <SectionHighlight pdfMode />
+          <SectionHighlight pdfMode sirScore={highlight.sirScore} totalItems={highlight.totalItems} riskCount={highlight.riskCount} />
         </div>
 
         {/* P2. 온라인 평판 종합 */}

@@ -44,8 +44,36 @@ const tierData = [
 
 type TimeFrame = 'daily' | 'weekly';
 
-export function SectionHighlight({ pdfMode = false }: { pdfMode?: boolean }) {
+function getSirTier(score: number): string {
+  if (score >= 90) return '상위 1구간';
+  if (score >= 80) return '상위 2구간';
+  if (score >= 70) return '상위 3구간';
+  if (score >= 60) return '중위 1구간';
+  if (score >= 50) return '중위 2구간';
+  if (score >= 40) return '중위 3구간';
+  if (score >= 30) return '하위 1구간';
+  if (score >= 20) return '하위 2구간';
+  if (score >= 10) return '하위 3구간';
+  return '하위 4구간';
+}
+
+function getSirColor(score: number): string {
+  if (score >= 61) return 'text-emerald-500';
+  if (score >= 41) return 'text-amber-500';
+  return 'text-red-500';
+}
+
+interface HighlightProps {
+  pdfMode?: boolean;
+  sirScore?: number | null;
+  totalItems?: number;
+  riskCount?: number;
+}
+
+export function SectionHighlight({ pdfMode = false, sirScore, totalItems = 0, riskCount = 0 }: HighlightProps) {
   const [timeFrame, setTimeFrame] = useState<TimeFrame>('daily');
+  const score = sirScore ?? 0;
+
   return (
     <section className="flex flex-col gap-6">
       <div className="flex items-center gap-3">
@@ -58,29 +86,29 @@ export function SectionHighlight({ pdfMode = false }: { pdfMode?: boolean }) {
         <StatCard
           icon={TrendingUp}
           label="SIR 지수"
-          value="78점"
-          sub="전주 대비 ▲12점 상승"
-          color="text-emerald-500"
+          value={`${Math.round(score)}점`}
+          sub=""
+          color={getSirColor(score)}
         />
         <StatCard
           icon={BarChart3}
           label="SIR 순위"
-          value="상위 3구간"
-          sub="전체 기업 38% 상위"
+          value={getSirTier(score)}
+          sub=""
           color="text-blue-500"
         />
         <StatCard
           icon={Database}
           label="수집 데이터"
-          value="5,424개"
-          sub="전주 대비 동일 수준"
+          value={`${totalItems.toLocaleString()}개`}
+          sub=""
           color="text-violet-500"
         />
         <StatCard
           icon={AlertTriangle}
           label="리스크 콘텐츠"
-          value="8개"
-          sub="즉시 검토 필요"
+          value={`${riskCount}개`}
+          sub={riskCount > 0 ? '즉시 검토 필요' : ''}
           color="text-amber-500"
         />
       </div>
