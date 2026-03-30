@@ -52,8 +52,8 @@ export function SirBadge({ score }: { score: number | null }) {
 
 export function CountBadge({ count, label }: { count: number; label: string }) {
   return (
-    <Badge variant="blue">
-      {count}건 {label}
+    <Badge variant="slate">
+      {count.toLocaleString()}건 {label}
     </Badge>
   );
 }
