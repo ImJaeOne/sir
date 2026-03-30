@@ -2,7 +2,7 @@
 
 import { useParams } from 'next/navigation';
 import { useSearchTrend } from '@/hooks/useSearchTrend';
-import { useReportHighlight } from '@/hooks/useReportData';
+import { useReportHighlight, useSirStockData, useSirRanking } from '@/hooks/useReportData';
 import { SectionHighlight } from '@/components/report/SectionHighlight';
 import { SectionReputation } from '@/components/report/SectionReputation';
 import { SectionSentimentDetail } from '@/components/report/SectionSentimentDetail';
@@ -26,6 +26,8 @@ export default function ReportPdfPage() {
   const workspaceId = params?.workspaceId as string;
   const { data: naverTrend } = useSearchTrend(workspaceId, 30, '2026-03-26');
   const { data: highlight } = useReportHighlight(workspaceId);
+  const { data: sirStockData } = useSirStockData(workspaceId);
+  const { data: sirRanking } = useSirRanking(workspaceId);
 
   return (
     <div className="p-8 bg-slate-50 min-h-screen">
@@ -33,7 +35,7 @@ export default function ReportPdfPage() {
         {/* P1. 주간 하이라이트 */}
         <div>
           <PageHeader />
-          <SectionHighlight pdfMode sirScore={highlight.sirScore} totalItems={highlight.totalItems} riskCount={highlight.riskCount} summary={highlight.summary} />
+          <SectionHighlight pdfMode sirScore={highlight.sirScore} totalItems={highlight.totalItems} riskCount={highlight.riskCount} summary={highlight.summary} sirStockData={sirStockData} sirRanking={sirRanking} companyName="DN오토모티브" />
         </div>
 
         {/* P2. 온라인 평판 종합 */}
