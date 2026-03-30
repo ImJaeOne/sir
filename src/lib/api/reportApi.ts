@@ -180,6 +180,44 @@ export async function getChannelStats(workspaceId: string, channelItems: Channel
     });
 }
 
+// ── 뉴스 클러스터 ──
+
+export interface NewsCluster {
+  id: string;
+  representative_title: string;
+  sentiment: string | null;
+  summary: string | null;
+  items: { title: string; source: string; link: string }[];
+}
+
+export async function getNewsClusters(workspaceId: string): Promise<NewsCluster[]> {
+  const [clusterRes, itemsRes] = await Promise.all([
+    supabase.from('news_clusters')
+      .select('id, representative_title, sentiment, summary')
+      .eq('workspace_id', workspaceId)
+      .eq('is_relevant', true)
+      .order('created_at', { ascending: false }),
+    supabase.from('news_items')
+      .select('cluster_id, title, source, link')
+      .eq('workspace_id', workspaceId)
+      .not('cluster_id', 'is', null),
+  ]);
+
+  const itemsByCluster = new Map<string, { title: string; source: string; link: string }[]>();
+  for (const item of itemsRes.data ?? []) {
+    if (!itemsByCluster.has(item.cluster_id)) itemsByCluster.set(item.cluster_id, []);
+    itemsByCluster.get(item.cluster_id)!.push({ title: item.title, source: item.source ?? '', link: item.link ?? '#' });
+  }
+
+  return (clusterRes.data ?? []).map(c => ({
+    id: c.id,
+    representative_title: c.representative_title,
+    sentiment: c.sentiment,
+    summary: c.summary,
+    items: itemsByCluster.get(c.id) ?? [],
+  }));
+}
+
 // ── 채널별 아이템 (감성 상세 + 상위 콘텐츠 공유) ──
 
 export interface ChannelItem {
@@ -190,21 +228,23 @@ export interface ChannelItem {
   summary: string | null;
   sentiment: string;
   link: string;
+  source: string | null;
   views: number | null;
   published_at: string | null;
   critical_type: string | null;
+  cluster_id: string | null;
 }
 
 export async function getChannelItems(workspaceId: string): Promise<ChannelItem[]> {
   const [newsRes, communityRes, snsRes] = await Promise.all([
     supabase.from('news_items')
-      .select('id, platform_id, title, summary, sentiment, link, published_at, critical_type')
+      .select('id, platform_id, title, summary, sentiment, link, source, published_at, critical_type, cluster_id')
       .eq('workspace_id', workspaceId).eq('is_relevant', true),
     supabase.from('community_items')
       .select('id, platform_id, title, content, sentiment, link, views, published_at, critical_type')
       .eq('workspace_id', workspaceId).eq('is_relevant', true),
     supabase.from('sns_items')
-      .select('id, platform_id, title, content, summary, sentiment, link, views, published_at, critical_type')
+      .select('id, platform_id, title, content, summary, sentiment, link, author, views, published_at, critical_type')
       .eq('workspace_id', workspaceId).eq('is_relevant', true),
   ]);
 
@@ -217,9 +257,11 @@ export async function getChannelItems(workspaceId: string): Promise<ChannelItem[
       summary: r.summary ?? null,
       sentiment: r.sentiment ?? 'neutral',
       link: r.link ?? '#',
+      source: r.source ?? r.author ?? null,
       views: r.views ?? null,
       published_at: r.published_at ?? null,
       critical_type: r.critical_type ?? null,
+      cluster_id: r.cluster_id ?? null,
       ...defaults,
     }));
 
@@ -314,8 +356,8 @@ export async function getStrategies(workspaceId: string): Promise<StrategyGroup[
 
   return Array.from(grouped.entries()).map(([platform, data]) => ({
     platform,
-    backgrounds: data.backgrounds,
-    proposals: data.proposals,
+    backgrounds: data.backgrounds.slice(0, 3),
+    proposals: data.proposals.slice(0, 3),
   }));
 }
 

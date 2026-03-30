@@ -5,6 +5,7 @@ import {
   getSirRanking,
   getChannelStats,
   getChannelItems,
+  getNewsClusters,
   getRiskItems,
   getStrategies,
   getSearchTrend,
@@ -18,6 +19,7 @@ export const reportKeys = {
   sirStock: (id: string) => ['report', id, 'sirStock'] as const,
   sirRanking: (id: string) => ['report', id, 'sirRanking'] as const,
   channelItems: (id: string) => ['report', id, 'channelItems'] as const,
+  newsClusters: (id: string) => ['report', id, 'newsClusters'] as const,
   channelStats: (id: string) => ['report', id, 'channelStats'] as const,
   riskItems: (id: string) => ['report', id, 'riskItems'] as const,
   strategies: (id: string) => ['report', id, 'strategies'] as const,
@@ -76,6 +78,15 @@ export function useChannelItems(workspaceId: string) {
   return useQuery({
     queryKey: reportKeys.channelItems(workspaceId),
     queryFn: () => getChannelItems(workspaceId),
+    enabled: !!workspaceId,
+    ...REPORT_OPTS,
+  });
+}
+
+export function useNewsClusters(workspaceId: string) {
+  return useQuery({
+    queryKey: reportKeys.newsClusters(workspaceId),
+    queryFn: () => getNewsClusters(workspaceId),
     enabled: !!workspaceId,
     ...REPORT_OPTS,
   });
