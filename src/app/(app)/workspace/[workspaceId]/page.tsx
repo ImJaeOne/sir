@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Tooltip } from '@/components/ui/Tooltip';
@@ -253,12 +253,8 @@ export default function WorkspaceDetailPage() {
   const [pipelineTriggered, setPipelineTriggered] = useState(false);
   const { data: sessions, isLoading } = useSessions(workspaceId, pipelineTriggered);
 
-  // 파이프라인 트리거 후 세션이 나타나면 폴링 종료
-  useEffect(() => {
-    if (pipelineTriggered && sessions && sessions.length > 0) {
-      setPipelineTriggered(false);
-    }
-  }, [pipelineTriggered, sessions]);
+  // 세션이 나타나면 폴링 종료 (렌더 중 동기 판단, setState 아님)
+  const waitingForSessions = pipelineTriggered && (!sessions || sessions.length === 0);
 
   // 날짜별 그룹핑
   const groupedByDate = useMemo<SessionGroup[]>(() => {
@@ -334,7 +330,7 @@ export default function WorkspaceDetailPage() {
 
           {!isLoading && groupedByDate.length === 0 && (
             <div className="bg-white rounded-2xl border border-dashed border-slate-200 shadow-sm py-12 flex flex-col items-center gap-3">
-              {pipelineTriggered ? (
+              {waitingForSessions ? (
                 <>
                   <svg className="animate-spin h-5 w-5 text-blue-500" viewBox="0 0 24 24" fill="none">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
