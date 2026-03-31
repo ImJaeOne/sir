@@ -62,16 +62,20 @@ function SirCard({
 export function SectionReputation({
   pdfMode = false,
   naverTrend = [],
+  googleTrend = [],
   channelStats = [],
 }: {
   pdfMode?: boolean;
   naverTrend?: TrendPoint[];
+  googleTrend?: TrendPoint[];
   channelStats?: ChannelStat[];
 }) {
+  const googleMap = new Map(googleTrend.map((t) => [t.date, t.ratio]));
   const chartData = naverTrend.map((t) => ({
     date: t.date,
     label: t.date.slice(5),
     네이버: t.ratio,
+    구글: googleMap.get(t.date) ?? null,
   }));
 
   return (
@@ -84,7 +88,7 @@ export function SectionReputation({
       {/* 검색량 추이 */}
       <ReportCard
         title="최근 30일 기업명 키워드 검색 관심도 추이"
-        description="네이버 기준 검색 관심도 추이를 확인하여 온라인 관심도 확대 여부를 파악합니다."
+        description="네이버·구글 기준 검색 관심도 추이를 확인하여 온라인 관심도 확대 여부를 파악합니다."
         tooltip="검색어 트렌드는 요청된 기간 중 검색 횟수가 가장 높은 시점을 100으로 두고 나머지는 상대적 값으로 제공하고 있습니다."
       >
         <div className={pdfMode ? 'h-48' : 'h-64'}>
@@ -131,6 +135,15 @@ export function SectionReputation({
                 strokeWidth={2}
                 dot={false}
                 activeDot={{ r: 5, fill: '#fff', stroke: '#22c55e', strokeWidth: 2 }}
+              />
+              <Line
+                type="monotone"
+                dataKey="구글"
+                stroke="#4285f4"
+                strokeWidth={2}
+                dot={false}
+                activeDot={{ r: 5, fill: '#fff', stroke: '#4285f4', strokeWidth: 2 }}
+                connectNulls
               />
             </LineChart>
           </ResponsiveContainer>

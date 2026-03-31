@@ -370,17 +370,22 @@ export interface TrendPoint {
   ratio: number;
 }
 
-export async function getSearchTrend(workspaceId: string, days: number = 30, endDate?: string): Promise<TrendPoint[]> {
+export interface SearchTrendResult {
+  naver: TrendPoint[];
+  google: TrendPoint[];
+}
+
+export async function getSearchTrend(workspaceId: string, days: number = 30, endDate?: string): Promise<SearchTrendResult> {
   const params = new URLSearchParams({ days: String(days) });
   if (endDate) params.set('end_date', endDate);
 
   const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return [];
+  if (!session) return { naver: [], google: [] };
 
   const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/search-trend/${workspaceId}?${params}`, {
     headers: { Authorization: `Bearer ${session.access_token}` },
   });
-  if (!res.ok) return [];
+  if (!res.ok) return { naver: [], google: [] };
   const data = await res.json();
-  return data.trend ?? [];
+  return { naver: data.trend ?? [], google: data.google_trend ?? [] };
 }
