@@ -205,7 +205,7 @@ export default function SessionPage() {
           {stockPrices && stockPrices.length > 0 && hasAnalysis && (
             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 sm:p-6">
               <StockSirChart
-                stockPrices={stockPrices}
+                stockPrices={stockPrices.map(s => ({ date: s.date, close: s.close_price }))}
                 crawlItems={[
                   ...(crawlData?.newsItems ?? []).map(i => ({
                     platform_id: i.platform_id,

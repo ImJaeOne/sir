@@ -48,7 +48,7 @@ export function StockSirChart({ stockPrices, crawlItems }: StockSirChartProps) {
       d.setDate(d.getDate() + 1);
     }
 
-    const priceMap = new Map(stockPrices.map((p) => [p.date, p.close_price]));
+    const priceMap = new Map(stockPrices.map((p) => [p.date, p.close]));
 
     let lastSir: number | null = null;
     return sorted.map((date) => {
@@ -109,10 +109,10 @@ export function StockSirChart({ stockPrices, crawlItems }: StockSirChartProps) {
                 fontSize: '12px',
                 boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
               }}
-              formatter={(value: number | null, name: string) => {
-                if (value == null) return ['—', name];
-                if (name === '주가') return [`${value.toLocaleString()}원`, name];
-                return [`${value}점`, name];
+              formatter={(value, name) => {
+                if (value == null) return ['—', String(name)];
+                if (name === '주가') return [`${Number(value).toLocaleString()}원`, String(name)];
+                return [`${value}점`, String(name)];
               }}
               labelFormatter={(label) => `${label}`}
             />

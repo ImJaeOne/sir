@@ -34,15 +34,16 @@ export function PipelineStages() {
   const { data: crawlData } = useCrawlData(sessionId);
   const sessionStatus: CrawlStatus = session?.status ?? 'crawling';
 
-  // status 기반 판단: analyzing 완료 후 crawlItems가 DB에 존재
-  const hasCrawlData = sessionStatus !== 'crawling' && (crawlData?.crawlItems?.length ?? 0) > 0;
+  // status 기반 판단: analyzing 완료 후 아이템이 DB에 존재
+  const totalItems = (crawlData?.newsItems?.length ?? 0) + (crawlData?.communityItems?.length ?? 0) + (crawlData?.snsItems?.length ?? 0);
+  const hasCrawlData = sessionStatus !== 'crawling' && totalItems > 0;
   // clustering 이후 감성 분석 + 클러스터 데이터 존재
   const hasAnalysisData = (sessionStatus === 'clustering' || sessionStatus === 'done') && hasCrawlData;
-  const hasStrategy = !!crawlData?.strategy;
+  const hasStrategy = (crawlData?.strategies?.length ?? 0) > 0;
 
   // 단독 기사 (cluster_id 없는 것)
   const standaloneItems = useMemo(
-    () => crawlData?.crawlItems?.filter((item) => !item.cluster_id) ?? [],
+    () => crawlData?.newsItems?.filter((item) => !item.cluster_id) ?? [],
     [crawlData]
   );
 
@@ -132,7 +133,7 @@ export function PipelineStages() {
   const allCompleted = store.isAllCompleted();
   const { stageStatuses, dismissedComplete, backModalType } = store;
 
-  const totalArticles = crawlData?.crawlItems?.length ?? 0;
+  const totalArticles = totalItems;
 
   const getStageBadge = (stageId: StageId) => {
     if (stageId === 'crawling' && stageStatuses.crawling === 'completed' && totalArticles > 0) {
@@ -180,17 +181,19 @@ export function PipelineStages() {
             defaultExpanded={isCompleted && index === 0}
           >
             {stage.id === 'crawling' && hasCrawlData && (
-              <CrawlingResult crawlItems={crawlData!.crawlItems} />
+              <CrawlingResult crawlItems={crawlData!.newsItems} />
             )}
             {stage.id === 'analysis' && hasAnalysisData && (
               <AnalysisResult
                 clusters={crawlData!.clusters}
                 standaloneItems={standaloneItems}
-                crawlItems={crawlData!.crawlItems}
+                crawlItems={crawlData!.newsItems}
+                communityItems={crawlData!.communityItems}
+                snsItems={crawlData!.snsItems}
               />
             )}
             {stage.id === 'content' && (
-              <ContentResult strategy={crawlData?.strategy ?? null} />
+              <ContentResult strategy={crawlData?.strategies?.[0] ?? null} />
             )}
             {stage.id === 'report' && <ReportResult />}
             {stage.id === 'email' && <EmailResult />}

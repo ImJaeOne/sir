@@ -3,10 +3,10 @@
 import { ReportCard } from './ReportCard';
 import type { StrategyGroup } from '@/lib/api/reportApi';
 
-function StrategyCard({ channel, backgrounds, proposals }: StrategyGroup) {
+function StrategyCard({ platform, backgrounds, proposals }: StrategyGroup) {
   return (
     <div className="bg-white rounded-2xl p-5 flex flex-col gap-4 shadow-[0_0_0_1px_rgba(241,245,249,1),0_1px_2px_rgba(0,0,0,0.05)]">
-      <h4 className="text-sm font-bold text-slate-800">{channel}</h4>
+      <h4 className="text-sm font-bold text-slate-800">{platform}</h4>
       {backgrounds.map((bg, i) => (
         <div key={i} className="flex flex-col gap-2">
           <div className="bg-slate-50 rounded-xl p-4">
