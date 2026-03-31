@@ -233,6 +233,7 @@ export interface ChannelItem {
   published_at: string | null;
   critical_type: string | null;
   cluster_id: string | null;
+  impact_score: number | null;
 }
 
 export async function getChannelItems(workspaceId: string): Promise<ChannelItem[]> {
@@ -244,7 +245,7 @@ export async function getChannelItems(workspaceId: string): Promise<ChannelItem[
       .select('id, platform_id, title, content, sentiment, link, views, published_at, critical_type')
       .eq('workspace_id', workspaceId).eq('is_relevant', true),
     supabase.from('sns_items')
-      .select('id, platform_id, title, content, summary, sentiment, link, author, views, published_at, critical_type')
+      .select('id, platform_id, title, content, summary, sentiment, link, author, views, published_at, critical_type, impact_score')
       .eq('workspace_id', workspaceId).eq('is_relevant', true),
   ]);
 
@@ -262,6 +263,7 @@ export async function getChannelItems(workspaceId: string): Promise<ChannelItem[
       published_at: r.published_at ?? null,
       critical_type: r.critical_type ?? null,
       cluster_id: r.cluster_id ?? null,
+      impact_score: r.impact_score ?? null,
       ...defaults,
     }));
 
