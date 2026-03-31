@@ -5,10 +5,10 @@ import { ReportCard } from '@/components/report/ReportCard';
 import type { ChannelItem, NewsCluster } from '@/lib/api/reportApi';
 
 const CHANNEL_ORDER = [
-  { id: 'naver_blog', title: '블로그 TOP 3', description: 'AI 분석 기반 영향력이 높은 포스팅 기준으로 선정되었습니다.', useViews: false },
-  { id: 'youtube', title: '유튜브 TOP 3', description: '가장 많이 조회된 영상 기준으로 선정되었습니다.', useViews: true },
-  { id: 'naver_stock', title: '네이버 종목토론방 TOP 3', description: '가장 많이 조회된 게시글 기준으로 선정되었습니다.', useViews: true },
-  { id: 'dcinside', title: '디시인사이드 TOP 3', description: '가장 많이 조회된 게시글 기준으로 선정되었습니다.', useViews: true },
+  { id: 'naver_blog', title: '블로그 TOP 3', description: 'AI 분석 기반 영향력이 높은 포스팅 기준으로 선정되었습니다.', sortBy: 'impact_score' as const },
+  { id: 'youtube', title: '유튜브 TOP 3', description: '가장 많이 조회된 영상 기준으로 선정되었습니다.', sortBy: 'views' as const },
+  { id: 'naver_stock', title: '네이버 종목토론방 TOP 3', description: '가장 많이 조회된 게시글 기준으로 선정되었습니다.', sortBy: 'views' as const },
+  { id: 'dcinside', title: '디시인사이드 TOP 3', description: '가장 많이 조회된 게시글 기준으로 선정되었습니다.', sortBy: 'views' as const },
 ];
 
 function NewsClusterCard({ clusters }: { clusters: NewsCluster[] }) {
@@ -74,9 +74,10 @@ export function SectionTopContent({ channelItems = [], newsClusters = [] }: { ch
   const channels = CHANNEL_ORDER
     .map(ch => {
       const items = byPlatform.get(ch.id) ?? [];
-      const sorted = ch.useViews
-        ? [...items].sort((a, b) => (b.views ?? 0) - (a.views ?? 0))
-        : items;
+      const sorted = [...items].sort((a, b) => {
+        if (ch.sortBy === 'impact_score') return (b.impact_score ?? 0) - (a.impact_score ?? 0);
+        return (b.views ?? 0) - (a.views ?? 0);
+      });
       return { ...ch, items: sorted.slice(0, 3) };
     })
     .filter(ch => ch.items.length > 0);
@@ -101,7 +102,7 @@ export function SectionTopContent({ channelItems = [], newsClusters = [] }: { ch
                   </span>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-slate-800 font-medium truncate group-hover:text-blue-600 transition-colors">{item.title}</p>
-                    {ch.useViews && item.views != null
+                    {ch.sortBy === 'views' && item.views != null
                       ? <p className="text-xs text-slate-400 mt-0.5">조회수 {item.views.toLocaleString()}회</p>
                       : (item.summary || item.content) && <p className="text-xs text-slate-400 mt-0.5 truncate">{(item.summary || item.content || '').slice(0, 60)}</p>
                     }
