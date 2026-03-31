@@ -113,7 +113,7 @@ export default function ReportPage() {
         </div>
 
         <div className="print-break">
-          <SectionTopContent channelItems={channelItems ?? []} />
+          <SectionTopContent channelItems={channelItems ?? []} newsClusters={newsClusters ?? []} />
         </div>
 
         <div className="print-break">
