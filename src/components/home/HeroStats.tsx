@@ -5,7 +5,7 @@ const STATS = [
   { label: '관리 클라이언트', value: '12', unit: '개사', icon: Building2, color: 'text-blue-500' },
   { label: '모니터링 채널', value: '8', unit: '개', icon: Radio, color: 'text-emerald-500' },
   { label: '금주 수집 데이터', value: '24,830', unit: '건', icon: Database, color: 'text-violet-500' },
-  { label: '평균 SIR 지수', value: '72.4', unit: '/ 100', icon: TrendingUp, color: 'text-amber-500' },
+  { label: '평균 SIR 지수', value: '724', unit: '/ 1000', icon: TrendingUp, color: 'text-amber-500' },
 ];
 
 export function HeroStats() {

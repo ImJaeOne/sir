@@ -96,7 +96,7 @@ export function StockSirChart({ stockPrices, crawlItems }: StockSirChartProps) {
             <YAxis
               yAxisId="sir"
               orientation="right"
-              domain={[0, 100]}
+              domain={[0, 1000]}
               tick={{ fontSize: 11, fill: '#94a3b8' }}
               axisLine={false}
               tickLine={false}

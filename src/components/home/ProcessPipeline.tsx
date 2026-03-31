@@ -54,7 +54,7 @@ const PIPELINE_STEPS: PipelineStep[] = [
     description: '수집된 콘텐츠를 AI가 감성 분석하고 리스크를 분류',
     details: [
       '감성 분류 — 긍정 / 중립 / 부정',
-      'SIR 지수 산출 (0~100)',
+      'SIR 지수 산출 (0~1000)',
       '리스크 레벨 판정 — low ~ critical',
       '주의 콘텐츠 자동 플래깅',
     ],

@@ -69,11 +69,11 @@ function groupByChannel(items: SirItem[]): ChannelData[] {
 }
 
 /**
- * SIR 지수 계산 (0~100 스케일)
+ * SIR 지수 계산 (0~1000 스케일)
  */
 export function calculateSir(items: SirItem[]): number {
   const channels = groupByChannel(items);
-  if (channels.length === 0) return 50;
+  if (channels.length === 0) return 500;
 
   // 채널별 가중치 = 신뢰도 × min(건수, 캡)
   const channelWeights = channels.map(({ channel, items: channelItems }) => {
@@ -102,20 +102,19 @@ export function calculateSir(items: SirItem[]): number {
   }
 
   // 비대칭 스케일 (부정 /1.5 → 넓은 범위)
-  let sir100: number;
+  let sir1000: number;
   if (sir >= 0) {
-    sir100 = 50 + (sir / 1.0) * 50;
+    sir1000 = 500 + (sir / 1.0) * 500;
   } else {
-    sir100 = 50 + (sir / 1.5) * 50;
+    sir1000 = 500 + (sir / 1.5) * 500;
   }
 
   // 신뢰도 보정 (k=3)
   const totalCount = channelWeights.reduce((sum, cw) => sum + cw.count, 0);
   const confidence = 1 - 1 / (1 + totalCount / 3);
-  sir100 = 50 + (sir100 - 50) * confidence;
+  sir1000 = 500 + (sir1000 - 500) * confidence;
 
-  sir100 = Math.round(sir100 * 10) / 10;
-  return Math.max(0, Math.min(100, sir100));
+  return Math.max(0, Math.min(1000, Math.round(sir1000)));
 }
 
 /**
@@ -139,12 +138,12 @@ export function calculateDailySir(
   const sortedDates = [...grouped.keys()].sort();
   const result: Record<string, number> = {};
   const smoothing = 2 / (emaPeriod + 1);
-  let prevSir = 50;
+  let prevSir = 500;
 
   for (const date of sortedDates) {
     const dailyScore = calculateSir(grouped.get(date)!);
     const sir = prevSir + (dailyScore - prevSir) * smoothing;
-    result[date] = Math.round(sir * 10) / 10;
+    result[date] = Math.round(sir);
     prevSir = result[date];
   }
 

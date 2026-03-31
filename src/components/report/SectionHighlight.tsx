@@ -32,21 +32,21 @@ function StatCard({
 type TimeFrame = 'daily' | 'weekly';
 
 function getSirTier(score: number): string {
-  if (score >= 90) return '상위 1구간';
-  if (score >= 80) return '상위 2구간';
-  if (score >= 70) return '상위 3구간';
-  if (score >= 60) return '중위 1구간';
-  if (score >= 50) return '중위 2구간';
-  if (score >= 40) return '중위 3구간';
-  if (score >= 30) return '하위 1구간';
-  if (score >= 20) return '하위 2구간';
-  if (score >= 10) return '하위 3구간';
+  if (score >= 900) return '상위 1구간';
+  if (score >= 800) return '상위 2구간';
+  if (score >= 700) return '상위 3구간';
+  if (score >= 600) return '중위 1구간';
+  if (score >= 500) return '중위 2구간';
+  if (score >= 400) return '중위 3구간';
+  if (score >= 300) return '하위 1구간';
+  if (score >= 200) return '하위 2구간';
+  if (score >= 100) return '하위 3구간';
   return '하위 4구간';
 }
 
 function getSirColor(score: number): string {
-  if (score >= 61) return 'text-emerald-500';
-  if (score >= 41) return 'text-amber-500';
+  if (score >= 610) return 'text-emerald-500';
+  if (score >= 410) return 'text-amber-500';
   return 'text-red-500';
 }
 

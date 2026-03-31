@@ -171,8 +171,8 @@ export function AnalysisResult({ clusters, standaloneItems, crawlItems, communit
         const items = analysisData.filter((p) => p.category === category);
         if (items.length === 0) return null;
 
-        const categoryScore = parseFloat(
-          (items.reduce((sum, p) => sum + p.sirScore, 0) / items.length).toFixed(1)
+        const categoryScore = Math.round(
+          items.reduce((sum, p) => sum + p.sirScore, 0) / items.length
         );
         const isCategoryOpen = categories.has(category);
 
