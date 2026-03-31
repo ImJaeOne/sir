@@ -372,7 +372,12 @@ export async function getSearchTrend(workspaceId: string, days: number = 30, end
   const params = new URLSearchParams({ days: String(days) });
   if (endDate) params.set('end_date', endDate);
 
-  const res = await fetch(`http://localhost:8000/api/search-trend/${workspaceId}?${params}`);
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return [];
+
+  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/search-trend/${workspaceId}?${params}`, {
+    headers: { Authorization: `Bearer ${session.access_token}` },
+  });
   if (!res.ok) return [];
   const data = await res.json();
   return data.trend ?? [];

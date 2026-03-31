@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import {
   useWorkspaceSir, useWeeklySummary, useSirStockData, useSirRanking,
   useChannelItems, useChannelStats, useNewsClusters, useRiskItems, useStrategies,
+  useSearchTrend,
 } from '@/hooks/report/useReportQuery';
 import { SectionHighlight } from '@/components/report/SectionHighlight';
 import { SectionReputation } from '@/components/report/SectionReputation';
@@ -27,6 +28,7 @@ export default function ReportPage() {
   const { data: newsClusters } = useNewsClusters(workspaceId);
   const { data: riskItems } = useRiskItems(workspaceId);
   const { data: strategies } = useStrategies(workspaceId);
+  const { data: naverTrend } = useSearchTrend(workspaceId);
 
   // 파생 쿼리 — channelItems 캐시에서 stats 계산
   const { data: channelStats } = useChannelStats(workspaceId, channelItems);
@@ -103,7 +105,7 @@ export default function ReportPage() {
         />
 
         <div className="print-break">
-          <SectionReputation naverTrend={[]} channelStats={channelStats ?? []} />
+          <SectionReputation naverTrend={naverTrend ?? []} channelStats={channelStats ?? []} />
         </div>
 
         <div className="print-break">
