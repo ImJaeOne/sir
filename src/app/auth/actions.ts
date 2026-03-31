@@ -42,7 +42,7 @@ export async function signup(formData: FormData): Promise<AuthResult> {
     return { success: false, error: error.message };
   }
 
-  redirect('/auth/login?message=check_email');
+  redirect('/');
 }
 
 export async function logout() {

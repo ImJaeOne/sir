@@ -40,7 +40,11 @@ export function getFirstDayOfWeek(year: number, month: number): number {
 
 export function getRelativeTime(dateStr: string): string {
   const now = Date.now();
-  const past = new Date(dateStr).getTime();
+  // timezone 정보 없는 경우 KST로 간주
+  const normalized = dateStr.includes('+') || dateStr.endsWith('Z')
+    ? dateStr
+    : dateStr + '+09:00';
+  const past = new Date(normalized).getTime();
   const diff = now - past;
 
   const minutes = Math.floor(diff / 60000);
