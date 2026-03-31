@@ -14,6 +14,7 @@ import {
 import { useWorkspace, useWorkspaceProfile } from '@/hooks/workspace/useWorkspaceQuery';
 import { useUpdateWorkspaceProfile } from '@/hooks/workspace/useWorkspaceMutation';
 import { useSessions } from '@/hooks/crawl/useSessionQuery';
+import { useTriggerPipeline } from '@/hooks/crawl/usePipelineMutation';
 import { getRelativeTime } from '@/utils/date';
 import { PLATFORMS, CATEGORY_LABELS } from '@/constants/platforms';
 import type { CrawlSession } from '@/types/news';
@@ -129,6 +130,96 @@ function EditProfileModal({
   );
 }
 
+function formatPeriodDate(date: Date): string {
+  return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`;
+}
+
+function StartAnalysisModal({
+  workspaceId,
+  onClose,
+  onTriggered,
+}: {
+  workspaceId: string;
+  onClose: () => void;
+  onTriggered: () => void;
+}) {
+  const trigger = useTriggerPipeline(workspaceId);
+
+  const periodEnd = new Date();
+  periodEnd.setDate(periodEnd.getDate() - 1);
+  const periodStart = new Date(periodEnd);
+  periodStart.setDate(periodStart.getDate() - 29);
+
+  const handleConfirm = () => {
+    trigger.mutate(undefined, {
+      onSuccess: () => {
+        toast.success('데이터 수집이 시작되었습니다.');
+        onTriggered();
+        onClose();
+      },
+      onError: (err) => {
+        toast.error(err.message || '수집 시작에 실패했습니다.');
+      },
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 p-6 flex flex-col gap-5">
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-bold text-slate-800">데이터 수집 시작</h2>
+          <button
+            onClick={onClose}
+            className="text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+          >
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 20 20"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+            >
+              <path d="M5 5l10 10M15 5L5 15" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="bg-slate-50 rounded-xl px-4 py-3.5 flex flex-col gap-1.5">
+          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+            수집 기간
+          </span>
+          <span className="text-sm font-semibold text-slate-800">
+            {formatPeriodDate(periodStart)} ~ {formatPeriodDate(periodEnd)}
+          </span>
+          <span className="text-xs text-slate-400">
+            뉴스, 커뮤니티, 블로그, 유튜브 5개 플랫폼에서 수집합니다
+          </span>
+        </div>
+
+        <div className="flex justify-end gap-2 pt-1">
+          <button
+            onClick={onClose}
+            disabled={trigger.isPending}
+            className="px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-500 hover:bg-slate-100 transition-colors cursor-pointer disabled:opacity-40"
+          >
+            취소
+          </button>
+          <button
+            onClick={handleConfirm}
+            disabled={trigger.isPending}
+            className="bg-blue-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-700 active:scale-95 transition-all duration-150 cursor-pointer disabled:opacity-40 disabled:cursor-default"
+          >
+            {trigger.isPending ? '시작 중...' : '수집 시작'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function getPlatformLabel(platformId: string | null): string {
   if (!platformId) return '기타';
   return PLATFORMS.find((p) => p.id === platformId)?.label ?? platformId;
@@ -157,8 +248,17 @@ export default function WorkspaceDetailPage() {
 
   const { data: workspace } = useWorkspace(workspaceId);
   const { data: profile } = useWorkspaceProfile(workspaceId);
-  const { data: sessions, isLoading } = useSessions(workspaceId);
   const [showEditProfile, setShowEditProfile] = useState(false);
+  const [showStartAnalysis, setShowStartAnalysis] = useState(false);
+  const [pipelineTriggered, setPipelineTriggered] = useState(false);
+  const { data: sessions, isLoading } = useSessions(workspaceId, pipelineTriggered);
+
+  // 파이프라인 트리거 후 세션이 나타나면 폴링 종료
+  useEffect(() => {
+    if (pipelineTriggered && sessions && sessions.length > 0) {
+      setPipelineTriggered(false);
+    }
+  }, [pipelineTriggered, sessions]);
 
   // 날짜별 그룹핑
   const groupedByDate = useMemo<SessionGroup[]>(() => {
@@ -218,6 +318,14 @@ export default function WorkspaceDetailPage() {
           />
         )}
 
+        {showStartAnalysis && (
+          <StartAnalysisModal
+            workspaceId={workspaceId}
+            onClose={() => setShowStartAnalysis(false)}
+            onTriggered={() => setPipelineTriggered(true)}
+          />
+        )}
+
         {/* 세션 리스트 (날짜별 그룹핑) */}
         <div className="flex flex-col gap-4">
           <h2 className="text-sm font-semibold text-slate-700">수집 히스토리</h2>
@@ -225,9 +333,26 @@ export default function WorkspaceDetailPage() {
           {isLoading && <p className="text-sm text-slate-400 py-8 text-center">불러오는 중...</p>}
 
           {!isLoading && groupedByDate.length === 0 && (
-            <div className="bg-white rounded-2xl border border-dashed border-slate-200 shadow-sm py-12 flex flex-col items-center gap-2">
-              <span className="text-sm text-slate-400">수집된 데이터가 없습니다</span>
-              <span className="text-xs text-slate-300">크롤링을 실행하면 여기에 표시됩니다</span>
+            <div className="bg-white rounded-2xl border border-dashed border-slate-200 shadow-sm py-12 flex flex-col items-center gap-3">
+              {pipelineTriggered ? (
+                <>
+                  <svg className="animate-spin h-5 w-5 text-blue-500" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  <span className="text-sm text-slate-500">수집 준비 중...</span>
+                </>
+              ) : (
+                <>
+                  <span className="text-sm text-slate-400">아직 수집된 데이터가 없습니다</span>
+                  <button
+                    onClick={() => setShowStartAnalysis(true)}
+                    className="bg-blue-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-700 active:scale-95 transition-all duration-150 cursor-pointer"
+                  >
+                    분석 시작하기
+                  </button>
+                </>
+              )}
             </div>
           )}
 

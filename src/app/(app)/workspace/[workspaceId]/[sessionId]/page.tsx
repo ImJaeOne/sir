@@ -10,7 +10,7 @@ import { useSessionsByDate, useSession } from '@/hooks/crawl/useSessionQuery';
 import { useStockPrices } from '@/hooks/crawl/useStockQuery';
 import { useWorkspace } from '@/hooks/workspace/useWorkspaceQuery';
 import { Database, Radio, TrendingUp } from 'lucide-react';
-import { CompanyBadge, TickerBadge, StatusBadge } from '@/components/ui/Badge';
+import { TickerBadge, StatusBadge } from '@/components/ui/Badge';
 import { PLATFORMS } from '@/constants/platforms';
 import { calculateSir } from '@/utils/sir';
 
@@ -25,7 +25,7 @@ function SessionHeader({
   workspace,
   onBack,
 }: {
-  workspace: { name: string; company_name: string; ticker: string };
+  workspace: { company_name: string; ticker: string };
   onBack: () => void;
 }) {
   return (
@@ -40,7 +40,6 @@ function SessionHeader({
       </button>
       <h1 className="text-xl font-bold text-slate-800">{workspace.company_name}</h1>
       <div className="flex items-center gap-1">
-        <CompanyBadge companyName={workspace.company_name} />
         <TickerBadge ticker={workspace.ticker} />
       </div>
     </div>
@@ -178,8 +177,8 @@ export default function SessionPage() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
-        <div className="max-w-2xl mx-auto flex flex-col gap-6">
-          {workspace && <SessionHeader workspace={workspace} onBack={goBack} />}
+      <div className="max-w-2xl mx-auto flex flex-col gap-6">
+        {workspace && <SessionHeader workspace={workspace} onBack={goBack} />}
 
           {/* 세션 상태 요약 */}
           {sessions && sessions.length > 0 && (
@@ -206,7 +205,7 @@ export default function SessionPage() {
           {stockPrices && stockPrices.length > 0 && hasAnalysis && (
             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 sm:p-6">
               <StockSirChart
-                stockPrices={stockPrices}
+                stockPrices={stockPrices.map(s => ({ date: s.date, close: s.close_price }))}
                 crawlItems={[
                   ...(crawlData?.newsItems ?? []).map(i => ({
                     platform_id: i.platform_id,
@@ -254,7 +253,6 @@ export default function SessionPage() {
               <p className="text-sm text-slate-500">아직 분석이 진행되지 않았습니다</p>
             </div>
           )}
-        </div>
       </div>
     </div>
   );

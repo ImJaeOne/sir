@@ -23,7 +23,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: '홈', href: '/', icon: Home },
   { label: '워크스페이스', href: '/workspace', icon: LayoutDashboard },
   { label: '모니터링', href: '#', icon: Activity, disabled: true },
-  { label: '보고서', href: '#', icon: FileText, disabled: true },
+  { label: '보고서', href: '/report', icon: FileText },
   { label: '설정', href: '#', icon: Settings, disabled: true },
 ];
 
