@@ -35,8 +35,30 @@ function SentimentTag({ sentiment }: { sentiment: string }) {
   );
 }
 
+const CHANNEL_SORT: Record<string, (a: ChannelItem, b: ChannelItem) => number> = {
+  '블로그': (a, b) => (b.impact_score ?? 0) - (a.impact_score ?? 0),
+  '유튜브': (a, b) => (b.views ?? 0) - (a.views ?? 0),
+  '종토방': (a, b) => (b.views ?? 0) - (a.views ?? 0),
+  '디시인사이드': (a, b) => (b.views ?? 0) - (a.views ?? 0),
+};
+
+const CHANNEL_MAX = 100;
+
+const SENTIMENT_FILTERS = [
+  { key: 'all', label: '전체' },
+  { key: 'positive', label: '긍정' },
+  { key: 'neutral', label: '중립' },
+  { key: 'negative', label: '부정' },
+] as const;
+
 function ChannelAccordion({ name, total, trend, items }: { name: string; total: number; trend: string; items: ChannelItem[] }) {
   const [open, setOpen] = useState(false);
+  const [filter, setFilter] = useState<string>('all');
+
+  const sortFn = CHANNEL_SORT[name];
+  const sorted = sortFn ? [...items].sort(sortFn) : items;
+  const filtered = filter === 'all' ? sorted : sorted.filter(i => i.sentiment === filter);
+  const limited = filtered.slice(0, CHANNEL_MAX);
 
   return (
     <div className={`border rounded-xl overflow-hidden transition-colors ${open ? 'border-blue-200 bg-blue-50/30' : 'border-slate-100'}`}>
@@ -62,8 +84,23 @@ function ChannelAccordion({ name, total, trend, items }: { name: string; total: 
       </button>
       {open && (
         <div className="border-t border-slate-50 px-4 py-2">
+          <div className="flex gap-1.5 mb-3 mt-1">
+            {SENTIMENT_FILTERS.map(f => (
+              <button
+                key={f.key}
+                onClick={() => setFilter(f.key)}
+                className={`text-xs px-2.5 py-1 rounded-full transition-colors ${
+                  filter === f.key
+                    ? 'bg-blue-500 text-white'
+                    : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
           <ul className="divide-y divide-slate-50">
-            {items.slice(0, 20).map((item, i) => (
+            {limited.map((item, i) => (
               <li key={i} className="flex items-center justify-between gap-3 py-2">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
@@ -89,6 +126,9 @@ function ChannelAccordion({ name, total, trend, items }: { name: string; total: 
               </li>
             ))}
           </ul>
+          {filtered.length > CHANNEL_MAX && (
+            <p className="text-xs text-slate-400 text-center py-2">최대 {CHANNEL_MAX}건까지 표시됩니다</p>
+          )}
         </div>
       )}
     </div>
@@ -132,6 +172,15 @@ function ClusterItem({ cluster }: { cluster: NewsCluster }) {
 
 function NewsClusterAccordion({ total, trend, clusters, unclustered }: { total: number; trend: string; clusters: NewsCluster[]; unclustered: ChannelItem[] }) {
   const [open, setOpen] = useState(false);
+  const [filter, setFilter] = useState<string>('all');
+
+  const sortedClusters = [...clusters].sort((a, b) => b.items.length - a.items.length);
+  const filteredClusters = filter === 'all'
+    ? sortedClusters
+    : sortedClusters.filter(c => c.sentiment === filter);
+  const filteredUnclustered = filter === 'all'
+    ? unclustered
+    : unclustered.filter(i => i.sentiment === filter);
 
   return (
     <div className={`border rounded-xl overflow-hidden transition-colors ${open ? 'border-blue-200 bg-blue-50/30' : 'border-slate-100'}`}>
@@ -153,14 +202,29 @@ function NewsClusterAccordion({ total, trend, clusters, unclustered }: { total: 
       </button>
       {open && (
         <div className="border-t border-slate-50 px-4 py-2">
-          {clusters.map((cluster) => (
+          <div className="flex gap-1.5 mb-3 mt-1">
+            {SENTIMENT_FILTERS.map(f => (
+              <button
+                key={f.key}
+                onClick={() => setFilter(f.key)}
+                className={`text-xs px-2.5 py-1 rounded-full transition-colors ${
+                  filter === f.key
+                    ? 'bg-blue-500 text-white'
+                    : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+          {filteredClusters.map((cluster) => (
             <ClusterItem key={cluster.id} cluster={cluster} />
           ))}
-          {unclustered.length > 0 && (
+          {filteredUnclustered.length > 0 && (
             <>
               <div className="border-t border-slate-100 my-2" />
               <p className="text-[10px] text-slate-400 mb-1">미분류 기사</p>
-              {unclustered.map((item, i) => (
+              {filteredUnclustered.map((item, i) => (
                 <div key={i} className="py-1.5">
                   <div className="flex items-center gap-2">
                     <SentimentTag sentiment={item.sentiment} />
