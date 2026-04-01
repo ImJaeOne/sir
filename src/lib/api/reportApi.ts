@@ -335,6 +335,8 @@ const CATEGORY_LABELS: Record<string, string> = {
   community: '커뮤니티 채널 대응 전략',
 };
 
+const CATEGORY_ORDER = ['news', 'sns', 'community'];
+
 export async function getStrategies(workspaceId: string): Promise<StrategyGroup[]> {
   const { data } = await supabase
     .from('session_strategies')
@@ -343,12 +345,14 @@ export async function getStrategies(workspaceId: string): Promise<StrategyGroup[
     .not('category', 'is', null)
     .order('created_at', { ascending: false });
 
-  return (data ?? []).map((row) => ({
+  const items = (data ?? []).map((row) => ({
     category: row.category,
     label: CATEGORY_LABELS[row.category] ?? row.category,
     backgrounds: row.strategy_background ?? [],
     proposals: row.strategy_proposal ?? [],
   }));
+
+  return items.sort((a, b) => CATEGORY_ORDER.indexOf(a.category) - CATEGORY_ORDER.indexOf(b.category));
 }
 
 // ── 검색 트렌드 ──
