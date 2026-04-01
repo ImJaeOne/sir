@@ -9,7 +9,7 @@ export async function getWeeklySummary(workspaceId: string): Promise<string[]> {
     .from('session_strategies')
     .select('summary')
     .eq('workspace_id', workspaceId)
-    .is('platform_id', null)
+    .is('category', null)
     .order('created_at', { ascending: false })
     .limit(1);
   return data?.[0]?.summary ?? [];
@@ -81,16 +81,16 @@ export interface SirRanking {
 }
 
 const TIER_RANGES = [
-  { label: '하위 4구간 (0~9)', min: 0, max: 10 },
-  { label: '하위 3구간 (10~19)', min: 10, max: 20 },
-  { label: '하위 2구간 (20~29)', min: 20, max: 30 },
-  { label: '하위 1구간 (30~39)', min: 30, max: 40 },
-  { label: '중위 3구간 (40~49)', min: 40, max: 50 },
-  { label: '중위 2구간 (50~59)', min: 50, max: 60 },
-  { label: '중위 1구간 (60~69)', min: 60, max: 70 },
-  { label: '상위 3구간 (70~79)', min: 70, max: 80 },
-  { label: '상위 2구간 (80~89)', min: 80, max: 90 },
-  { label: '상위 1구간 (90~100)', min: 90, max: 101 },
+  { label: '하위 4구간 (0~99)', min: 0, max: 100 },
+  { label: '하위 3구간 (100~199)', min: 100, max: 200 },
+  { label: '하위 2구간 (200~299)', min: 200, max: 300 },
+  { label: '하위 1구간 (300~399)', min: 300, max: 400 },
+  { label: '중위 3구간 (400~499)', min: 400, max: 500 },
+  { label: '중위 2구간 (500~599)', min: 500, max: 600 },
+  { label: '중위 1구간 (600~699)', min: 600, max: 700 },
+  { label: '상위 3구간 (700~799)', min: 700, max: 800 },
+  { label: '상위 2구간 (800~899)', min: 800, max: 900 },
+  { label: '상위 1구간 (900~1000)', min: 900, max: 1001 },
 ];
 
 export async function getSirRanking(workspaceId: string): Promise<SirRanking> {
@@ -125,29 +125,37 @@ export interface ChannelStat {
   neutral: number;
 }
 
-const CHANNEL_COLORS: Record<string, string> = {
-  naver_news: '#6366f1',
-  naver_blog: '#38bdf8',
-  youtube: '#f43f5e',
-  naver_stock: '#22c55e',
-  dcinside: '#f59e0b',
+const PLATFORM_TO_CHANNEL: Record<string, string> = {
+  naver_news: 'news',
+  naver_blog: 'blog',
+  youtube: 'youtube',
+  naver_stock: 'community',
+  dcinside: 'community',
 };
 
-/** channelItems + sessions 캐시에서 channelStats를 파생 */
+const CHANNEL_CONFIG: { id: string; label: string; color: string }[] = [
+  { id: 'news', label: '뉴스', color: '#6366f1' },
+  { id: 'blog', label: '블로그', color: '#38bdf8' },
+  { id: 'youtube', label: '유튜브', color: '#f43f5e' },
+  { id: 'community', label: '커뮤니티', color: '#22c55e' },
+];
+
+/** channelItems + sessions 캐시에서 channelStats를 파생 (카테고리 기반) */
 export async function getChannelStats(workspaceId: string, channelItems: ChannelItem[]): Promise<ChannelStat[]> {
-  // 플랫폼별 감성 집계
-  const byPlatform = new Map<string, { positive: number; negative: number; neutral: number }>();
+  // 채널별 감성 집계
+  const byChannel = new Map<string, { positive: number; negative: number; neutral: number }>();
   for (const item of channelItems) {
-    if (!byPlatform.has(item.platform_id)) {
-      byPlatform.set(item.platform_id, { positive: 0, negative: 0, neutral: 0 });
+    const channel = PLATFORM_TO_CHANNEL[item.platform_id] ?? item.platform_id;
+    if (!byChannel.has(channel)) {
+      byChannel.set(channel, { positive: 0, negative: 0, neutral: 0 });
     }
-    const counts = byPlatform.get(item.platform_id)!;
+    const counts = byChannel.get(channel)!;
     if (item.sentiment === 'positive') counts.positive++;
     else if (item.sentiment === 'negative') counts.negative++;
     else counts.neutral++;
   }
 
-  // 세션별 SIR (1번만 쿼리)
+  // 세션별 SIR → 카테고리별 평균
   const { data: sessions } = await supabase
     .from('sessions')
     .select('platform_id, sir_score')
@@ -155,24 +163,26 @@ export async function getChannelStats(workspaceId: string, channelItems: Channel
     .eq('status', 'done')
     .order('created_at', { ascending: false });
 
-  const sirMap = new Map<string, number>();
+  const sirByChannel = new Map<string, number[]>();
   for (const s of sessions ?? []) {
-    if (!sirMap.has(s.platform_id) && s.sir_score != null) {
-      sirMap.set(s.platform_id, s.sir_score);
-    }
+    if (s.sir_score == null) continue;
+    const channel = PLATFORM_TO_CHANNEL[s.platform_id] ?? s.platform_id;
+    if (!sirByChannel.has(channel)) sirByChannel.set(channel, []);
+    sirByChannel.get(channel)!.push(s.sir_score);
   }
 
-  const PLATFORM_ORDER = ['naver_news', 'naver_blog', 'youtube', 'naver_stock', 'dcinside'];
-  return PLATFORM_ORDER
-    .filter(id => byPlatform.has(id))
-    .map(id => {
-      const counts = byPlatform.get(id)!;
+  return CHANNEL_CONFIG
+    .filter(c => byChannel.has(c.id))
+    .map(c => {
+      const counts = byChannel.get(c.id)!;
+      const sirScores = sirByChannel.get(c.id) ?? [];
+      const avgSir = sirScores.length > 0 ? Math.round(sirScores.reduce((a, b) => a + b, 0) / sirScores.length) : 500;
       return {
-        id,
-        label: PLATFORM_LABELS[id] ?? id,
+        id: c.id,
+        label: c.label,
         value: counts.positive + counts.negative + counts.neutral,
-        color: CHANNEL_COLORS[id] ?? '#94a3b8',
-        sir: sirMap.get(id) ?? 50,
+        color: c.color,
+        sir: avgSir,
         positive: counts.positive,
         negative: counts.negative,
         neutral: counts.neutral,
@@ -233,6 +243,7 @@ export interface ChannelItem {
   published_at: string | null;
   critical_type: string | null;
   cluster_id: string | null;
+  impact_score: number | null;
 }
 
 export async function getChannelItems(workspaceId: string): Promise<ChannelItem[]> {
@@ -244,7 +255,7 @@ export async function getChannelItems(workspaceId: string): Promise<ChannelItem[
       .select('id, platform_id, title, content, sentiment, link, views, published_at, critical_type')
       .eq('workspace_id', workspaceId).eq('is_relevant', true),
     supabase.from('sns_items')
-      .select('id, platform_id, title, content, summary, sentiment, link, author, views, published_at, critical_type')
+      .select('id, platform_id, title, content, summary, sentiment, link, author, views, published_at, critical_type, impact_score')
       .eq('workspace_id', workspaceId).eq('is_relevant', true),
   ]);
 
@@ -262,6 +273,7 @@ export async function getChannelItems(workspaceId: string): Promise<ChannelItem[
       published_at: r.published_at ?? null,
       critical_type: r.critical_type ?? null,
       cluster_id: r.cluster_id ?? null,
+      impact_score: r.impact_score ?? null,
       ...defaults,
     }));
 
@@ -321,44 +333,36 @@ export async function getRiskItems(workspaceId: string): Promise<RiskItem[]> {
 // ── 대응 전략 ──
 
 export interface StrategyGroup {
-  platform: string;
+  category: string;
+  label: string;
   backgrounds: string[];
   proposals: string[];
 }
 
-const STRATEGY_PLATFORM_MAP: Record<string, string> = {
-  naver_news: '뉴스 채널 대응 전략',
-  naver_blog: 'SNS 채널 대응 전략',
-  youtube: 'SNS 채널 대응 전략',
-  naver_stock: '커뮤니티 채널 대응 전략',
-  dcinside: '커뮤니티 채널 대응 전략',
+const CATEGORY_LABELS: Record<string, string> = {
+  news: '뉴스 채널 대응 전략',
+  sns: 'SNS 채널 대응 전략',
+  community: '커뮤니티 채널 대응 전략',
 };
+
+const CATEGORY_ORDER = ['news', 'sns', 'community'];
 
 export async function getStrategies(workspaceId: string): Promise<StrategyGroup[]> {
   const { data } = await supabase
     .from('session_strategies')
-    .select('platform_id, strategy_background, strategy_proposal')
+    .select('category, strategy_background, strategy_proposal')
     .eq('workspace_id', workspaceId)
-    .not('platform_id', 'is', null)
+    .not('category', 'is', null)
     .order('created_at', { ascending: false });
 
-  // platform_id → 카테고리별 그룹핑 (뉴스/SNS/커뮤니티)
-  const grouped = new Map<string, { backgrounds: string[]; proposals: string[] }>();
-  for (const row of data ?? []) {
-    const category = STRATEGY_PLATFORM_MAP[row.platform_id] ?? row.platform_id;
-    if (!grouped.has(category)) {
-      grouped.set(category, { backgrounds: [], proposals: [] });
-    }
-    const g = grouped.get(category)!;
-    g.backgrounds.push(...(row.strategy_background ?? []));
-    g.proposals.push(...(row.strategy_proposal ?? []));
-  }
-
-  return Array.from(grouped.entries()).map(([platform, data]) => ({
-    platform,
-    backgrounds: data.backgrounds.slice(0, 3),
-    proposals: data.proposals.slice(0, 3),
+  const items = (data ?? []).map((row) => ({
+    category: row.category,
+    label: CATEGORY_LABELS[row.category] ?? row.category,
+    backgrounds: row.strategy_background ?? [],
+    proposals: row.strategy_proposal ?? [],
   }));
+
+  return items.sort((a, b) => CATEGORY_ORDER.indexOf(a.category) - CATEGORY_ORDER.indexOf(b.category));
 }
 
 // ── 검색 트렌드 ──
@@ -368,17 +372,22 @@ export interface TrendPoint {
   ratio: number;
 }
 
-export async function getSearchTrend(workspaceId: string, days: number = 30, endDate?: string): Promise<TrendPoint[]> {
+export interface SearchTrendResult {
+  naver: TrendPoint[];
+  google: TrendPoint[];
+}
+
+export async function getSearchTrend(workspaceId: string, days: number = 30, endDate?: string): Promise<SearchTrendResult> {
   const params = new URLSearchParams({ days: String(days) });
   if (endDate) params.set('end_date', endDate);
 
   const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return [];
+  if (!session) return { naver: [], google: [] };
 
   const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/search-trend/${workspaceId}?${params}`, {
     headers: { Authorization: `Bearer ${session.access_token}` },
   });
-  if (!res.ok) return [];
+  if (!res.ok) return { naver: [], google: [] };
   const data = await res.json();
-  return data.trend ?? [];
+  return { naver: data.trend ?? [], google: data.google_trend ?? [] };
 }

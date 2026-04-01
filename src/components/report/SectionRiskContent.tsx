@@ -25,8 +25,8 @@ const PLATFORM_LABELS: Record<string, string> = {
   naver_news: '뉴스',
   naver_blog: '블로그',
   youtube: '유튜브',
-  naver_stock: '종토방',
-  dcinside: '디시인사이드',
+  naver_stock: '커뮤니티',
+  dcinside: '커뮤니티',
 };
 
 export function SectionRiskContent({ riskItems = [] }: { riskItems?: RiskItem[] }) {

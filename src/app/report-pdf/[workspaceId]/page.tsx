@@ -49,7 +49,7 @@ export default function ReportPdfPage() {
         </div>
         <div className="print-break">
           <PageHeader companyName={companyName} ticker={ticker} />
-          <SectionReputation pdfMode naverTrend={[]} channelStats={channelStats ?? []} />
+          <SectionReputation pdfMode naverTrend={[]} googleTrend={[]} channelStats={channelStats ?? []} />
         </div>
         <div className="print-break">
           <PageHeader companyName={companyName} ticker={ticker} />
@@ -57,7 +57,7 @@ export default function ReportPdfPage() {
         </div>
         <div className="print-break">
           <PageHeader companyName={companyName} ticker={ticker} />
-          <SectionTopContent channelItems={channelItems ?? []} />
+          <SectionTopContent channelItems={channelItems ?? []} newsClusters={newsClusters ?? []} />
         </div>
         <div className="print-break">
           <PageHeader companyName={companyName} ticker={ticker} />

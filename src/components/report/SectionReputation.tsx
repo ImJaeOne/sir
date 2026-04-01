@@ -40,7 +40,7 @@ function SirCard({
   color: string;
   change: number;
 }) {
-  const sirColor = sir >= 61 ? 'text-emerald-600' : sir >= 41 ? 'text-amber-500' : 'text-red-500';
+  const sirColor = sir >= 610 ? 'text-emerald-600' : sir >= 410 ? 'text-amber-500' : 'text-red-500';
   const isUp = change >= 0;
 
   return (
@@ -62,16 +62,20 @@ function SirCard({
 export function SectionReputation({
   pdfMode = false,
   naverTrend = [],
+  googleTrend = [],
   channelStats = [],
 }: {
   pdfMode?: boolean;
   naverTrend?: TrendPoint[];
+  googleTrend?: TrendPoint[];
   channelStats?: ChannelStat[];
 }) {
+  const googleMap = new Map(googleTrend.map((t) => [t.date, t.ratio]));
   const chartData = naverTrend.map((t) => ({
     date: t.date,
     label: t.date.slice(5),
     네이버: t.ratio,
+    구글: googleMap.get(t.date) ?? null,
   }));
 
   return (
@@ -84,13 +88,19 @@ export function SectionReputation({
       {/* 검색량 추이 */}
       <ReportCard
         title="최근 30일 기업명 키워드 검색 관심도 추이"
-        description="네이버 기준 검색 관심도 추이를 확인하여 온라인 관심도 확대 여부를 파악합니다."
+        description="네이버·구글 기준 검색 관심도 추이를 확인하여 온라인 관심도 확대 여부를 파악합니다."
+        tooltip="검색어 트렌드는 요청된 기간 중 검색 횟수가 가장 높은 시점을 100으로 두고 나머지는 상대적 값으로 제공하고 있습니다."
       >
         <div className={pdfMode ? 'h-48' : 'h-64'}>
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData} margin={{ top: 10, right: 20, bottom: 0, left: 10 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-              <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#94a3b8' }} tickLine={false} axisLine={false} />
+              <XAxis
+                dataKey="label"
+                tick={{ fontSize: 11, fill: '#94a3b8' }}
+                tickLine={false}
+                axisLine={false}
+              />
               <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} tickLine={false} axisLine={false} />
               <Tooltip
                 content={({ active, payload }) => {
@@ -99,12 +109,19 @@ export function SectionReputation({
                   const [y, m, dd] = d.date.split('-');
                   return (
                     <div className="bg-white border border-slate-200 rounded-lg px-4 py-2.5 shadow-md text-xs min-w-[160px]">
-                      <p className="font-semibold text-slate-700 mb-1.5">{y}.{Number(m)}.{Number(dd)}</p>
+                      <p className="font-semibold text-slate-700 mb-1.5">
+                        {y}.{Number(m)}.{Number(dd)}
+                      </p>
                       {payload.map((entry: any, i: number) => (
                         <div key={i} className="flex items-center gap-2">
-                          <span className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: entry.color }} />
+                          <span
+                            className="w-2.5 h-2.5 rounded-sm"
+                            style={{ backgroundColor: entry.color }}
+                          />
                           <span className="text-slate-600">{entry.name}</span>
-                          <span className="font-semibold text-slate-700 ml-auto">{entry.value}</span>
+                          <span className="font-semibold text-slate-700 ml-auto">
+                            {entry.value}
+                          </span>
                         </div>
                       ))}
                     </div>
@@ -118,6 +135,15 @@ export function SectionReputation({
                 strokeWidth={2}
                 dot={false}
                 activeDot={{ r: 5, fill: '#fff', stroke: '#22c55e', strokeWidth: 2 }}
+              />
+              <Line
+                type="monotone"
+                dataKey="구글"
+                stroke="#4285f4"
+                strokeWidth={2}
+                dot={false}
+                activeDot={{ r: 5, fill: '#fff', stroke: '#4285f4', strokeWidth: 2 }}
+                connectNulls
               />
             </LineChart>
           </ResponsiveContainer>
@@ -187,8 +213,8 @@ export function SectionReputation({
         title="데이터 수집 채널별 SIR 감정 지수"
         description="각 채널에서 수집된 콘텐츠의 감성 분석 결과를 SIR 점수로 확인합니다."
       >
-        <div className="grid grid-cols-3 gap-3 mb-3">
-          {channelStats.slice(0, 3).map((ch) => (
+        <div className="grid grid-cols-2 gap-3">
+          {channelStats.map((ch) => (
             <SirCard
               key={ch.id}
               label={ch.label}
@@ -200,21 +226,6 @@ export function SectionReputation({
               change={0}
             />
           ))}
-        </div>
-        <div className="grid grid-cols-3 gap-3">
-          {channelStats.slice(3).map((ch) => (
-            <SirCard
-              key={ch.id}
-              label={ch.label}
-              sir={ch.sir}
-              positive={ch.positive}
-              negative={ch.negative}
-              neutral={ch.neutral}
-              color={ch.color}
-              change={0}
-            />
-          ))}
-          {channelStats.slice(3).length < 3 && <div />}
         </div>
       </ReportCard>
     </section>

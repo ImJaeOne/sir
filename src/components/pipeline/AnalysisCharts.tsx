@@ -94,7 +94,7 @@ function CategoryScoreBar({ data }: { data: PlatformAnalysis[] }) {
     const items = data.filter((p) => p.category === category);
     const score =
       items.length > 0
-        ? parseFloat((items.reduce((sum, p) => sum + p.sirScore, 0) / items.length).toFixed(1))
+        ? Math.round(items.reduce((sum, p) => sum + p.sirScore, 0) / items.length)
         : 0;
     return { name: CATEGORY_LABELS[category] ?? category, score };
   });
@@ -122,7 +122,7 @@ function CategoryScoreBar({ data }: { data: PlatformAnalysis[] }) {
           />
           <Tooltip
             cursor={{ fill: '#e0f2fe' }}
-            formatter={(value) => [`${(value as number).toFixed(1)}점`, 'SIR 지수']}
+            formatter={(value) => [`${Math.round(value as number)}점`, 'SIR 지수']}
             contentStyle={{
               borderRadius: '10px',
               border: '1px solid #e2e8f0',

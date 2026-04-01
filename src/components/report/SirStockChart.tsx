@@ -80,7 +80,7 @@ export function SirStockChart({ timeFrame = 'daily' as TimeFrame, pdfMode = fals
           <YAxis
             yAxisId="sir"
             orientation="left"
-            domain={[0, 100]}
+            domain={[0, 1000]}
             tick={{ fontSize: 11, fill: '#94a3b8' }}
             axisLine={false}
             tickLine={false}

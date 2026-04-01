@@ -28,7 +28,7 @@ export default function ReportPage() {
   const { data: newsClusters } = useNewsClusters(workspaceId);
   const { data: riskItems } = useRiskItems(workspaceId);
   const { data: strategies } = useStrategies(workspaceId);
-  const { data: naverTrend } = useSearchTrend(workspaceId);
+  const { data: searchTrend } = useSearchTrend(workspaceId);
 
   // 파생 쿼리 — channelItems 캐시에서 stats 계산
   const { data: channelStats } = useChannelStats(workspaceId, channelItems);
@@ -105,7 +105,7 @@ export default function ReportPage() {
         />
 
         <div className="print-break">
-          <SectionReputation naverTrend={naverTrend ?? []} channelStats={channelStats ?? []} />
+          <SectionReputation naverTrend={searchTrend?.naver ?? []} googleTrend={searchTrend?.google ?? []} channelStats={channelStats ?? []} />
         </div>
 
         <div className="print-break">
@@ -113,7 +113,7 @@ export default function ReportPage() {
         </div>
 
         <div className="print-break">
-          <SectionTopContent channelItems={channelItems ?? []} />
+          <SectionTopContent channelItems={channelItems ?? []} newsClusters={newsClusters ?? []} />
         </div>
 
         <div className="print-break">
