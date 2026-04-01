@@ -125,29 +125,37 @@ export interface ChannelStat {
   neutral: number;
 }
 
-const CHANNEL_COLORS: Record<string, string> = {
-  naver_news: '#6366f1',
-  naver_blog: '#38bdf8',
-  youtube: '#f43f5e',
-  naver_stock: '#22c55e',
-  dcinside: '#f59e0b',
+const PLATFORM_TO_CHANNEL: Record<string, string> = {
+  naver_news: 'news',
+  naver_blog: 'blog',
+  youtube: 'youtube',
+  naver_stock: 'community',
+  dcinside: 'community',
 };
 
-/** channelItems + sessions 캐시에서 channelStats를 파생 */
+const CHANNEL_CONFIG: { id: string; label: string; color: string }[] = [
+  { id: 'news', label: '뉴스', color: '#6366f1' },
+  { id: 'blog', label: '블로그', color: '#38bdf8' },
+  { id: 'youtube', label: '유튜브', color: '#f43f5e' },
+  { id: 'community', label: '커뮤니티', color: '#22c55e' },
+];
+
+/** channelItems + sessions 캐시에서 channelStats를 파생 (카테고리 기반) */
 export async function getChannelStats(workspaceId: string, channelItems: ChannelItem[]): Promise<ChannelStat[]> {
-  // 플랫폼별 감성 집계
-  const byPlatform = new Map<string, { positive: number; negative: number; neutral: number }>();
+  // 채널별 감성 집계
+  const byChannel = new Map<string, { positive: number; negative: number; neutral: number }>();
   for (const item of channelItems) {
-    if (!byPlatform.has(item.platform_id)) {
-      byPlatform.set(item.platform_id, { positive: 0, negative: 0, neutral: 0 });
+    const channel = PLATFORM_TO_CHANNEL[item.platform_id] ?? item.platform_id;
+    if (!byChannel.has(channel)) {
+      byChannel.set(channel, { positive: 0, negative: 0, neutral: 0 });
     }
-    const counts = byPlatform.get(item.platform_id)!;
+    const counts = byChannel.get(channel)!;
     if (item.sentiment === 'positive') counts.positive++;
     else if (item.sentiment === 'negative') counts.negative++;
     else counts.neutral++;
   }
 
-  // 세션별 SIR (1번만 쿼리)
+  // 세션별 SIR → 카테고리별 평균
   const { data: sessions } = await supabase
     .from('sessions')
     .select('platform_id, sir_score')
@@ -155,24 +163,26 @@ export async function getChannelStats(workspaceId: string, channelItems: Channel
     .eq('status', 'done')
     .order('created_at', { ascending: false });
 
-  const sirMap = new Map<string, number>();
+  const sirByChannel = new Map<string, number[]>();
   for (const s of sessions ?? []) {
-    if (!sirMap.has(s.platform_id) && s.sir_score != null) {
-      sirMap.set(s.platform_id, s.sir_score);
-    }
+    if (s.sir_score == null) continue;
+    const channel = PLATFORM_TO_CHANNEL[s.platform_id] ?? s.platform_id;
+    if (!sirByChannel.has(channel)) sirByChannel.set(channel, []);
+    sirByChannel.get(channel)!.push(s.sir_score);
   }
 
-  const PLATFORM_ORDER = ['naver_news', 'naver_blog', 'youtube', 'naver_stock', 'dcinside'];
-  return PLATFORM_ORDER
-    .filter(id => byPlatform.has(id))
-    .map(id => {
-      const counts = byPlatform.get(id)!;
+  return CHANNEL_CONFIG
+    .filter(c => byChannel.has(c.id))
+    .map(c => {
+      const counts = byChannel.get(c.id)!;
+      const sirScores = sirByChannel.get(c.id) ?? [];
+      const avgSir = sirScores.length > 0 ? Math.round(sirScores.reduce((a, b) => a + b, 0) / sirScores.length) : 500;
       return {
-        id,
-        label: PLATFORM_LABELS[id] ?? id,
+        id: c.id,
+        label: c.label,
         value: counts.positive + counts.negative + counts.neutral,
-        color: CHANNEL_COLORS[id] ?? '#94a3b8',
-        sir: sirMap.get(id) ?? 500,
+        color: c.color,
+        sir: avgSir,
         positive: counts.positive,
         negative: counts.negative,
         neutral: counts.neutral,

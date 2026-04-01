@@ -213,8 +213,8 @@ export function SectionReputation({
         title="데이터 수집 채널별 SIR 감정 지수"
         description="각 채널에서 수집된 콘텐츠의 감성 분석 결과를 SIR 점수로 확인합니다."
       >
-        <div className="grid grid-cols-3 gap-3 mb-3">
-          {channelStats.slice(0, 3).map((ch) => (
+        <div className="grid grid-cols-2 gap-3">
+          {channelStats.map((ch) => (
             <SirCard
               key={ch.id}
               label={ch.label}
@@ -226,21 +226,6 @@ export function SectionReputation({
               change={0}
             />
           ))}
-        </div>
-        <div className="grid grid-cols-3 gap-3">
-          {channelStats.slice(3).map((ch) => (
-            <SirCard
-              key={ch.id}
-              label={ch.label}
-              sir={ch.sir}
-              positive={ch.positive}
-              negative={ch.negative}
-              neutral={ch.neutral}
-              color={ch.color}
-              change={0}
-            />
-          ))}
-          {channelStats.slice(3).length < 3 && <div />}
         </div>
       </ReportCard>
     </section>

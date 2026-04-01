@@ -15,12 +15,26 @@ const PLATFORM_LABELS: Record<string, string> = {
   dcinside: '디시인사이드',
 };
 
+const PLATFORM_BADGES: Record<string, { label: string; className: string }> = {
+  naver_stock: { label: 'N', className: 'bg-green-100 text-green-700' },
+  dcinside: { label: 'DC', className: 'bg-amber-100 text-amber-700' },
+  naver_blog: { label: '블로그', className: 'bg-sky-100 text-sky-700' },
+  youtube: { label: 'YT', className: 'bg-red-100 text-red-700' },
+};
+
+const PLATFORM_TO_CHANNEL: Record<string, string> = {
+  naver_news: 'news',
+  naver_blog: 'blog',
+  youtube: 'youtube',
+  naver_stock: 'community',
+  dcinside: 'community',
+};
+
 const channelDescriptions: Record<string, string> = {
   '뉴스': '주요 포털 및 언론사 기사 수집',
   '블로그': '주요 포털 블로그 포스팅 수집',
   '유튜브': '영상 요약 기반 분석',
-  '종토방': '투자자 의견 및 이슈 확산 게시물',
-  '디시인사이드': '투자자 의견 및 이슈 확산 게시물',
+  '커뮤니티': '네이버 종목토론방, 디시인사이드 게시글 수집',
 };
 
 function SentimentTag({ sentiment }: { sentiment: string }) {
@@ -38,8 +52,7 @@ function SentimentTag({ sentiment }: { sentiment: string }) {
 const CHANNEL_SORT: Record<string, (a: ChannelItem, b: ChannelItem) => number> = {
   '블로그': (a, b) => (b.impact_score ?? 0) - (a.impact_score ?? 0),
   '유튜브': (a, b) => (b.views ?? 0) - (a.views ?? 0),
-  '종토방': (a, b) => (b.views ?? 0) - (a.views ?? 0),
-  '디시인사이드': (a, b) => (b.views ?? 0) - (a.views ?? 0),
+  '커뮤니티': (a, b) => (b.views ?? 0) - (a.views ?? 0),
 };
 
 const CHANNEL_MAX = 100;
@@ -100,31 +113,37 @@ function ChannelAccordion({ name, total, trend, items }: { name: string; total: 
             ))}
           </div>
           <ul className="divide-y divide-slate-50">
-            {limited.map((item, i) => (
-              <li key={i} className="flex items-center justify-between gap-3 py-2">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <a
-                      href={item.link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm text-slate-700 hover:text-blue-600 hover:underline truncate transition-colors"
-                    >
-                      {item.title}
-                    </a>
-                    {item.source && <span className="text-[10px] text-slate-400 shrink-0">{item.source}</span>}
+            {limited.map((item, i) => {
+              const badge = PLATFORM_BADGES[item.platform_id];
+              return (
+                <li key={i} className="flex items-center justify-between gap-3 py-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      {badge && (
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0 ${badge.className}`}>{badge.label}</span>
+                      )}
+                      <a
+                        href={item.link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-slate-700 hover:text-blue-600 hover:underline truncate transition-colors"
+                      >
+                        {item.title}
+                      </a>
+                      {item.source && <span className="text-[10px] text-slate-400 shrink-0">{item.source}</span>}
+                    </div>
+                    {(item.summary || item.content) && (
+                      <p className="text-xs text-slate-400 mt-0.5 truncate">
+                        {(item.summary || item.content || '').length > 60
+                          ? (item.summary || item.content || '').slice(0, 60) + '…'
+                          : (item.summary || item.content)}
+                      </p>
+                    )}
                   </div>
-                  {(item.summary || item.content) && (
-                    <p className="text-xs text-slate-400 mt-0.5 truncate">
-                      {(item.summary || item.content || '').length > 60
-                        ? (item.summary || item.content || '').slice(0, 60) + '…'
-                        : (item.summary || item.content)}
-                    </p>
-                  )}
-                </div>
-                <SentimentTag sentiment={item.sentiment} />
-              </li>
-            ))}
+                  <SentimentTag sentiment={item.sentiment} />
+                </li>
+              );
+            })}
           </ul>
           {filtered.length > CHANNEL_MAX && (
             <p className="text-xs text-slate-400 text-center py-2">최대 {CHANNEL_MAX}건까지 표시됩니다</p>
@@ -260,12 +279,12 @@ export function SectionSentimentDetail({ pdfMode = false, channelStats = [], cha
     부정: ch.negative,
   }));
 
-  // channelItems → 채널별 그룹핑
+  // channelItems → 채널별 그룹핑 (커뮤니티만 묶음)
   const itemsByChannel = new Map<string, ChannelItem[]>();
   for (const item of channelItems) {
-    const label = PLATFORM_LABELS[item.platform_id] ?? item.platform_id;
-    if (!itemsByChannel.has(label)) itemsByChannel.set(label, []);
-    itemsByChannel.get(label)!.push(item);
+    const channel = PLATFORM_TO_CHANNEL[item.platform_id] ?? item.platform_id;
+    if (!itemsByChannel.has(channel)) itemsByChannel.set(channel, []);
+    itemsByChannel.get(channel)!.push(item);
   }
 
   const totalPositive = sentimentData.reduce((s, d) => s + d.긍정, 0);
@@ -354,11 +373,11 @@ export function SectionSentimentDetail({ pdfMode = false, channelStats = [], cha
         <div className="flex flex-col gap-2">
           {channelStats.map(ch => {
             const trend = ch.positive >= ch.negative ? '긍정 우세' : '부정 우세';
-            if (ch.id === 'naver_news') {
-              const unclustered = (itemsByChannel.get('뉴스') ?? []).filter(i => !i.cluster_id);
+            if (ch.id === 'news') {
+              const unclustered = (itemsByChannel.get('news') ?? []).filter(i => !i.cluster_id);
               return <NewsClusterAccordion key={ch.id} total={ch.value} trend={trend} clusters={newsClusters} unclustered={unclustered} />;
             }
-            const items = itemsByChannel.get(ch.label) ?? [];
+            const items = itemsByChannel.get(ch.id) ?? [];
             return <ChannelAccordion key={ch.id} name={ch.label} total={ch.value} trend={trend} items={items} />;
           })}
         </div>
