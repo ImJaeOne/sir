@@ -18,8 +18,6 @@ const PLATFORM_LABELS: Record<string, string> = {
 const PLATFORM_BADGES: Record<string, { label: string; className: string }> = {
   naver_stock: { label: 'N', className: 'bg-green-100 text-green-700' },
   dcinside: { label: 'DC', className: 'bg-amber-100 text-amber-700' },
-  naver_blog: { label: '블로그', className: 'bg-sky-100 text-sky-700' },
-  youtube: { label: 'YT', className: 'bg-red-100 text-red-700' },
 };
 
 const PLATFORM_TO_CHANNEL: Record<string, string> = {
