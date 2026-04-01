@@ -9,7 +9,7 @@ export async function getWeeklySummary(workspaceId: string): Promise<string[]> {
     .from('session_strategies')
     .select('summary')
     .eq('workspace_id', workspaceId)
-    .is('platform_id', null)
+    .is('category', null)
     .order('created_at', { ascending: false })
     .limit(1);
   return data?.[0]?.summary ?? [];
@@ -323,43 +323,31 @@ export async function getRiskItems(workspaceId: string): Promise<RiskItem[]> {
 // ── 대응 전략 ──
 
 export interface StrategyGroup {
-  platform: string;
+  category: string;
+  label: string;
   backgrounds: string[];
   proposals: string[];
 }
 
-const STRATEGY_PLATFORM_MAP: Record<string, string> = {
-  naver_news: '뉴스 채널 대응 전략',
-  naver_blog: 'SNS 채널 대응 전략',
-  youtube: 'SNS 채널 대응 전략',
-  naver_stock: '커뮤니티 채널 대응 전략',
-  dcinside: '커뮤니티 채널 대응 전략',
+const CATEGORY_LABELS: Record<string, string> = {
+  news: '뉴스 채널 대응 전략',
+  sns: 'SNS 채널 대응 전략',
+  community: '커뮤니티 채널 대응 전략',
 };
 
 export async function getStrategies(workspaceId: string): Promise<StrategyGroup[]> {
   const { data } = await supabase
     .from('session_strategies')
-    .select('platform_id, strategy_background, strategy_proposal')
+    .select('category, strategy_background, strategy_proposal')
     .eq('workspace_id', workspaceId)
-    .not('platform_id', 'is', null)
+    .not('category', 'is', null)
     .order('created_at', { ascending: false });
 
-  // platform_id → 카테고리별 그룹핑 (뉴스/SNS/커뮤니티)
-  const grouped = new Map<string, { backgrounds: string[]; proposals: string[] }>();
-  for (const row of data ?? []) {
-    const category = STRATEGY_PLATFORM_MAP[row.platform_id] ?? row.platform_id;
-    if (!grouped.has(category)) {
-      grouped.set(category, { backgrounds: [], proposals: [] });
-    }
-    const g = grouped.get(category)!;
-    g.backgrounds.push(...(row.strategy_background ?? []));
-    g.proposals.push(...(row.strategy_proposal ?? []));
-  }
-
-  return Array.from(grouped.entries()).map(([platform, data]) => ({
-    platform,
-    backgrounds: data.backgrounds.slice(0, 3),
-    proposals: data.proposals.slice(0, 3),
+  return (data ?? []).map((row) => ({
+    category: row.category,
+    label: CATEGORY_LABELS[row.category] ?? row.category,
+    backgrounds: row.strategy_background ?? [],
+    proposals: row.strategy_proposal ?? [],
   }));
 }
 
