@@ -43,7 +43,7 @@ export default function ReportPage() {
   const { data: newsClusters } = useNewsClusters(workspaceId);
   const { data: riskItems } = useRiskItems(workspaceId);
   const { data: strategies } = useStrategies(workspaceId);
-  const { data: searchTrend } = useSearchTrend(workspaceId);
+  const { data: searchTrend } = useSearchTrend(workspaceId, reportId);
 
   // 파생 쿼리 — channelItems 캐시에서 stats 계산
   const { data: channelStats } = useChannelStats(workspaceId, channelItems);

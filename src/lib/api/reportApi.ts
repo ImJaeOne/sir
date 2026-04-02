@@ -394,17 +394,18 @@ export interface SearchTrendResult {
   google: TrendPoint[];
 }
 
-export async function getSearchTrend(workspaceId: string, days: number = 30, endDate?: string): Promise<SearchTrendResult> {
-  const params = new URLSearchParams({ days: String(days) });
-  if (endDate) params.set('end_date', endDate);
+export async function getSearchTrend(workspaceId: string, reportId?: string): Promise<SearchTrendResult> {
+  if (!reportId) return { naver: [], google: [] };
 
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return { naver: [], google: [] };
+  const { data } = await supabase
+    .from('search_trends')
+    .select('provider, trend_data')
+    .eq('report_id', reportId);
 
-  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/search-trend/${workspaceId}?${params}`, {
-    headers: { Authorization: `Bearer ${session.access_token}` },
-  });
-  if (!res.ok) return { naver: [], google: [] };
-  const data = await res.json();
-  return { naver: data.trend ?? [], google: data.google_trend ?? [] };
+  const result: SearchTrendResult = { naver: [], google: [] };
+  for (const row of data ?? []) {
+    if (row.provider === 'naver') result.naver = row.trend_data ?? [];
+    if (row.provider === 'google') result.google = row.trend_data ?? [];
+  }
+  return result;
 }

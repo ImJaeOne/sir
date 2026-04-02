@@ -23,7 +23,7 @@ export const reportKeys = {
   channelStats: (id: string) => ['report', id, 'channelStats'] as const,
   riskItems: (id: string) => ['report', id, 'riskItems'] as const,
   strategies: (id: string) => ['report', id, 'strategies'] as const,
-  searchTrend: (id: string, days: number, endDate?: string) => ['report', id, 'searchTrend', days, endDate] as const,
+  searchTrend: (id: string, reportId?: string) => ['report', id, 'searchTrend', reportId] as const,
 };
 
 // 리포트 데이터는 주간 보고서 — 페이지 내 refetch 불필요, 캐시 공유 극대화
@@ -120,11 +120,11 @@ export function useStrategies(workspaceId: string) {
   });
 }
 
-export function useSearchTrend(workspaceId: string, days: number = 30, endDate?: string) {
+export function useSearchTrend(workspaceId: string, reportId?: string) {
   return useQuery({
-    queryKey: reportKeys.searchTrend(workspaceId, days, endDate),
-    queryFn: () => getSearchTrend(workspaceId, days, endDate),
-    enabled: !!workspaceId,
+    queryKey: reportKeys.searchTrend(workspaceId, reportId),
+    queryFn: () => getSearchTrend(workspaceId, reportId),
+    enabled: !!workspaceId && !!reportId,
     ...REPORT_OPTS,
   });
 }
