@@ -204,8 +204,8 @@ export default function DashboardPage() {
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <span className="text-xs text-slate-400 whitespace-nowrap">
-                    {ws.latest_report
-                      ? `${ws.latest_report.period_start.replace(/-/g, '.')} ~ ${ws.latest_report.period_end.replace(/-/g, '.')}`
+                    {(ws as any).latest_report
+                      ? `${(ws as any).latest_report.period_start.replace(/-/g, '.')} ~ ${(ws as any).latest_report.period_end.replace(/-/g, '.')}`
                       : '보고서 없음'}
                   </span>
                   <svg

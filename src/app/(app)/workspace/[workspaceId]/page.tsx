@@ -122,10 +122,6 @@ function EditProfileModal({
   );
 }
 
-function formatPeriodDate(date: Date): string {
-  return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`;
-}
-
 function CreateReportButton({ workspaceId }: { workspaceId: string }) {
   const [loading, setLoading] = useState(false);
   const queryClient = useQueryClient();
@@ -177,113 +173,6 @@ function CreateReportButton({ workspaceId }: { workspaceId: string }) {
       {loading ? '생성 중...' : '첫 보고서 생성하기'}
     </button>
   );
-}
-
-function StartAnalysisModal({
-  workspaceId,
-  onClose,
-  onTriggered,
-}: {
-  workspaceId: string;
-  onClose: () => void;
-  onTriggered: () => void;
-}) {
-  const trigger = useTriggerPipeline(workspaceId);
-
-  const periodEnd = new Date();
-  periodEnd.setDate(periodEnd.getDate() - 1);
-  const periodStart = new Date(periodEnd);
-  periodStart.setDate(periodStart.getDate() - 29);
-
-  const handleConfirm = () => {
-    trigger.mutate(undefined, {
-      onSuccess: () => {
-        toast.success('데이터 수집이 시작되었습니다.');
-        onTriggered();
-        onClose();
-      },
-      onError: (err) => {
-        toast.error(err.message || '수집 시작에 실패했습니다.');
-      },
-    });
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 p-6 flex flex-col gap-5">
-        <div className="flex items-center justify-between">
-          <h2 className="text-base font-bold text-slate-800">데이터 수집 시작</h2>
-          <button
-            onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
-          >
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 20 20"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-            >
-              <path d="M5 5l10 10M15 5L5 15" />
-            </svg>
-          </button>
-        </div>
-
-        <div className="bg-slate-50 rounded-xl px-4 py-3.5 flex flex-col gap-1.5">
-          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
-            수집 기간
-          </span>
-          <span className="text-sm font-semibold text-slate-800">
-            {formatPeriodDate(periodStart)} ~ {formatPeriodDate(periodEnd)}
-          </span>
-          <span className="text-xs text-slate-400">
-            뉴스, 커뮤니티, 블로그, 유튜브 5개 플랫폼에서 수집합니다
-          </span>
-        </div>
-
-        <div className="flex justify-end gap-2 pt-1">
-          <button
-            onClick={onClose}
-            disabled={trigger.isPending}
-            className="px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-500 hover:bg-slate-100 transition-colors cursor-pointer disabled:opacity-40"
-          >
-            취소
-          </button>
-          <button
-            onClick={handleConfirm}
-            disabled={trigger.isPending}
-            className="bg-blue-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-700 active:scale-95 transition-all duration-150 cursor-pointer disabled:opacity-40 disabled:cursor-default"
-          >
-            {trigger.isPending ? '시작 중...' : '수집 시작'}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function getPlatformLabel(platformId: string | null): string {
-  if (!platformId) return '기타';
-  return PLATFORMS.find((p) => p.id === platformId)?.label ?? platformId;
-}
-
-function toDateKey(dateStr: string): string {
-  const d = new Date(dateStr);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
-function formatDateDisplay(dateStr: string): string {
-  const d = new Date(dateStr);
-  return `${d.getFullYear().toString().slice(2)}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
-}
-
-interface SessionGroup {
-  dateKey: string;
-  displayDate: string;
-  sessions: CrawlSession[];
 }
 
 export default function WorkspaceDetailPage() {
