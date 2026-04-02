@@ -45,7 +45,7 @@ export default function ReportPdfPage() {
       <div className="max-w-6xl mx-auto flex flex-col gap-8">
         <div>
           <PageHeader companyName={companyName} ticker={ticker} />
-          <SectionHighlight pdfMode sirScore={workspace?.sir_score} totalItems={channelItems?.length} riskCount={riskItems?.length} summary={summary ?? []} sirStockData={sirStockData ?? []} sirRanking={sirRanking} companyName={companyName} />
+          <SectionHighlight pdfMode sirScore={workspace?.sir_score} totalItems={channelItems?.length} riskCount={riskItems?.length} summary={summary ?? ''} sirStockData={sirStockData ?? []} sirRanking={sirRanking} companyName={companyName} />
         </div>
         <div className="print-break">
           <PageHeader companyName={companyName} ticker={ticker} />

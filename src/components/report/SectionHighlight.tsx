@@ -57,7 +57,7 @@ interface HighlightProps {
   sirScore?: number | null;
   totalItems?: number;
   riskCount?: number;
-  summary?: string[];
+  summary?: string;
   sirStockData?: SirStockPoint[];
   sirRanking?: SirRanking;
   companyName?: string;
@@ -110,12 +110,10 @@ export function SectionHighlight({ pdfMode = false, sirScore, totalItems = 0, ri
 
       {/* 이번 주 총평 */}
       <ReportCard title="이번 주 총평">
-        {summary.length > 0 ? (
-          <ul className="text-sm text-slate-600 space-y-1.5 leading-relaxed">
-            {summary.map((s, i) => (
-              <li key={i}>• {s}</li>
-            ))}
-          </ul>
+        {summary ? (
+          <div className="text-sm text-slate-600 leading-relaxed whitespace-pre-line">
+            {summary}
+          </div>
         ) : (
           <p className="text-sm text-slate-400">총평 데이터가 없습니다. 총평 생성을 실행해주세요.</p>
         )}

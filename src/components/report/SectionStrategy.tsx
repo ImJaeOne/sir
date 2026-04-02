@@ -8,6 +8,7 @@ function Md({ children, className = '' }: { children: string; className?: string
   return (
     <ReactMarkdown
       components={{
+        h2: ({ children }) => <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wide mt-3 mb-1.5 first:mt-0">{children}</h3>,
         p: ({ children }) => <p className={`text-sm leading-relaxed mb-1.5 last:mb-0 ${className}`}>{children}</p>,
         strong: ({ children }) => <strong className="font-semibold text-slate-800">{children}</strong>,
         ul: ({ children }) => <ul className="list-disc list-inside space-y-0.5 text-sm">{children}</ul>,
@@ -19,24 +20,14 @@ function Md({ children, className = '' }: { children: string; className?: string
   );
 }
 
-function StrategyCard({ label, backgrounds, proposals }: StrategyGroup) {
+function StrategyCard({ label, strategy }: StrategyGroup) {
+  if (!strategy) return null;
   return (
     <div className="bg-white rounded-2xl p-5 flex flex-col gap-4 shadow-[0_0_0_1px_rgba(241,245,249,1),0_1px_2px_rgba(0,0,0,0.05)]">
       <h4 className="text-sm font-bold text-slate-800">{label}</h4>
-      {backgrounds.map((bg, i) => (
-        <div key={i} className="flex flex-col gap-2">
-          <div className="bg-slate-50 rounded-xl p-4">
-            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1.5">전략 도출 배경</p>
-            <Md className="text-slate-600">{bg}</Md>
-          </div>
-          {proposals[i] && (
-            <div className="bg-blue-50 rounded-xl p-4">
-              <p className="text-[10px] font-semibold text-blue-400 uppercase tracking-wide mb-1.5">전략 제안</p>
-              <Md className="text-slate-700">{proposals[i]}</Md>
-            </div>
-          )}
-        </div>
-      ))}
+      <div className="bg-slate-50 rounded-xl p-4">
+        <Md className="text-slate-700">{strategy}</Md>
+      </div>
     </div>
   );
 }

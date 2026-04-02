@@ -4,15 +4,15 @@ const supabase = createClient();
 
 // ── 주간 총평 ──
 
-export async function getWeeklySummary(workspaceId: string): Promise<string[]> {
+export async function getWeeklySummary(workspaceId: string): Promise<string> {
   const { data } = await supabase
     .from('session_strategies')
-    .select('summary')
+    .select('strategy')
     .eq('workspace_id', workspaceId)
     .is('category', null)
     .order('created_at', { ascending: false })
     .limit(1);
-  return data?.[0]?.summary ?? [];
+  return data?.[0]?.strategy ?? '';
 }
 
 // ── SIR & 주가 차트 ──
@@ -335,8 +335,7 @@ export async function getRiskItems(workspaceId: string): Promise<RiskItem[]> {
 export interface StrategyGroup {
   category: string;
   label: string;
-  backgrounds: string[];
-  proposals: string[];
+  strategy: string;
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -350,7 +349,7 @@ const CATEGORY_ORDER = ['news', 'sns', 'community'];
 export async function getStrategies(workspaceId: string): Promise<StrategyGroup[]> {
   const { data } = await supabase
     .from('session_strategies')
-    .select('category, strategy_background, strategy_proposal')
+    .select('category, strategy')
     .eq('workspace_id', workspaceId)
     .not('category', 'is', null)
     .order('created_at', { ascending: false });
@@ -358,8 +357,7 @@ export async function getStrategies(workspaceId: string): Promise<StrategyGroup[
   const items = (data ?? []).map((row) => ({
     category: row.category,
     label: CATEGORY_LABELS[row.category] ?? row.category,
-    backgrounds: row.strategy_background ?? [],
-    proposals: row.strategy_proposal ?? [],
+    strategy: row.strategy ?? '',
   }));
 
   return items.sort((a, b) => CATEGORY_ORDER.indexOf(a.category) - CATEGORY_ORDER.indexOf(b.category));
