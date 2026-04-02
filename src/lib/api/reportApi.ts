@@ -99,20 +99,34 @@ const TIER_RANGES = [
 ];
 
 export async function getSirRanking(workspaceId: string): Promise<SirRanking> {
-  const { data: resData } = await supabase.from('workspaces').select('id, sir_score');
-  const all = (resData ?? []).filter((w: any) => w.sir_score != null);
-  const myScore = all.find((w: any) => w.id === workspaceId)?.sir_score ?? 0;
+  // 각 워크스페이스의 최신 report sir_score 조회
+  const { data: reports } = await supabase
+    .from('reports')
+    .select('workspace_id, sir_score')
+    .not('sir_score', 'is', null)
+    .order('created_at', { ascending: false });
+
+  // 워크스페이스별 최신 report sir_score만 추출
+  const latestByWs = new Map<string, number>();
+  for (const r of reports ?? []) {
+    if (!latestByWs.has(r.workspace_id)) {
+      latestByWs.set(r.workspace_id, r.sir_score);
+    }
+  }
+
+  const all = Array.from(latestByWs.entries()).map(([id, score]) => ({ id, sir_score: score }));
+  const myScore = latestByWs.get(workspaceId) ?? 0;
 
   const myTierIdx = TIER_RANGES.findIndex(t => myScore >= t.min && myScore < t.max);
   const tiers = TIER_RANGES.map((t, i) => ({
     tier: t.label,
-    count: all.filter((w: any) => w.sir_score >= t.min && w.sir_score < t.max).length,
+    count: all.filter(w => w.sir_score >= t.min && w.sir_score < t.max).length,
     isCurrent: i === myTierIdx ? 1 : 0,
   }));
 
-  const sorted = all.map((w: any) => w.sir_score as number).sort((a: number, b: number) => b - a);
+  const sorted = all.map(w => w.sir_score).sort((a, b) => b - a);
   const rank = sorted.indexOf(myScore) + 1;
-  const average = all.length ? Math.round(all.reduce((s: number, w: any) => s + (w.sir_score as number), 0) / all.length) : 0;
+  const average = all.length ? Math.round(all.reduce((s, w) => s + w.sir_score, 0) / all.length) : 0;
 
   return { tiers, rank, total: all.length, average };
 }

@@ -20,17 +20,17 @@ interface TrendPoint {
 }
 
 function sirDescription(sir: number): string {
-  if (sir >= 81) return '긍정적 평판이 지배적입니다.';
-  if (sir >= 61) return '긍정적 평판이 더 많습니다.';
-  if (sir >= 41) return '긍정적/부정적 평판이 비슷한 수준입니다.';
-  if (sir >= 21) return '부정적 평판이 더 많습니다.';
-  return '부정적 평판이 지배적입니다.';
+  if (sir >= 801) return '매우 우호적인 여론 환경이에요';
+  if (sir >= 601) return '우호적 여론이 우세한 상태예요';
+  if (sir >= 401) return '여론이 혼재된 중립 구간이에요';
+  if (sir >= 201) return '부정 여론에 대한 주의가 필요해요';
+  return '여론 위기 관리가 시급한 상태예요';
 }
 
 function SirCard({
   label,
   sir,
-  change,
+  isInitial,
 }: {
   label: string;
   sir: number;
@@ -38,9 +38,11 @@ function SirCard({
   negative: number;
   neutral: number;
   color: string;
-  change: number;
+  isInitial?: boolean;
 }) {
   const sirColor = sir >= 610 ? 'text-emerald-600' : sir >= 410 ? 'text-amber-500' : 'text-red-500';
+  const change = isInitial ? sir - 500 : 0;
+  const changeLabel = isInitial ? '기준점 대비' : '전주 대비';
   const isUp = change >= 0;
 
   return (
@@ -50,10 +52,13 @@ function SirCard({
       <span className="text-[10px] text-slate-400 text-center">{sirDescription(sir)}</span>
       <span
         className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-          isUp ? 'bg-blue-50 text-blue-600' : 'bg-red-50 text-red-500'
+          change === 0 ? 'bg-slate-100 text-slate-500' : isUp ? 'bg-blue-50 text-blue-600' : 'bg-red-50 text-red-500'
         }`}
       >
-        전주 대비 {isUp ? '▲' : '▼'} {Math.abs(change)}점 {isUp ? '상승' : '하락'}
+        {change === 0
+          ? `${changeLabel} — 유지`
+          : `${changeLabel} ${isUp ? '▲' : '▼'} ${Math.abs(change)}점 ${isUp ? '상승' : '하락'}`
+        }
       </span>
     </div>
   );
@@ -64,11 +69,13 @@ export function SectionReputation({
   naverTrend = [],
   googleTrend = [],
   channelStats = [],
+  isInitial = false,
 }: {
   pdfMode?: boolean;
   naverTrend?: TrendPoint[];
   googleTrend?: TrendPoint[];
   channelStats?: ChannelStat[];
+  isInitial?: boolean;
 }) {
   const googleMap = new Map(googleTrend.map((t) => [t.date, t.ratio]));
   const chartData = naverTrend.map((t) => ({
@@ -223,7 +230,7 @@ export function SectionReputation({
               negative={ch.negative}
               neutral={ch.neutral}
               color={ch.color}
-              change={0}
+              isInitial={isInitial}
             />
           ))}
         </div>
