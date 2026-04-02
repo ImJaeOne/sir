@@ -1,10 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Fragment } from 'react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import { ResponsiveBar } from '@nivo/bar';
 import { TrendingUp, BarChart3, Database, AlertTriangle } from 'lucide-react';
 import { SirStockChart } from '@/components/report/SirStockChart';
 import { ReportCard } from '@/components/report/ReportCard';
+import { Md } from '@/components/ui/Markdown';
+import type { SummarySection } from '@/lib/api/reportApi';
 
 function StatCard({
   icon: Icon,
@@ -50,6 +53,48 @@ function getSirColor(score: number): string {
   return 'text-red-500';
 }
 
+const SUMMARY_LABELS = ['SIR 지수 및 시장 지위 평가', '채널별 여론 다이내믹스', '긍정 모멘텀 분석', '리스크 분석'];
+const SUMMARY_COLORS = [
+  'border-l-indigo-400',
+  'border-l-sky-400',
+  'border-l-emerald-400',
+  'border-l-red-400',
+];
+
+function SummaryAccordion({ sections }: { sections: SummarySection[] }) {
+  const [openIdx, setOpenIdx] = useState<number | null>(null);
+
+  return (
+    <div className="flex flex-col gap-2">
+      {sections.map((section, i) => (
+        <div key={i} className={`border border-slate-100 border-l-4 ${SUMMARY_COLORS[i] ?? 'border-l-slate-400'} rounded-lg overflow-hidden`}>
+          <button
+            onClick={() => setOpenIdx(openIdx === i ? null : i)}
+            className="w-full flex items-center justify-between px-4 py-3 hover:bg-slate-50 transition-colors text-left cursor-pointer"
+          >
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] font-bold text-slate-400 mb-1">{SUMMARY_LABELS[i] ?? `섹션 ${i + 1}`}</p>
+              <p className="text-sm font-medium text-slate-800">{section.summary}</p>
+            </div>
+            {openIdx === i ? (
+              <ChevronUp size={16} className="text-slate-400 shrink-0 ml-2" />
+            ) : (
+              <ChevronDown size={16} className="text-slate-400 shrink-0 ml-2" />
+            )}
+          </button>
+          {openIdx === i && (
+            <div className="px-4 pb-4 border-t border-slate-50">
+              <div className="mt-3">
+                <Md className="text-slate-600">{section.detail}</Md>
+              </div>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 import type { SirStockPoint, SirRanking, TierItem } from '@/lib/api/reportApi';
 
 interface HighlightProps {
@@ -57,7 +102,7 @@ interface HighlightProps {
   sirScore?: number | null;
   totalItems?: number;
   riskCount?: number;
-  summary?: string[];
+  summary?: SummarySection[];
   sirStockData?: SirStockPoint[];
   sirRanking?: SirRanking;
   companyName?: string;
@@ -110,12 +155,8 @@ export function SectionHighlight({ pdfMode = false, sirScore, totalItems = 0, ri
 
       {/* 이번 주 총평 */}
       <ReportCard title="이번 주 총평">
-        {summary.length > 0 ? (
-          <ul className="text-sm text-slate-600 space-y-1.5 leading-relaxed">
-            {summary.map((s, i) => (
-              <li key={i}>• {s}</li>
-            ))}
-          </ul>
+        {summary && summary.length > 0 ? (
+          <SummaryAccordion sections={summary} />
         ) : (
           <p className="text-sm text-slate-400">총평 데이터가 없습니다. 총평 생성을 실행해주세요.</p>
         )}

@@ -1,26 +1,17 @@
 'use client';
 
+import { Md } from '@/components/ui/Markdown';
 import { ReportCard } from './ReportCard';
 import type { StrategyGroup } from '@/lib/api/reportApi';
 
-function StrategyCard({ label, backgrounds, proposals }: StrategyGroup) {
+function StrategyCard({ label, strategy }: StrategyGroup) {
+  if (!strategy) return null;
   return (
     <div className="bg-white rounded-2xl p-5 flex flex-col gap-4 shadow-[0_0_0_1px_rgba(241,245,249,1),0_1px_2px_rgba(0,0,0,0.05)]">
       <h4 className="text-sm font-bold text-slate-800">{label}</h4>
-      {backgrounds.map((bg, i) => (
-        <div key={i} className="flex flex-col gap-2">
-          <div className="bg-slate-50 rounded-xl p-4">
-            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1.5">전략 도출 배경</p>
-            <p className="text-sm text-slate-600 leading-relaxed">{bg}</p>
-          </div>
-          {proposals[i] && (
-            <div className="bg-blue-50 rounded-xl p-4">
-              <p className="text-[10px] font-semibold text-blue-400 uppercase tracking-wide mb-1.5">전략 제안</p>
-              <p className="text-sm text-slate-700 leading-relaxed">{proposals[i]}</p>
-            </div>
-          )}
-        </div>
-      ))}
+      <div className="bg-slate-50 rounded-xl p-4">
+        <Md className="text-slate-700">{strategy}</Md>
+      </div>
     </div>
   );
 }

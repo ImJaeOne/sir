@@ -4,15 +4,20 @@ const supabase = createClient();
 
 // ── 주간 총평 ──
 
-export async function getWeeklySummary(workspaceId: string): Promise<string[]> {
+export interface SummarySection {
+  summary: string;
+  detail: string;
+}
+
+export async function getWeeklySummary(workspaceId: string): Promise<SummarySection[]> {
   const { data } = await supabase
     .from('session_strategies')
-    .select('summary')
+    .select('all_strategy')
     .eq('workspace_id', workspaceId)
     .is('category', null)
     .order('created_at', { ascending: false })
     .limit(1);
-  return data?.[0]?.summary ?? [];
+  return data?.[0]?.all_strategy ?? [];
 }
 
 // ── SIR & 주가 차트 ──
@@ -94,20 +99,34 @@ const TIER_RANGES = [
 ];
 
 export async function getSirRanking(workspaceId: string): Promise<SirRanking> {
-  const { data: resData } = await supabase.from('workspaces').select('id, sir_score');
-  const all = (resData ?? []).filter((w: any) => w.sir_score != null);
-  const myScore = all.find((w: any) => w.id === workspaceId)?.sir_score ?? 0;
+  // 각 워크스페이스의 최신 report sir_score 조회
+  const { data: reports } = await supabase
+    .from('reports')
+    .select('workspace_id, sir_score')
+    .not('sir_score', 'is', null)
+    .order('created_at', { ascending: false });
+
+  // 워크스페이스별 최신 report sir_score만 추출
+  const latestByWs = new Map<string, number>();
+  for (const r of reports ?? []) {
+    if (!latestByWs.has(r.workspace_id)) {
+      latestByWs.set(r.workspace_id, r.sir_score);
+    }
+  }
+
+  const all = Array.from(latestByWs.entries()).map(([id, score]) => ({ id, sir_score: score }));
+  const myScore = latestByWs.get(workspaceId) ?? 0;
 
   const myTierIdx = TIER_RANGES.findIndex(t => myScore >= t.min && myScore < t.max);
   const tiers = TIER_RANGES.map((t, i) => ({
     tier: t.label,
-    count: all.filter((w: any) => w.sir_score >= t.min && w.sir_score < t.max).length,
+    count: all.filter(w => w.sir_score >= t.min && w.sir_score < t.max).length,
     isCurrent: i === myTierIdx ? 1 : 0,
   }));
 
-  const sorted = all.map((w: any) => w.sir_score as number).sort((a: number, b: number) => b - a);
+  const sorted = all.map(w => w.sir_score).sort((a, b) => b - a);
   const rank = sorted.indexOf(myScore) + 1;
-  const average = all.length ? Math.round(all.reduce((s: number, w: any) => s + (w.sir_score as number), 0) / all.length) : 0;
+  const average = all.length ? Math.round(all.reduce((s, w) => s + w.sir_score, 0) / all.length) : 0;
 
   return { tiers, rank, total: all.length, average };
 }
@@ -335,8 +354,7 @@ export async function getRiskItems(workspaceId: string): Promise<RiskItem[]> {
 export interface StrategyGroup {
   category: string;
   label: string;
-  backgrounds: string[];
-  proposals: string[];
+  strategy: string;
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -350,7 +368,7 @@ const CATEGORY_ORDER = ['news', 'sns', 'community'];
 export async function getStrategies(workspaceId: string): Promise<StrategyGroup[]> {
   const { data } = await supabase
     .from('session_strategies')
-    .select('category, strategy_background, strategy_proposal')
+    .select('category, strategy')
     .eq('workspace_id', workspaceId)
     .not('category', 'is', null)
     .order('created_at', { ascending: false });
@@ -358,8 +376,7 @@ export async function getStrategies(workspaceId: string): Promise<StrategyGroup[
   const items = (data ?? []).map((row) => ({
     category: row.category,
     label: CATEGORY_LABELS[row.category] ?? row.category,
-    backgrounds: row.strategy_background ?? [],
-    proposals: row.strategy_proposal ?? [],
+    strategy: row.strategy ?? '',
   }));
 
   return items.sort((a, b) => CATEGORY_ORDER.indexOf(a.category) - CATEGORY_ORDER.indexOf(b.category));
@@ -377,17 +394,18 @@ export interface SearchTrendResult {
   google: TrendPoint[];
 }
 
-export async function getSearchTrend(workspaceId: string, days: number = 30, endDate?: string): Promise<SearchTrendResult> {
-  const params = new URLSearchParams({ days: String(days) });
-  if (endDate) params.set('end_date', endDate);
+export async function getSearchTrend(workspaceId: string, reportId?: string): Promise<SearchTrendResult> {
+  if (!reportId) return { naver: [], google: [] };
 
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return { naver: [], google: [] };
+  const { data } = await supabase
+    .from('search_trends')
+    .select('provider, trend_data')
+    .eq('report_id', reportId);
 
-  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/search-trend/${workspaceId}?${params}`, {
-    headers: { Authorization: `Bearer ${session.access_token}` },
-  });
-  if (!res.ok) return { naver: [], google: [] };
-  const data = await res.json();
-  return { naver: data.trend ?? [], google: data.google_trend ?? [] };
+  const result: SearchTrendResult = { naver: [], google: [] };
+  for (const row of data ?? []) {
+    if (row.provider === 'naver') result.naver = row.trend_data ?? [];
+    if (row.provider === 'google') result.google = row.trend_data ?? [];
+  }
+  return result;
 }

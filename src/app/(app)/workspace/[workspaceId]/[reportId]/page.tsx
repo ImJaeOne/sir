@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useParams } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query';
 import {
   useWorkspaceSir, useWeeklySummary, useSirStockData, useSirRanking,
   useChannelItems, useChannelStats, useNewsClusters, useRiskItems, useStrategies,
@@ -17,7 +18,21 @@ import { SectionStrategy } from '@/components/report/SectionStrategy';
 export default function ReportPage() {
   const params = useParams();
   const workspaceId = params?.workspaceId as string;
+  const reportId = params?.reportId as string;
   const [downloading, setDownloading] = useState(false);
+
+  // 리포트 정보
+  const { data: report } = useQuery({
+    queryKey: ['report', reportId],
+    queryFn: async () => {
+      const { createClient } = await import('@/lib/supabase/client');
+      const supabase = createClient();
+      const { data } = await supabase.from('reports').select('type').eq('id', reportId).single();
+      return data;
+    },
+    enabled: !!reportId,
+  });
+  const isInitial = report?.type === 'initial';
 
   // 기초 쿼리 (네트워크 요청)
   const { data: workspace, isLoading: wsLoading } = useWorkspaceSir(workspaceId);
@@ -28,7 +43,7 @@ export default function ReportPage() {
   const { data: newsClusters } = useNewsClusters(workspaceId);
   const { data: riskItems } = useRiskItems(workspaceId);
   const { data: strategies } = useStrategies(workspaceId);
-  const { data: searchTrend } = useSearchTrend(workspaceId);
+  const { data: searchTrend } = useSearchTrend(workspaceId, reportId);
 
   // 파생 쿼리 — channelItems 캐시에서 stats 계산
   const { data: channelStats } = useChannelStats(workspaceId, channelItems);
@@ -105,7 +120,7 @@ export default function ReportPage() {
         />
 
         <div className="print-break">
-          <SectionReputation naverTrend={searchTrend?.naver ?? []} googleTrend={searchTrend?.google ?? []} channelStats={channelStats ?? []} />
+          <SectionReputation naverTrend={searchTrend?.naver ?? []} googleTrend={searchTrend?.google ?? []} channelStats={channelStats ?? []} isInitial={isInitial} />
         </div>
 
         <div className="print-break">
