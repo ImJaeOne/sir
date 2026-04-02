@@ -98,7 +98,7 @@ export default function ReportPage() {
           sirScore={sirScore}
           totalItems={totalItems}
           riskCount={riskCount}
-          summary={summary ?? ''}
+          summary={summary ?? []}
           sirStockData={sirStockData ?? []}
           sirRanking={sirRanking}
           companyName={workspace?.company_name ?? ''}

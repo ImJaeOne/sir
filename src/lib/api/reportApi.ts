@@ -4,15 +4,20 @@ const supabase = createClient();
 
 // ── 주간 총평 ──
 
-export async function getWeeklySummary(workspaceId: string): Promise<string> {
+export interface SummarySection {
+  summary: string;
+  detail: string;
+}
+
+export async function getWeeklySummary(workspaceId: string): Promise<SummarySection[]> {
   const { data } = await supabase
     .from('session_strategies')
-    .select('strategy')
+    .select('all_strategy')
     .eq('workspace_id', workspaceId)
     .is('category', null)
     .order('created_at', { ascending: false })
     .limit(1);
-  return data?.[0]?.strategy ?? '';
+  return data?.[0]?.all_strategy ?? [];
 }
 
 // ── SIR & 주가 차트 ──

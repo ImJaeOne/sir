@@ -1,24 +1,8 @@
 'use client';
 
-import ReactMarkdown from 'react-markdown';
+import { Md } from '@/components/ui/Markdown';
 import { ReportCard } from './ReportCard';
 import type { StrategyGroup } from '@/lib/api/reportApi';
-
-function Md({ children, className = '' }: { children: string; className?: string }) {
-  return (
-    <ReactMarkdown
-      components={{
-        h2: ({ children }) => <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wide mt-3 mb-1.5 first:mt-0">{children}</h3>,
-        p: ({ children }) => <p className={`text-sm leading-relaxed mb-1.5 last:mb-0 ${className}`}>{children}</p>,
-        strong: ({ children }) => <strong className="font-semibold text-slate-800">{children}</strong>,
-        ul: ({ children }) => <ul className="list-disc list-inside space-y-0.5 text-sm">{children}</ul>,
-        li: ({ children }) => <li className={`leading-relaxed ${className}`}>{children}</li>,
-      }}
-    >
-      {children}
-    </ReactMarkdown>
-  );
-}
 
 function StrategyCard({ label, strategy }: StrategyGroup) {
   if (!strategy) return null;
