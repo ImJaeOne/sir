@@ -110,6 +110,29 @@ export async function getWorkspaceProfile(workspaceId: string): Promise<Workspac
   return data ? workspaceProfileSchema.parse(data) : null;
 }
 
+export interface Report {
+  id: string;
+  workspace_id: string;
+  type: string;
+  period_start: string;
+  period_end: string;
+  sir_score: number | null;
+  status: string;
+  generated_at: string | null;
+  created_at: string;
+}
+
+export async function getReports(workspaceId: string): Promise<Report[]> {
+  const { data, error } = await supabase
+    .from('reports')
+    .select('*')
+    .eq('workspace_id', workspaceId)
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return data ?? [];
+}
+
 export async function updateWorkspaceProfile(
   workspaceId: string,
   profile: { industry?: string | null; business_summary?: string | null }

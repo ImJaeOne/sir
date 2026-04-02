@@ -1,23 +1,14 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Tooltip } from '@/components/ui/Tooltip';
-import {
-  TickerBadge,
-  SirBadge,
-  SirLevelBadge,
-  CountBadge,
-  StatusBadge,
-} from '@/components/ui/Badge';
+import { TickerBadge } from '@/components/ui/Badge';
 import { useWorkspace, useWorkspaceProfile } from '@/hooks/workspace/useWorkspaceQuery';
 import { useUpdateWorkspaceProfile } from '@/hooks/workspace/useWorkspaceMutation';
-import { useSessions } from '@/hooks/crawl/useSessionQuery';
-import { useTriggerPipeline } from '@/hooks/crawl/usePipelineMutation';
-import { getRelativeTime } from '@/utils/date';
-import { PLATFORMS, CATEGORY_LABELS } from '@/constants/platforms';
-import type { CrawlSession } from '@/types/news';
+import { useReports } from '@/hooks/workspace/useWorkspaceQuery';
+import type { Report } from '@/lib/api/workspaceApi';
 import type { WorkspaceProfile } from '@/types/workspace';
 
 function EditProfileModal({
@@ -249,30 +240,7 @@ export default function WorkspaceDetailPage() {
   const { data: workspace } = useWorkspace(workspaceId);
   const { data: profile } = useWorkspaceProfile(workspaceId);
   const [showEditProfile, setShowEditProfile] = useState(false);
-  const [showStartAnalysis, setShowStartAnalysis] = useState(false);
-  const [pipelineTriggered, setPipelineTriggered] = useState(false);
-  const { data: sessions, isLoading } = useSessions(workspaceId, pipelineTriggered);
-
-  // 세션이 나타나면 폴링 종료 (렌더 중 동기 판단, setState 아님)
-  const waitingForSessions = pipelineTriggered && (!sessions || sessions.length === 0);
-
-  // 날짜별 그룹핑
-  const groupedByDate = useMemo<SessionGroup[]>(() => {
-    if (!sessions) return [];
-    const map = new Map<string, CrawlSession[]>();
-    for (const session of sessions) {
-      const key = toDateKey(session.created_at);
-      if (!map.has(key)) map.set(key, []);
-      map.get(key)!.push(session);
-    }
-    return Array.from(map.entries())
-      .sort(([a], [b]) => b.localeCompare(a))
-      .map(([dateKey, sessions], index, arr) => ({
-        dateKey,
-        displayDate: formatDateDisplay(dateKey),
-        sessions,
-      }));
-  }, [sessions]);
+  const { data: reports, isLoading } = useReports(workspaceId);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
@@ -314,171 +282,63 @@ export default function WorkspaceDetailPage() {
           />
         )}
 
-        {showStartAnalysis && (
-          <StartAnalysisModal
-            workspaceId={workspaceId}
-            onClose={() => setShowStartAnalysis(false)}
-            onTriggered={() => setPipelineTriggered(true)}
-          />
-        )}
-
-        {/* 세션 리스트 (날짜별 그룹핑) */}
+        {/* 리포트 목록 */}
         <div className="flex flex-col gap-4">
-          <h2 className="text-sm font-semibold text-slate-700">수집 히스토리</h2>
+          <h2 className="text-sm font-semibold text-slate-700">보고서</h2>
 
           {isLoading && <p className="text-sm text-slate-400 py-8 text-center">불러오는 중...</p>}
 
-          {!isLoading && groupedByDate.length === 0 && (
+          {!isLoading && (!reports || reports.length === 0) && (
             <div className="bg-white rounded-2xl border border-dashed border-slate-200 shadow-sm py-12 flex flex-col items-center gap-3">
-              {waitingForSessions ? (
-                <>
-                  <svg className="animate-spin h-5 w-5 text-blue-500" viewBox="0 0 24 24" fill="none">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
-                  <span className="text-sm text-slate-500">수집 준비 중...</span>
-                </>
-              ) : (
-                <>
-                  <span className="text-sm text-slate-400">아직 수집된 데이터가 없습니다</span>
-                  <button
-                    onClick={() => setShowStartAnalysis(true)}
-                    className="bg-blue-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-700 active:scale-95 transition-all duration-150 cursor-pointer"
-                  >
-                    분석 시작하기
-                  </button>
-                </>
-              )}
+              <span className="text-sm text-slate-400">아직 생성된 보고서가 없습니다</span>
             </div>
           )}
 
-          {groupedByDate.map((group, groupIndex) => {
-            const groupNumber = groupedByDate.length - groupIndex;
+          {reports?.map((report, i) => {
+            const reportNumber = (reports?.length ?? 0) - i;
+            const periodStart = report.period_start.replace(/-/g, '.');
+            const periodEnd = report.period_end.replace(/-/g, '.');
+            const typeLabel = report.type === 'initial' ? '초기 분석' : '주간 분석';
+            const statusColor = report.status === 'published'
+              ? 'bg-emerald-50 text-emerald-700'
+              : 'bg-slate-100 text-slate-500';
+            const statusLabel = report.status === 'published' ? '발행' : '초안';
+
             return (
               <button
-                key={group.dateKey}
-                onClick={() => router.push(`/workspace/${workspaceId}/${group.dateKey}`)}
+                key={report.id}
+                onClick={() => router.push(`/report/${report.id}`)}
                 className="w-full bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden hover:border-blue-200 hover:shadow-md transition-all cursor-pointer text-left"
               >
-                {/* 그룹 헤더 */}
-                <div className="px-5 py-3 sm:px-6 border-b border-slate-50 flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-sm font-semibold text-slate-700">
-                      {groupNumber}차 수집
-                    </span>
-                    {(() => {
-                      const allStarts = group.sessions
-                        .map((s) => s.period_start)
-                        .filter(Boolean) as string[];
-                      const allEnds = group.sessions
-                        .map((s) => s.period_end)
-                        .filter(Boolean) as string[];
-                      const minStart = allStarts.length
-                        ? formatDateDisplay(allStarts.sort()[0])
-                        : null;
-                      const maxEnd = allEnds.length
-                        ? formatDateDisplay(allEnds.sort().reverse()[0])
-                        : null;
-                      if (!minStart) return null;
-                      const period = minStart === maxEnd ? minStart : `${minStart} ~ ${maxEnd}`;
-                      return <span className="text-xs text-slate-400">({period})</span>;
-                    })()}
-                  </div>
-                  <span className="text-xs text-slate-400">
-                    {getRelativeTime(group.sessions[0].created_at)}
-                  </span>
-                </div>
-
-                {/* 카테고리별 그룹핑 */}
-                {(() => {
-                  const byCategory: Record<string, typeof group.sessions> = {};
-                  for (const session of group.sessions) {
-                    const category =
-                      PLATFORMS.find((p) => p.id === session.platform_id)?.category ?? 'unknown';
-                    if (!byCategory[category]) byCategory[category] = [];
-                    byCategory[category].push(session);
-                  }
-
-                  return Object.entries(byCategory).map(([category, catSessions]) => (
-                    <div key={category}>
-                      {/* 카테고리 헤더 */}
-                      {category === 'news' && catSessions.length === 1 ? (
-                        // 뉴스: 카테고리명만
-                        <div className="px-5 py-3 sm:px-6 flex items-center justify-between gap-3 border-b border-slate-50 last:border-b-0">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className="text-xs font-semibold text-slate-800 uppercase tracking-wide">
-                              {CATEGORY_LABELS[category] ?? category}
-                            </span>
-                            <CountBadge count={catSessions[0].total_items} label="수집" />
-                            <StatusBadge status={catSessions[0].status} />
-                          </div>
-                          <div className="flex items-center gap-2 shrink-0">
-                            {catSessions[0].status === 'done' && (
-                              <SirBadge score={catSessions[0].sir_score} />
-                            )}
-                          </div>
-                        </div>
-                      ) : (
-                        // 다중 플랫폼 (커뮤니티 등): 카테고리 + 하위 플랫폼
-                        <>
-                          <div className="px-5 py-3 sm:px-6 border-b border-slate-50 flex items-center justify-between gap-3">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <span className="text-xs font-semibold text-slate-800 uppercase tracking-wide">
-                                {CATEGORY_LABELS[category] ?? category}
-                              </span>
-                              <CountBadge
-                                count={catSessions.reduce((sum, s) => sum + s.total_items, 0)}
-                                label="수집"
-                              />
-                              <StatusBadge
-                                status={
-                                  catSessions.every((s) => s.status === 'done')
-                                    ? 'done'
-                                    : catSessions.some((s) => s.status === 'failed')
-                                      ? 'failed'
-                                      : catSessions[0].status
-                                }
-                              />
-                            </div>
-                            <div className="flex items-center gap-2 shrink-0">
-                              {catSessions.every((s) => s.status === 'done') &&
-                                (() => {
-                                  const scores = catSessions
-                                    .map((s) => s.sir_score)
-                                    .filter((s): s is number => s !== null);
-                                  if (scores.length === 0) return null;
-                                  const avg =
-                                    Math.round(
-                                      (scores.reduce((a, b) => a + b, 0) / scores.length) * 10
-                                    ) / 10;
-                                  return <SirBadge score={avg} />;
-                                })()}
-                            </div>
-                          </div>
-                          {catSessions.map((session) => (
-                            <div
-                              key={session.id}
-                              className="px-5 py-2.5 sm:px-6 pl-8 sm:pl-10 flex items-center justify-between gap-3 border-b border-slate-50 last:border-b-0"
-                            >
-                              <div className="flex items-center gap-2 min-w-0">
-                                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
-                                  {getPlatformLabel(session.platform_id)}
-                                </span>
-                                <CountBadge count={session.total_items} label="수집" />
-                                <StatusBadge status={session.status} />
-                              </div>
-                              <div className="flex items-center gap-2 shrink-0">
-                                {session.status === 'done' && (
-                                  <SirBadge score={session.sir_score} />
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </>
-                      )}
+                <div className="px-5 py-4 sm:px-6 flex items-center justify-between">
+                  <div className="flex flex-col gap-1.5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold text-slate-800">
+                        {reportNumber}차 보고서
+                      </span>
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${statusColor}`}>
+                        {statusLabel}
+                      </span>
+                      <span className="text-[10px] text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded">
+                        {typeLabel}
+                      </span>
                     </div>
-                  ));
-                })()}
+                    <span className="text-xs text-slate-400">
+                      {periodStart} ~ {periodEnd}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    {report.sir_score != null && (
+                      <div className="text-right">
+                        <p className="text-lg font-bold text-slate-800">{report.sir_score}</p>
+                        <p className="text-[10px] text-slate-400">SIR</p>
+                      </div>
+                    )}
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" className="text-slate-300">
+                      <path d="M6 4l4 4-4 4" />
+                    </svg>
+                  </div>
+                </div>
               </button>
             );
           })}
