@@ -294,15 +294,14 @@ export default function WorkspaceDetailPage() {
             </div>
           )}
 
-          {reports?.map((report, i) => {
-            const reportNumber = (reports?.length ?? 0) - i;
+          {reports?.map((report) => {
             const periodStart = report.period_start.replace(/-/g, '.');
             const periodEnd = report.period_end.replace(/-/g, '.');
-            const typeLabel = report.type === 'initial' ? '초기 분석' : '주간 분석';
+            const typeLabel = report.type === 'initial' ? '월간 보고서' : '주간 보고서';
             const statusColor = report.status === 'published'
               ? 'bg-emerald-50 text-emerald-700'
-              : 'bg-slate-100 text-slate-500';
-            const statusLabel = report.status === 'published' ? '발행' : '초안';
+              : 'bg-amber-50 text-amber-700';
+            const statusLabel = report.status === 'published' ? '검토 완료' : '검토 대기';
 
             return (
               <button
@@ -314,30 +313,19 @@ export default function WorkspaceDetailPage() {
                   <div className="flex flex-col gap-1.5">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-semibold text-slate-800">
-                        {reportNumber}차 보고서
+                        {periodStart} ~ {periodEnd}
                       </span>
                       <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${statusColor}`}>
                         {statusLabel}
                       </span>
-                      <span className="text-[10px] text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded">
-                        {typeLabel}
-                      </span>
                     </div>
                     <span className="text-xs text-slate-400">
-                      {periodStart} ~ {periodEnd}
+                      {typeLabel}
                     </span>
                   </div>
-                  <div className="flex items-center gap-3 shrink-0">
-                    {report.sir_score != null && (
-                      <div className="text-right">
-                        <p className="text-lg font-bold text-slate-800">{report.sir_score}</p>
-                        <p className="text-[10px] text-slate-400">SIR</p>
-                      </div>
-                    )}
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" className="text-slate-300">
-                      <path d="M6 4l4 4-4 4" />
-                    </svg>
-                  </div>
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" className="text-slate-300 shrink-0">
+                    <path d="M6 4l4 4-4 4" />
+                  </svg>
                 </div>
               </button>
             );
