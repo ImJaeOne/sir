@@ -17,6 +17,7 @@ import { SectionStrategy } from '@/components/report/SectionStrategy';
 export default function ReportPage() {
   const params = useParams();
   const workspaceId = params?.workspaceId as string;
+  const reportId = params?.reportId as string;
   const [downloading, setDownloading] = useState(false);
 
   // 기초 쿼리 (네트워크 요청)

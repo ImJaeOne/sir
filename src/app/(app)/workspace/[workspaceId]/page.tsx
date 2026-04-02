@@ -306,7 +306,7 @@ export default function WorkspaceDetailPage() {
             return (
               <button
                 key={report.id}
-                onClick={() => router.push(`/report/${report.id}`)}
+                onClick={() => router.push(`/workspace/${workspaceId}/${report.id}`)}
                 className="w-full bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden hover:border-blue-200 hover:shadow-md transition-all cursor-pointer text-left"
               >
                 <div className="px-5 py-4 sm:px-6 flex items-center justify-between">
