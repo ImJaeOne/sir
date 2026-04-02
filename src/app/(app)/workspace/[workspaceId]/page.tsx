@@ -291,6 +291,21 @@ export default function WorkspaceDetailPage() {
           {!isLoading && (!reports || reports.length === 0) && (
             <div className="bg-white rounded-2xl border border-dashed border-slate-200 shadow-sm py-12 flex flex-col items-center gap-3">
               <span className="text-sm text-slate-400">아직 생성된 보고서가 없습니다</span>
+              <button
+                onClick={() => {
+                  const today = new Date();
+                  const isMonday = today.getDay() === 1;
+                  if (!isMonday) {
+                    toast.error('보고서는 매주 월요일에 생성할 수 있습니다.');
+                    return;
+                  }
+                  // TODO: POST /api/report 호출
+                  toast.success('첫 보고서가 생성되었습니다.');
+                }}
+                className="bg-blue-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-700 active:scale-95 transition-all duration-150 cursor-pointer"
+              >
+                첫 보고서 생성하기
+              </button>
             </div>
           )}
 
