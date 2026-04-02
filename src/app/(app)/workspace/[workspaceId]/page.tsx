@@ -3,11 +3,12 @@
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { TickerBadge } from '@/components/ui/Badge';
-import { useWorkspace, useWorkspaceProfile } from '@/hooks/workspace/useWorkspaceQuery';
+import { useWorkspace, useWorkspaceProfile, useReports, workspaceKeys } from '@/hooks/workspace/useWorkspaceQuery';
 import { useUpdateWorkspaceProfile } from '@/hooks/workspace/useWorkspaceMutation';
-import { useReports } from '@/hooks/workspace/useWorkspaceQuery';
+import { createClient } from '@/lib/supabase/client';
 import type { Report } from '@/lib/api/workspaceApi';
 import type { WorkspaceProfile } from '@/types/workspace';
 
@@ -123,6 +124,59 @@ function EditProfileModal({
 
 function formatPeriodDate(date: Date): string {
   return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`;
+}
+
+function CreateReportButton({ workspaceId }: { workspaceId: string }) {
+  const [loading, setLoading] = useState(false);
+  const queryClient = useQueryClient();
+
+  const handleCreate = async () => {
+    const today = new Date();
+    const isMonday = today.getDay() === 1;
+    if (!isMonday) {
+      toast.error('보고서는 매주 월요일에 생성할 수 있습니다.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error('인증이 필요합니다.');
+        return;
+      }
+
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/report`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ workspace_id: workspaceId }),
+      });
+
+      if (!res.ok) throw new Error('보고서 생성 실패');
+
+      const data = await res.json();
+      toast.success(`보고서가 생성되었습니다. (${data.period_start} ~ ${data.period_end})`);
+      queryClient.invalidateQueries({ queryKey: workspaceKeys.reports(workspaceId) });
+    } catch (e) {
+      toast.error('보고서 생성에 실패했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <button
+      onClick={handleCreate}
+      disabled={loading}
+      className="bg-blue-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-700 active:scale-95 transition-all duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+    >
+      {loading ? '생성 중...' : '첫 보고서 생성하기'}
+    </button>
+  );
 }
 
 function StartAnalysisModal({
@@ -291,21 +345,7 @@ export default function WorkspaceDetailPage() {
           {!isLoading && (!reports || reports.length === 0) && (
             <div className="bg-white rounded-2xl border border-dashed border-slate-200 shadow-sm py-12 flex flex-col items-center gap-3">
               <span className="text-sm text-slate-400">아직 생성된 보고서가 없습니다</span>
-              <button
-                onClick={() => {
-                  const today = new Date();
-                  const isMonday = today.getDay() === 1;
-                  if (!isMonday) {
-                    toast.error('보고서는 매주 월요일에 생성할 수 있습니다.');
-                    return;
-                  }
-                  // TODO: POST /api/report 호출
-                  toast.success('첫 보고서가 생성되었습니다.');
-                }}
-                className="bg-blue-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-700 active:scale-95 transition-all duration-150 cursor-pointer"
-              >
-                첫 보고서 생성하기
-              </button>
+              <CreateReportButton workspaceId={workspaceId} />
             </div>
           )}
 
