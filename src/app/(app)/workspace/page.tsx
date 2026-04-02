@@ -9,7 +9,7 @@ import { useWorkspaces } from '@/hooks/workspace/useWorkspaceQuery';
 import { useCreateWorkspace } from '@/hooks/workspace/useWorkspaceMutation';
 import type { Workspace } from '@/types/workspace';
 import { CompanyBadge, TickerBadge, SirLevelBadge } from '@/components/ui/Badge';
-import { getRelativeTime } from '@/utils/date';
+
 
 function CreateWorkspaceModal({
   onClose,
@@ -204,7 +204,9 @@ export default function DashboardPage() {
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <span className="text-xs text-slate-400 whitespace-nowrap">
-                    {getRelativeTime(ws.updated_at)}
+                    {ws.latest_report
+                      ? `${ws.latest_report.period_start.replace(/-/g, '.')} ~ ${ws.latest_report.period_end.replace(/-/g, '.')}`
+                      : '보고서 없음'}
                   </span>
                   <svg
                     width="16"

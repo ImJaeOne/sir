@@ -4,14 +4,42 @@ import type { Workspace, WorkspaceProfile, CreateWorkspaceDto } from '@/types/wo
 
 const supabase = createClient();
 
-export async function getWorkspaces(): Promise<Workspace[]> {
+export interface LatestReport {
+  period_start: string;
+  period_end: string;
+  type: string;
+}
+
+export async function getWorkspaces(): Promise<(Workspace & { latest_report?: LatestReport })[]> {
   const { data, error } = await supabase
     .from('workspaces')
     .select('*')
     .order('created_at', { ascending: false });
 
   if (error) throw error;
-  return workspaceSchema.array().parse(data);
+  const workspaces = workspaceSchema.array().parse(data);
+
+  // 각 워크스페이스의 최신 report 조회
+  const { data: reports } = await supabase
+    .from('reports')
+    .select('workspace_id, period_start, period_end, type')
+    .order('created_at', { ascending: false });
+
+  const latestByWs = new Map<string, LatestReport>();
+  for (const r of reports ?? []) {
+    if (!latestByWs.has(r.workspace_id)) {
+      latestByWs.set(r.workspace_id, {
+        period_start: r.period_start,
+        period_end: r.period_end,
+        type: r.type,
+      });
+    }
+  }
+
+  return workspaces.map(ws => ({
+    ...ws,
+    latest_report: latestByWs.get(ws.id),
+  }));
 }
 
 export async function getWorkspace(id: string): Promise<Workspace> {
