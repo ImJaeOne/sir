@@ -51,17 +51,17 @@ const defaultComponents = (className: string) => ({
 
 const reputationSectionComponents = {
   li: (props: { children?: React.ReactNode }) => (
-    <li className="flex items-start gap-2 text-base font-normal text-text-sub">
+    <li className="flex items-start gap-1.5 text-sm font-normal text-text-sub">
       <span className="shrink-0 mt-0.5">
-        <CheckListIcon size={18} />
+        <CheckListIcon size={14} />
       </span>
       <span>{props.children}</span>
     </li>
   ),
-  ul: (props: { children?: React.ReactNode }) => <ul className="space-y-2">{props.children}</ul>,
-  ol: (props: { children?: React.ReactNode }) => <ol className="space-y-2">{props.children}</ol>,
+  ul: (props: { children?: React.ReactNode }) => <ul className="space-y-1.5">{props.children}</ul>,
+  ol: (props: { children?: React.ReactNode }) => <ol className="space-y-1.5">{props.children}</ol>,
   p: (props: { children?: React.ReactNode }) => (
-    <p className="text-base leading-relaxed text-text-sub mb-2 last:mb-0">{props.children}</p>
+    <p className="text-sm leading-relaxed text-text-sub mb-1.5 last:mb-0">{props.children}</p>
   ),
   strong: (props: { children?: React.ReactNode }) => (
     <strong className="font-semibold text-text-dark">{props.children}</strong>
@@ -97,11 +97,11 @@ function ReputationMd({ children }: { children: string }) {
   const sections = splitByHeading(children);
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-2">
       {sections.map((section, i) => (
-        <div key={i} className="bg-bg-light rounded-lg px-[30px] py-6">
+        <div key={i} className="bg-bg-light rounded-lg px-5 py-4">
           {section.title && (
-            <h3 className="text-base font-semibold text-text-muted mb-3">{section.title}</h3>
+            <h3 className="text-sm font-semibold text-text-muted mb-2">{section.title}</h3>
           )}
           {section.body && (
             <ReactMarkdown components={reputationSectionComponents}>{section.body}</ReactMarkdown>

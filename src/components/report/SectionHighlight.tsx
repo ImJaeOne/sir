@@ -8,7 +8,7 @@ import { ReportCard } from '@/components/report/ReportCard';
 import { Md } from '@/components/ui/Markdown';
 import type { SummarySection } from '@/lib/api/reportApi';
 import { cn } from '@/lib/utils';
-import { SectionTitle } from '@/components/report/SectionTitle';
+import { ReportSection, ReportSubSection } from '@/components/report/ReportSection';
 
 function StatCard({
   title,
@@ -22,21 +22,21 @@ function StatCard({
   change?: { label: string; type: 'up' | 'down' | 'neutral' } | null;
 }) {
   return (
-    <div className="bg-white rounded-xl px-[30px] py-[26px] flex flex-1 flex-col items-start shadow-card">
-      <span className="text-base font-bold text-text-muted mb-8">{title}</span>
-      <div className="flex flex-col mb-5">
-        <span className="text-sm font-normal text-text-muted">{description}</span>
-        <span className="text-[42px] font-extrabold text-text-dark">{value}</span>
+    <div className="bg-white rounded-xl px-5 py-5 flex flex-1 flex-col items-start shadow-card">
+      <span className="text-sm font-bold text-text-muted mb-5">{title}</span>
+      <div className="flex flex-col mb-3">
+        <span className="text-xs font-normal text-text-muted">{description}</span>
+        <span className="text-[28px] font-extrabold text-text-dark">{value}</span>
       </div>
       <div
         className={cn(
-          'w-full flex justify-center py-[10px] rounded-[10px]',
+          'w-full flex justify-center py-1.5 rounded-lg',
           change?.type === 'down' ? 'bg-bg-danger' : 'bg-bg-blue'
         )}
       >
         {change && (
           <span
-            className={`text-sm font-bold ${change.type === 'up' ? 'text-text-accent' : change.type === 'down' ? 'text-text-danger' : 'text-text-muted'}`}
+            className={`text-xs font-bold ${change.type === 'up' ? 'text-text-accent' : change.type === 'down' ? 'text-text-danger' : 'text-text-muted'}`}
           >
             {change.label}
           </span>
@@ -99,18 +99,18 @@ function SummaryAccordion({ sections }: { sections: SummarySection[] }) {
             i < sections.length - 1 && 'border-b border-border-light'
           )}
         >
-          <div className="flex items-start gap-4 px-4 py-8">
-            <div className="flex gap-5 shrink-0">
+          <div className="flex items-start gap-8 px-4 py-5">
+            <div className="flex gap-3 shrink-0 items-center">
               {SUMMARY_SECTIONS[i]?.icon &&
                 (() => {
                   const Icon = SUMMARY_SECTIONS[i].icon;
                   return (
-                    <div className={cn('p-[15px] rounded-lg', SUMMARY_SECTIONS[i].bg)}>
-                      <Icon size={30} />
+                    <div className={cn('p-2.5 rounded-lg', SUMMARY_SECTIONS[i].bg)}>
+                      <Icon size={20} />
                     </div>
                   );
                 })()}
-              <div className="w-[162px] whitespace-pre-line text-xl text-text-muted font-bold">
+              <div className="w-[130px] whitespace-pre-line text-sm text-text-muted font-bold">
                 {SUMMARY_SECTIONS[i]?.label ?? `섹션 ${i + 1}`}
               </div>
             </div>
@@ -119,15 +119,15 @@ function SummaryAccordion({ sections }: { sections: SummarySection[] }) {
                 onClick={() => setOpenIdx(openIdx === i ? null : i)}
                 className="w-full flex justify-between items-center text-left cursor-pointer hover:opacity-80 transition-opacity"
               >
-                <p className="text-xl font-semibold text-text-dark">{section.summary}</p>
+                <p className="text-sm font-semibold text-text-dark">{section.summary}</p>
                 {openIdx === i ? (
-                  <ChevronUp size={30} className="text-slate-400 shrink-0 ml-4" />
+                  <ChevronUp size={18} className="text-slate-400 shrink-0 ml-3" />
                 ) : (
-                  <ChevronDown size={30} className="text-slate-400 shrink-0 ml-4" />
+                  <ChevronDown size={18} className="text-slate-400 shrink-0 ml-3" />
                 )}
               </button>
               {openIdx === i && (
-                <div className="mt-4">
+                <div className="mt-3">
                   <Md type="reputation">{section.detail}</Md>
                 </div>
               )}
@@ -185,75 +185,69 @@ export function SectionHighlight({
   const prefix = isInitial ? '' : '전주 대비 ';
 
   return (
-    <section className="flex flex-col gap-8">
-      <div className="flex items-center gap-3">
-        <WeeklyHighlightIcon />
-        <h2 className="text-[28px] font-bold text-text-dark shrink-0">주간 하이라이트</h2>
-      </div>
+    <ReportSection icon={<WeeklyHighlightIcon size={36} />} title="주간 하이라이트">
+      {/* Snapshot 카드 */}
+      <ReportSubSection title="Snapshot">
+        <div className="flex gap-7">
+          <StatCard
+            title="오늘의 SIR 지수"
+            description="1,000점 만점 기준"
+            value={`${Math.round(score)}점`}
+            change={
+              snapshotDiff
+                ? formatChange(snapshotDiff.scoreDiff, '점', '상승', '하락', prefix)
+                : undefined
+            }
+          />
+          <StatCard
+            title="SIR 순위"
+            description={`총 참여 기업 ${sirRanking.total}개`}
+            value={getSirTier(score)}
+            change={
+              snapshotDiff
+                ? formatChange(snapshotDiff.tierDiff, '구간', '상승', '하락', prefix)
+                : undefined
+            }
+          />
+          <StatCard
+            title="이번 주 수집된 평판 데이터 수"
+            description="6개 채널 통합 수집"
+            value={`${totalItems.toLocaleString()}개`}
+            change={
+              snapshotDiff
+                ? formatChange(snapshotDiff.itemsDiff, '개', '증가', '감소', prefix)
+                : undefined
+            }
+          />
+          <StatCard
+            title="이번 주 리스크 높은 콘텐츠 수"
+            description="즉시 검토 권장"
+            value={`${riskCount}개`}
+            change={
+              snapshotDiff
+                ? formatChange(snapshotDiff.riskDiff, '개', '증가', '감소', prefix, true)
+                : undefined
+            }
+          />
+        </div>
+      </ReportSubSection>
 
-      <div className="flex flex-col gap-15">
-        {/* Snapshot 카드 */}
-        <SectionTitle title="Snapshot">
-          <div className="flex gap-3">
-            <StatCard
-              title="오늘의 SIR 지수"
-              description="1,000점 만점 기준"
-              value={`${Math.round(score)}점`}
-              change={
-                snapshotDiff
-                  ? formatChange(snapshotDiff.scoreDiff, '점', '상승', '하락', prefix)
-                  : undefined
-              }
-            />
-            <StatCard
-              title="SIR 순위"
-              description={`총 참여 기업 ${sirRanking.total}개`}
-              value={getSirTier(score)}
-              change={
-                snapshotDiff
-                  ? formatChange(snapshotDiff.tierDiff, '구간', '상승', '하락', prefix)
-                  : undefined
-              }
-            />
-            <StatCard
-              title="이번 주 취합된 평판 데이터 수"
-              description="6개 채널 통합 수집"
-              value={`${totalItems.toLocaleString()}개`}
-              change={
-                snapshotDiff
-                  ? formatChange(snapshotDiff.itemsDiff, '개', '증가', '감소', prefix)
-                  : undefined
-              }
-            />
-            <StatCard
-              title="이번 주 리스크 높은 콘텐츠 수"
-              description="즉시 검토 권장"
-              value={`${riskCount}개`}
-              change={
-                snapshotDiff
-                  ? formatChange(snapshotDiff.riskDiff, '개', '증가', '감소', prefix, true)
-                  : undefined
-              }
-            />
-          </div>
-        </SectionTitle>
+      {/* 이번 주 총평 */}
+      <ReportSubSection title="이번 주 총평">
+        <ReportCard px={40} py={10}>
+          {summary && summary.length > 0 ? (
+            <SummaryAccordion sections={summary} />
+          ) : (
+            <p className="text-sm text-slate-400">
+              총평 데이터가 없습니다. 총평 생성을 실행해주세요.
+            </p>
+          )}
+        </ReportCard>
+      </ReportSubSection>
 
-        {/* 이번 주 총평 */}
-        <SectionTitle title="이번주 총평">
-          <ReportCard px={70} py={50}>
-            {summary && summary.length > 0 ? (
-              <SummaryAccordion sections={summary} />
-            ) : (
-              <p className="text-sm text-slate-400">
-                총평 데이터가 없습니다. 총평 생성을 실행해주세요.
-              </p>
-            )}
-          </ReportCard>
-        </SectionTitle>
-
-        {/* SIR 지수 & 주가 차트 */}
+      {/* SIR 지수 & 주가 차트 */}
+      <ReportSubSection title="SIR 지수 & 주가 지수">
         <ReportCard
-          title="SIR 지수 & 주가 지수"
           description="SIR 지수와 주가 흐름을 이중축으로 배치해 평판 변화와 시장 반응 간의 동행 구간을 직관적으로 확인할 수 있습니다."
           headerRight={
             <div className="flex items-center gap-1">
@@ -280,83 +274,82 @@ export function SectionHighlight({
         >
           <SirStockChart timeFrame={timeFrame} pdfMode={pdfMode} data={sirStockData} />
         </ReportCard>
+      </ReportSubSection>
 
-        {/* SIR 주간 순위 */}
-        <ReportCard
-          title="SIR 주간 순위"
-          description="SIR을 사용중인 전체 기업 중 우리 회사의 순위를 확인할 수 있습니다."
-        >
-          <div className="flex gap-3">
-            {/* 왼쪽: 요약 지표 */}
-            <div className="shrink-0 flex flex-col justify-evenly pr-6 border-r border-slate-100 gap-3">
-              <div className="bg-slate-50 rounded-xl p-4 flex flex-col items-center gap-1.5 shadow-[0_0_0_1px_rgba(241,245,249,1)]">
-                <span className="text-xs text-slate-400">{companyName} SIR 점수</span>
-                <span className="text-2xl font-bold text-blue-600">{Math.round(score)}점</span>
-              </div>
-              <div className="bg-slate-50 rounded-xl p-4 flex flex-col items-center gap-1.5 shadow-[0_0_0_1px_rgba(241,245,249,1)]">
-                <span className="text-xs text-slate-400">{companyName} 순위</span>
-                <span className="text-2xl font-bold text-slate-800">{getSirTier(score)}</span>
-              </div>
-              <div className="bg-slate-50 rounded-xl p-4 flex flex-col items-center gap-1.5 shadow-[0_0_0_1px_rgba(241,245,249,1)]">
-                <span className="text-xs text-slate-400">SIR 전체 평균 점수</span>
-                <span className="text-2xl font-bold text-slate-500">{sirRanking.average}점</span>
-              </div>
+      {/* SIR 주간 순위 */}
+      <ReportCard
+        title="SIR 주간 순위"
+        description="SIR을 사용중인 전체 기업 중 우리 회사의 순위를 확인할 수 있습니다."
+      >
+        <div className="flex gap-3">
+          {/* 왼쪽: 요약 지표 */}
+          <div className="shrink-0 flex flex-col justify-evenly pr-6 border-r border-slate-100 gap-3">
+            <div className="bg-slate-50 rounded-xl p-4 flex flex-col items-center gap-1.5 shadow-[0_0_0_1px_rgba(241,245,249,1)]">
+              <span className="text-xs text-slate-400">{companyName} SIR 점수</span>
+              <span className="text-2xl font-bold text-blue-600">{Math.round(score)}점</span>
             </div>
-
-            {/* 오른쪽: 구간별 기업 분포 차트 */}
-            <div className="flex-1">
-              <p className="text-[10px] text-slate-400 text-right mb-1">(단위: 기업 수)</p>
-              <div className={pdfMode ? 'h-56' : 'h-72'}>
-                <ResponsiveBar
-                  data={sirRanking.tiers}
-                  keys={['count']}
-                  indexBy="tier"
-                  layout="horizontal"
-                  margin={{ top: 0, right: 40, bottom: 25, left: 140 }}
-                  padding={0.3}
-                  colors={({ data }) => (Number(data.isCurrent) === 1 ? '#3b82f6' : '#e2e8f0')}
-                  borderRadius={4}
-                  axisLeft={{
-                    tickSize: 0,
-                    tickPadding: 8,
-                  }}
-                  axisBottom={(() => {
-                    const max =
-                      Math.ceil(Math.max(...sirRanking.tiers.map((t) => t.count), 1) / 5) * 5 || 5;
-                    const ticks = Array.from({ length: max / 5 + 1 }, (_, i) => i * 5);
-                    return { tickSize: 0, tickPadding: 5, tickValues: ticks };
-                  })()}
-                  valueScale={{
-                    type: 'linear',
-                    min: 0,
-                    max:
-                      Math.ceil(Math.max(...sirRanking.tiers.map((t) => t.count), 1) / 5) * 5 || 5,
-                  }}
-                  enableGridY={false}
-                  enableGridX={true}
-                  gridXValues={(() => {
-                    const max =
-                      Math.ceil(Math.max(...sirRanking.tiers.map((t) => t.count), 1) / 5) * 5 || 5;
-                    return Array.from({ length: max / 5 + 1 }, (_, i) => i * 5);
-                  })()}
-                  label={(d) => `${d.value}`}
-                  labelSkipWidth={10}
-                  labelTextColor={({ color }) => (color === '#3b82f6' ? '#ffffff' : '#64748b')}
-                  theme={{
-                    axis: {
-                      ticks: { text: { fontSize: 11, fill: '#334155' } },
-                    },
-                    labels: { text: { fontSize: 10, fontWeight: 600 } },
-                    grid: { line: { stroke: '#f1f5f9' } },
-                  }}
-                  animate={true}
-                  isInteractive={false}
-                />
-              </div>
+            <div className="bg-slate-50 rounded-xl p-4 flex flex-col items-center gap-1.5 shadow-[0_0_0_1px_rgba(241,245,249,1)]">
+              <span className="text-xs text-slate-400">{companyName} 순위</span>
+              <span className="text-2xl font-bold text-slate-800">{getSirTier(score)}</span>
+            </div>
+            <div className="bg-slate-50 rounded-xl p-4 flex flex-col items-center gap-1.5 shadow-[0_0_0_1px_rgba(241,245,249,1)]">
+              <span className="text-xs text-slate-400">SIR 전체 평균 점수</span>
+              <span className="text-2xl font-bold text-slate-500">{sirRanking.average}점</span>
             </div>
           </div>
-        </ReportCard>
-      </div>
-    </section>
+
+          {/* 오른쪽: 구간별 기업 분포 차트 */}
+          <div className="flex-1">
+            <p className="text-[10px] text-slate-400 text-right mb-1">(단위: 기업 수)</p>
+            <div className={pdfMode ? 'h-56' : 'h-72'}>
+              <ResponsiveBar
+                data={sirRanking.tiers}
+                keys={['count']}
+                indexBy="tier"
+                layout="horizontal"
+                margin={{ top: 0, right: 40, bottom: 25, left: 140 }}
+                padding={0.3}
+                colors={({ data }) => (Number(data.isCurrent) === 1 ? '#3b82f6' : '#e2e8f0')}
+                borderRadius={4}
+                axisLeft={{
+                  tickSize: 0,
+                  tickPadding: 8,
+                }}
+                axisBottom={(() => {
+                  const max =
+                    Math.ceil(Math.max(...sirRanking.tiers.map((t) => t.count), 1) / 5) * 5 || 5;
+                  const ticks = Array.from({ length: max / 5 + 1 }, (_, i) => i * 5);
+                  return { tickSize: 0, tickPadding: 5, tickValues: ticks };
+                })()}
+                valueScale={{
+                  type: 'linear',
+                  min: 0,
+                  max: Math.ceil(Math.max(...sirRanking.tiers.map((t) => t.count), 1) / 5) * 5 || 5,
+                }}
+                enableGridY={false}
+                enableGridX={true}
+                gridXValues={(() => {
+                  const max =
+                    Math.ceil(Math.max(...sirRanking.tiers.map((t) => t.count), 1) / 5) * 5 || 5;
+                  return Array.from({ length: max / 5 + 1 }, (_, i) => i * 5);
+                })()}
+                label={(d) => `${d.value}`}
+                labelSkipWidth={10}
+                labelTextColor={({ color }) => (color === '#3b82f6' ? '#ffffff' : '#64748b')}
+                theme={{
+                  axis: {
+                    ticks: { text: { fontSize: 11, fill: '#334155' } },
+                  },
+                  labels: { text: { fontSize: 10, fontWeight: 600 } },
+                  grid: { line: { stroke: '#f1f5f9' } },
+                }}
+                animate={true}
+                isInteractive={false}
+              />
+            </div>
+          </div>
+        </div>
+      </ReportCard>
+    </ReportSection>
   );
 }
