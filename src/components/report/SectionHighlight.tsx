@@ -22,21 +22,21 @@ function StatCard({
   change?: { label: string; type: 'up' | 'down' | 'neutral' } | null;
 }) {
   return (
-    <div className="bg-white rounded-xl px-[30px] py-[26px] flex flex-1 flex-col items-start shadow-card">
-      <span className="text-base font-bold text-text-muted mb-8">{title}</span>
-      <div className="flex flex-col mb-5">
-        <span className="text-sm font-normal text-text-muted">{description}</span>
-        <span className="text-[42px] font-extrabold text-text-dark">{value}</span>
+    <div className="bg-white rounded-xl px-5 py-5 flex flex-1 flex-col items-start shadow-card">
+      <span className="text-sm font-bold text-text-muted mb-5">{title}</span>
+      <div className="flex flex-col mb-3">
+        <span className="text-xs font-normal text-text-muted">{description}</span>
+        <span className="text-[28px] font-extrabold text-text-dark">{value}</span>
       </div>
       <div
         className={cn(
-          'w-full flex justify-center py-[10px] rounded-[10px]',
+          'w-full flex justify-center py-1.5 rounded-lg',
           change?.type === 'down' ? 'bg-bg-danger' : 'bg-bg-blue'
         )}
       >
         {change && (
           <span
-            className={`text-sm font-bold ${change.type === 'up' ? 'text-text-accent' : change.type === 'down' ? 'text-text-danger' : 'text-text-muted'}`}
+            className={`text-xs font-bold ${change.type === 'up' ? 'text-text-accent' : change.type === 'down' ? 'text-text-danger' : 'text-text-muted'}`}
           >
             {change.label}
           </span>
@@ -99,18 +99,18 @@ function SummaryAccordion({ sections }: { sections: SummarySection[] }) {
             i < sections.length - 1 && 'border-b border-border-light'
           )}
         >
-          <div className="flex items-start gap-20 px-4 py-8">
-            <div className="flex gap-5 shrink-0">
+          <div className="flex items-start gap-8 px-4 py-5">
+            <div className="flex gap-3 shrink-0 items-center">
               {SUMMARY_SECTIONS[i]?.icon &&
                 (() => {
                   const Icon = SUMMARY_SECTIONS[i].icon;
                   return (
-                    <div className={cn('p-[15px] rounded-lg', SUMMARY_SECTIONS[i].bg)}>
-                      <Icon size={30} />
+                    <div className={cn('p-2.5 rounded-lg', SUMMARY_SECTIONS[i].bg)}>
+                      <Icon size={20} />
                     </div>
                   );
                 })()}
-              <div className="w-[162px] whitespace-pre-line text-xl text-text-muted font-bold">
+              <div className="w-[130px] whitespace-pre-line text-sm text-text-muted font-bold">
                 {SUMMARY_SECTIONS[i]?.label ?? `섹션 ${i + 1}`}
               </div>
             </div>
@@ -119,15 +119,15 @@ function SummaryAccordion({ sections }: { sections: SummarySection[] }) {
                 onClick={() => setOpenIdx(openIdx === i ? null : i)}
                 className="w-full flex justify-between items-center text-left cursor-pointer hover:opacity-80 transition-opacity"
               >
-                <p className="text-xl font-semibold text-text-dark">{section.summary}</p>
+                <p className="text-sm font-semibold text-text-dark">{section.summary}</p>
                 {openIdx === i ? (
-                  <ChevronUp size={30} className="text-slate-400 shrink-0 ml-4" />
+                  <ChevronUp size={18} className="text-slate-400 shrink-0 ml-3" />
                 ) : (
-                  <ChevronDown size={30} className="text-slate-400 shrink-0 ml-4" />
+                  <ChevronDown size={18} className="text-slate-400 shrink-0 ml-3" />
                 )}
               </button>
               {openIdx === i && (
-                <div className="mt-4">
+                <div className="mt-3">
                   <Md type="reputation">{section.detail}</Md>
                 </div>
               )}
@@ -185,7 +185,7 @@ export function SectionHighlight({
   const prefix = isInitial ? '' : '전주 대비 ';
 
   return (
-    <ReportSection icon={<WeeklyHighlightIcon />} title="주간 하이라이트">
+    <ReportSection icon={<WeeklyHighlightIcon size={36} />} title="주간 하이라이트">
       {/* Snapshot 카드 */}
       <ReportSubSection title="Snapshot">
         <div className="flex gap-7">
@@ -210,7 +210,7 @@ export function SectionHighlight({
             }
           />
           <StatCard
-            title="이번 주 스집된 평판 데이터 수"
+            title="이번 주 수집된 평판 데이터 수"
             description="6개 채널 통합 수집"
             value={`${totalItems.toLocaleString()}개`}
             change={
@@ -234,7 +234,7 @@ export function SectionHighlight({
 
       {/* 이번 주 총평 */}
       <ReportSubSection title="이번 주 총평">
-        <ReportCard px={70} py={50}>
+        <ReportCard px={40} py={10}>
           {summary && summary.length > 0 ? (
             <SummaryAccordion sections={summary} />
           ) : (

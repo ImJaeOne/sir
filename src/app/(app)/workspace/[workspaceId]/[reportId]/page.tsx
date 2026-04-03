@@ -77,10 +77,18 @@ export default function ReportPage() {
     }
 
     const prevDate = prevReport.createdAt;
-    const currItems = (channelItems ?? []).filter(i => i.published_at && i.published_at >= prevDate).length;
-    const prevItems = (channelItems ?? []).filter(i => i.published_at && i.published_at < prevDate).length;
-    const currRisk = (riskItems ?? []).filter(i => i.published_at && i.published_at >= prevDate).length;
-    const prevRisk = (riskItems ?? []).filter(i => i.published_at && i.published_at < prevDate).length;
+    const currItems = (channelItems ?? []).filter(
+      (i) => i.published_at && i.published_at >= prevDate
+    ).length;
+    const prevItems = (channelItems ?? []).filter(
+      (i) => i.published_at && i.published_at < prevDate
+    ).length;
+    const currRisk = (riskItems ?? []).filter(
+      (i) => i.published_at && i.published_at >= prevDate
+    ).length;
+    const prevRisk = (riskItems ?? []).filter(
+      (i) => i.published_at && i.published_at < prevDate
+    ).length;
 
     return {
       scoreDiff: Math.round(currScore - prevReport.sirScore),
@@ -128,8 +136,8 @@ export default function ReportPage() {
   };
 
   return (
-    <div className="px-15 py-14 bg-bg-light">
-      <div className="mx-auto flex flex-col gap-15">
+    <div className="px-10 py-10 bg-bg-light">
+      <div className="mx-auto w-[1200px] flex flex-col gap-10">
         {/* 헤더 */}
         <div className="flex flex-col gap-4">
           <div className="w-full flex justify-between items-center">
@@ -142,10 +150,10 @@ export default function ReportPage() {
               {downloading ? 'PDF 생성 중...' : 'PDF 다운로드'}
             </button>
           </div>
-          <div className="flex items-center justify-between bg-bg-dark px-12 py-11 rounded-xl">
-            <h1 className="flex items-center gap-5 font-bold">
-              <span className="text-white text-[44px]">{workspace?.company_name ?? ''}</span>
-              <span className="text-text-muted text-[28px]">({workspace?.ticker ?? ''})</span>
+          <div className="flex items-center justify-between bg-bg-dark px-10 py-8 rounded-xl">
+            <h1 className="flex items-center gap-3 font-bold">
+              <span className="text-white text-[36px]">{workspace?.company_name ?? ''}</span>
+              <span className="text-text-muted text-[22px]">({workspace?.ticker ?? ''})</span>
             </h1>
             <div className="flex flex-col gap-2 text-sm">
               <p className="test-sm flex gap-22">
