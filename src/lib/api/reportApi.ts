@@ -382,6 +382,29 @@ export async function getStrategies(workspaceId: string): Promise<StrategyGroup[
   return items.sort((a, b) => CATEGORY_ORDER.indexOf(a.category) - CATEGORY_ORDER.indexOf(b.category));
 }
 
+// ── 이전 리포트 비교 ──
+
+export interface PrevReport {
+  sirScore: number;
+  createdAt: string;
+}
+
+export async function getPrevReport(workspaceId: string, currentReportId: string): Promise<PrevReport | null> {
+  const { data } = await supabase
+    .from('reports')
+    .select('id, sir_score, created_at')
+    .eq('workspace_id', workspaceId)
+    .order('created_at', { ascending: false });
+
+  if (!data || data.length < 2) return null;
+
+  const currIdx = data.findIndex(r => r.id === currentReportId);
+  if (currIdx === -1 || currIdx + 1 >= data.length) return null;
+
+  const prev = data[currIdx + 1];
+  return { sirScore: prev.sir_score ?? 0, createdAt: prev.created_at };
+}
+
 // ── 검색 트렌드 ──
 
 export interface TrendPoint {
