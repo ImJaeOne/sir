@@ -145,6 +145,7 @@ import { DynamicsIcon } from '@/components/icons/DynamicsIcon';
 import { MomentumIcon } from '@/components/icons/MomentumIcon';
 import { LiskIcon } from '@/components/icons/LiskIcon';
 import { WeeklyHighlightIcon } from '@/components/icons/WeeklyHighlightIcon';
+import { ChartSearchIcon } from '@/components/icons/ChartSearchIcon';
 
 export interface SnapshotDiff {
   scoreDiff: number;
@@ -234,7 +235,7 @@ export function SectionHighlight({
 
       {/* 이번 주 총평 */}
       <ReportSubSection title="이번 주 총평">
-        <ReportCard px={40} py={10}>
+        <ReportCard px={20} py={5}>
           {summary && summary.length > 0 ? (
             <SummaryAccordion sections={summary} />
           ) : (
@@ -246,110 +247,149 @@ export function SectionHighlight({
       </ReportSubSection>
 
       {/* SIR 지수 & 주가 차트 */}
-      <ReportSubSection title="SIR 지수 & 주가 지수">
-        <ReportCard
-          description="SIR 지수와 주가 흐름을 이중축으로 배치해 평판 변화와 시장 반응 간의 동행 구간을 직관적으로 확인할 수 있습니다."
-          headerRight={
-            <div className="flex items-center gap-1">
-              {(
-                [
-                  { key: 'daily', label: '일' },
-                  { key: 'weekly', label: '주' },
-                ] as const
-              ).map(({ key, label }) => (
-                <button
-                  key={key}
-                  onClick={() => setTimeFrame(key)}
-                  className={`text-xs px-3 py-1.5 rounded-lg font-semibold transition-colors cursor-pointer ${
-                    timeFrame === key
-                      ? 'bg-slate-800 text-white'
-                      : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          }
-        >
-          <SirStockChart timeFrame={timeFrame} pdfMode={pdfMode} data={sirStockData} />
-        </ReportCard>
-      </ReportSubSection>
-
-      {/* SIR 주간 순위 */}
-      <ReportCard
-        title="SIR 주간 순위"
-        description="SIR을 사용중인 전체 기업 중 우리 회사의 순위를 확인할 수 있습니다."
+      <ReportSubSection
+        title="SIR 지수 & 주가 지수"
+        description="SIR 지수와 주가 흐름을 이중축으로 배치해 평판 변화와 시장 반응 간의 동행 구간을 직관적으로 확인할 수 있습니다."
+        className="flex gap-4"
       >
-        <div className="flex gap-3">
-          {/* 왼쪽: 요약 지표 */}
-          <div className="shrink-0 flex flex-col justify-evenly pr-6 border-r border-slate-100 gap-3">
-            <div className="bg-slate-50 rounded-xl p-4 flex flex-col items-center gap-1.5 shadow-[0_0_0_1px_rgba(241,245,249,1)]">
-              <span className="text-xs text-slate-400">{companyName} SIR 점수</span>
-              <span className="text-2xl font-bold text-blue-600">{Math.round(score)}점</span>
+        <ReportCard className="flex-1" px={20} py={10}>
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1">
+                {(
+                  [
+                    { key: 'daily', label: '일' },
+                    { key: 'weekly', label: '주' },
+                  ] as const
+                ).map(({ key, label }) => (
+                  <button
+                    key={key}
+                    onClick={() => setTimeFrame(key)}
+                    className={`text-xs w-8 h-8 rounded-lg font-semibold transition-colors cursor-pointer ${
+                      timeFrame === key
+                        ? 'bg-bg-accent text-white'
+                        : 'bg-bg-light text-text-muted hover:bg-slate-200'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center gap-3 text-xs text-text-muted">
+                <span className="flex items-center gap-1">
+                  <span className="w-2.5 h-2.5 rounded-full bg-chart-sir" />
+                  SIR 지수
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-2.5 h-2.5 rounded-full bg-chart-stock-up" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-chart-stock-down" />
+                  주가 지수
+                </span>
+              </div>
             </div>
-            <div className="bg-slate-50 rounded-xl p-4 flex flex-col items-center gap-1.5 shadow-[0_0_0_1px_rgba(241,245,249,1)]">
-              <span className="text-xs text-slate-400">{companyName} 순위</span>
-              <span className="text-2xl font-bold text-slate-800">{getSirTier(score)}</span>
-            </div>
-            <div className="bg-slate-50 rounded-xl p-4 flex flex-col items-center gap-1.5 shadow-[0_0_0_1px_rgba(241,245,249,1)]">
-              <span className="text-xs text-slate-400">SIR 전체 평균 점수</span>
-              <span className="text-2xl font-bold text-slate-500">{sirRanking.average}점</span>
-            </div>
+            <SirStockChart timeFrame={timeFrame} pdfMode={pdfMode} data={sirStockData} />
           </div>
-
-          {/* 오른쪽: 구간별 기업 분포 차트 */}
-          <div className="flex-1">
-            <p className="text-[10px] text-slate-400 text-right mb-1">(단위: 기업 수)</p>
-            <div className={pdfMode ? 'h-56' : 'h-72'}>
-              <ResponsiveBar
-                data={sirRanking.tiers}
-                keys={['count']}
-                indexBy="tier"
-                layout="horizontal"
-                margin={{ top: 0, right: 40, bottom: 25, left: 140 }}
-                padding={0.3}
-                colors={({ data }) => (Number(data.isCurrent) === 1 ? '#3b82f6' : '#e2e8f0')}
-                borderRadius={4}
-                axisLeft={{
-                  tickSize: 0,
-                  tickPadding: 8,
-                }}
-                axisBottom={(() => {
-                  const max =
-                    Math.ceil(Math.max(...sirRanking.tiers.map((t) => t.count), 1) / 5) * 5 || 5;
-                  const ticks = Array.from({ length: max / 5 + 1 }, (_, i) => i * 5);
-                  return { tickSize: 0, tickPadding: 5, tickValues: ticks };
-                })()}
-                valueScale={{
-                  type: 'linear',
-                  min: 0,
-                  max: Math.ceil(Math.max(...sirRanking.tiers.map((t) => t.count), 1) / 5) * 5 || 5,
-                }}
-                enableGridY={false}
-                enableGridX={true}
-                gridXValues={(() => {
-                  const max =
-                    Math.ceil(Math.max(...sirRanking.tiers.map((t) => t.count), 1) / 5) * 5 || 5;
-                  return Array.from({ length: max / 5 + 1 }, (_, i) => i * 5);
-                })()}
-                label={(d) => `${d.value}`}
-                labelSkipWidth={10}
-                labelTextColor={({ color }) => (color === '#3b82f6' ? '#ffffff' : '#64748b')}
-                theme={{
-                  axis: {
-                    ticks: { text: { fontSize: 11, fill: '#334155' } },
-                  },
-                  labels: { text: { fontSize: 10, fontWeight: 600 } },
-                  grid: { line: { stroke: '#f1f5f9' } },
-                }}
-                animate={true}
-                isInteractive={false}
-              />
+        </ReportCard>
+        <div className="relative rounded-xl bg-bg-dark w-[200px] px-5 py-5 overflow-hidden">
+          <div className="text-white flex flex-col justify-between h-full">
+            <div className="flex flex-col flex-1 gap-2">
+              <p className="text-base font-bold">SIR 지수란?</p>
+              <p className="text-sm font-normal">
+                SIR 지수와 주가 흐름을 이중축으로 배치해 평판 변화와 시장 반응 간의 동행 구간을
+                직관적으로 확인할 수 있습니다.
+              </p>
+            </div>
+            <div className="flex flex-col flex-1 gap-2">
+              <p className="text-base font-bold">SIR 지수 산출 항목</p>
+              <p className="text-sm font-normal">
+                SIR 지수와 주가 흐름을 이중축으로 배치해 평판 변화와 시장 반응 간의 동행 구간을
+                직관적으로 확인할 수 있습니다.
+              </p>
+            </div>
+            <div className="flex justify-end">
+              <ChartSearchIcon size={50} />
             </div>
           </div>
         </div>
-      </ReportCard>
+      </ReportSubSection>
+
+      {/* SIR 주간 순위 */}
+      <ReportSubSection
+        title="SIR 주간 순위"
+        description="SIR을 사용중인 전체 기업 중 우리 회사의 순위를 확인할 수 있습니다."
+      >
+        <ReportCard>
+          <div className="flex gap-3">
+            {/* 왼쪽: 요약 지표 */}
+            <div className="shrink-0 flex flex-col justify-evenly pr-6 border-r border-slate-100 gap-3">
+              <div className="bg-slate-50 rounded-xl p-4 flex flex-col items-center gap-1.5 shadow-[0_0_0_1px_rgba(241,245,249,1)]">
+                <span className="text-xs text-slate-400">{companyName} SIR 점수</span>
+                <span className="text-2xl font-bold text-blue-600">{Math.round(score)}점</span>
+              </div>
+              <div className="bg-slate-50 rounded-xl p-4 flex flex-col items-center gap-1.5 shadow-[0_0_0_1px_rgba(241,245,249,1)]">
+                <span className="text-xs text-slate-400">{companyName} 순위</span>
+                <span className="text-2xl font-bold text-slate-800">{getSirTier(score)}</span>
+              </div>
+              <div className="bg-slate-50 rounded-xl p-4 flex flex-col items-center gap-1.5 shadow-[0_0_0_1px_rgba(241,245,249,1)]">
+                <span className="text-xs text-slate-400">SIR 전체 평균 점수</span>
+                <span className="text-2xl font-bold text-slate-500">{sirRanking.average}점</span>
+              </div>
+            </div>
+
+            {/* 오른쪽: 구간별 기업 분포 차트 */}
+            <div className="flex-1">
+              <p className="text-[10px] text-slate-400 text-right mb-1">(단위: 기업 수)</p>
+              <div className={pdfMode ? 'h-56' : 'h-72'}>
+                <ResponsiveBar
+                  data={sirRanking.tiers}
+                  keys={['count']}
+                  indexBy="tier"
+                  layout="horizontal"
+                  margin={{ top: 0, right: 40, bottom: 25, left: 140 }}
+                  padding={0.3}
+                  colors={({ data }) => (Number(data.isCurrent) === 1 ? '#3b82f6' : '#e2e8f0')}
+                  borderRadius={4}
+                  axisLeft={{
+                    tickSize: 0,
+                    tickPadding: 8,
+                  }}
+                  axisBottom={(() => {
+                    const max =
+                      Math.ceil(Math.max(...sirRanking.tiers.map((t) => t.count), 1) / 5) * 5 || 5;
+                    const ticks = Array.from({ length: max / 5 + 1 }, (_, i) => i * 5);
+                    return { tickSize: 0, tickPadding: 5, tickValues: ticks };
+                  })()}
+                  valueScale={{
+                    type: 'linear',
+                    min: 0,
+                    max:
+                      Math.ceil(Math.max(...sirRanking.tiers.map((t) => t.count), 1) / 5) * 5 || 5,
+                  }}
+                  enableGridY={false}
+                  enableGridX={true}
+                  gridXValues={(() => {
+                    const max =
+                      Math.ceil(Math.max(...sirRanking.tiers.map((t) => t.count), 1) / 5) * 5 || 5;
+                    return Array.from({ length: max / 5 + 1 }, (_, i) => i * 5);
+                  })()}
+                  label={(d) => `${d.value}`}
+                  labelSkipWidth={10}
+                  labelTextColor={({ color }) => (color === '#3b82f6' ? '#ffffff' : '#64748b')}
+                  theme={{
+                    axis: {
+                      ticks: { text: { fontSize: 11, fill: '#334155' } },
+                    },
+                    labels: { text: { fontSize: 10, fontWeight: 600 } },
+                    grid: { line: { stroke: '#f1f5f9' } },
+                  }}
+                  animate={true}
+                  isInteractive={false}
+                />
+              </div>
+            </div>
+          </div>
+        </ReportCard>
+      </ReportSubSection>
     </ReportSection>
   );
 }

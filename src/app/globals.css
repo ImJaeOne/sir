@@ -22,6 +22,7 @@ body {
   --color-text-danger: #ff4d3d;
   --color-text-sub: #5a606c;
   --color-text-disabled: #c9c9c9;
+  --color-text-green: #17d82d;
 
   /* border */
   --color-border-light: #d8dee9;
@@ -31,10 +32,17 @@ body {
 
   /* background */
   --color-bg-dark: #1f2838;
+  --color-bg-dark-95: #1f2838f2;
   --color-bg-light: #f4f5f6;
   --color-bg-blue: #e8f4ff;
+  --color-bg-accent: #362cff;
   --color-bg-pupple: #b04aff26;
   --color-bg-green: #17d82d26;
   --color-bg-danger: #ff4d3d26;
   --color-bg-gray-button: #828ea61a;
+
+  /* chart */
+  --color-chart-sir: #17d82d;
+  --color-chart-stock-up: #ff4d3d;
+  --color-chart-stock-down: #362cff;
 }
