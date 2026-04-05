@@ -6,11 +6,12 @@ import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { TickerBadge } from '@/components/ui/Badge';
-import { useWorkspace, useWorkspaceProfile, useReports, workspaceKeys } from '@/hooks/workspace/useWorkspaceQuery';
+import { useWorkspace, useWorkspaceProfile, useReports, useReportProgress, workspaceKeys } from '@/hooks/workspace/useWorkspaceQuery';
 import { useUpdateWorkspaceProfile } from '@/hooks/workspace/useWorkspaceMutation';
 import { createClient } from '@/lib/supabase/client';
-import type { Report } from '@/lib/api/workspaceApi';
+import type { Report, ReportProgress } from '@/lib/api/workspaceApi';
 import type { WorkspaceProfile } from '@/types/workspace';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 
 function EditProfileModal({
   workspaceId,
@@ -122,6 +123,79 @@ function EditProfileModal({
   );
 }
 
+const PLATFORM_LABELS: Record<string, string> = {
+  naver_news: '뉴스',
+  naver_blog: '블로그',
+  youtube: '유튜브',
+  naver_stock: '종토방',
+  dcinside: '디시인사이드',
+};
+
+const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
+  crawling: { label: '크롤링 중', color: 'text-blue-500' },
+  analyzing: { label: '분석 중', color: 'text-amber-500' },
+  clustering: { label: '클러스터링 중', color: 'text-violet-500' },
+  done: { label: '완료', color: 'text-emerald-500' },
+  failed: { label: '실패', color: 'text-red-500' },
+};
+
+function SessionStatusDot({ status }: { status: string }) {
+  const dotColor =
+    status === 'done' ? 'bg-emerald-400' :
+    status === 'failed' ? 'bg-red-400' :
+    'bg-amber-400 animate-pulse';
+  return <span className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />;
+}
+
+function ReportProgressPanel({ progress }: { progress: ReportProgress }) {
+  return (
+    <div className="px-5 pb-4 flex flex-col gap-3">
+      {/* 플랫폼별 세션 상태 */}
+      <div className="flex flex-col gap-1.5">
+        <span className="text-xs font-semibold text-slate-500">플랫폼별 수집 현황</span>
+        <div className="grid grid-cols-2 gap-1.5">
+          {progress.sessions.map((s, i) => {
+            const cfg = STATUS_CONFIG[s.status] ?? { label: s.status, color: 'text-slate-400' };
+            return (
+              <div key={i} className="flex items-center gap-2 bg-slate-50 rounded-lg px-3 py-2">
+                <SessionStatusDot status={s.status} />
+                <span className="text-xs text-slate-600 font-medium">{PLATFORM_LABELS[s.platform_id] ?? s.platform_id}</span>
+                <span className={`text-xs font-semibold ml-auto ${cfg.color}`}>
+                  {s.status === 'failed' && s.failed_reason ? `${cfg.label} (${s.failed_reason})` : cfg.label}
+                </span>
+                {s.status === 'done' && s.total_items > 0 && (
+                  <span className="text-[10px] text-slate-400">{s.total_items}건</span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 총평 & 전략 */}
+      <div className="flex flex-col gap-1.5">
+        <span className="text-xs font-semibold text-slate-500">보고서 생성 현황</span>
+        <div className="grid grid-cols-2 gap-1.5">
+          <div className="flex items-center gap-2 bg-slate-50 rounded-lg px-3 py-2">
+            <SessionStatusDot status={progress.hasSummary ? 'done' : 'crawling'} />
+            <span className="text-xs text-slate-600 font-medium">총평</span>
+            <span className={`text-xs font-semibold ml-auto ${progress.hasSummary ? 'text-emerald-500' : 'text-slate-400'}`}>
+              {progress.hasSummary ? '완료' : '대기'}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 bg-slate-50 rounded-lg px-3 py-2">
+            <SessionStatusDot status={progress.strategyCategories.length > 0 ? 'done' : 'crawling'} />
+            <span className="text-xs text-slate-600 font-medium">대응 전략</span>
+            <span className={`text-xs font-semibold ml-auto ${progress.strategyCategories.length > 0 ? 'text-emerald-500' : 'text-slate-400'}`}>
+              {progress.strategyCategories.length > 0 ? `${progress.strategyCategories.length}개 채널` : '대기'}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function CreateReportButton({ workspaceId }: { workspaceId: string }) {
   const [loading, setLoading] = useState(false);
   const queryClient = useQueryClient();
@@ -184,6 +258,35 @@ export default function WorkspaceDetailPage() {
   const { data: profile } = useWorkspaceProfile(workspaceId);
   const [showEditProfile, setShowEditProfile] = useState(false);
   const { data: reports, isLoading } = useReports(workspaceId);
+  const { data: progressList } = useReportProgress(workspaceId);
+
+  console.log('reports:', reports);
+  console.log('progressList:', progressList);
+
+  // 진행 중인 보고서는 기본 열림, 완료된 보고서는 닫힘
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+
+  const toggleExpand = (id: string) => {
+    setExpandedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  // 진행 중인 보고서 자동 열기 (reports/progressList 로드 후)
+  const [initialized, setInitialized] = useState(false);
+  if (!initialized && reports && progressList) {
+    const inProgress = new Set<string>();
+    for (const report of reports) {
+      if (report.status !== 'published') {
+        inProgress.add(report.id);
+      }
+    }
+    if (inProgress.size > 0) setExpandedIds(inProgress);
+    setInitialized(true);
+  }
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
@@ -246,32 +349,50 @@ export default function WorkspaceDetailPage() {
               ? 'bg-emerald-50 text-emerald-700'
               : 'bg-amber-50 text-amber-700';
             const statusLabel = report.status === 'published' ? '검토 완료' : '검토 대기';
+            const isExpanded = expandedIds.has(report.id);
+            const progress = progressList?.find(p => p.reportId === report.id);
 
             return (
-              <button
+              <div
                 key={report.id}
-                onClick={() => router.push(`/workspace/${workspaceId}/${report.id}`)}
-                className="w-full bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden hover:border-blue-200 hover:shadow-md transition-all cursor-pointer text-left"
+                className="w-full bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden transition-all"
               >
                 <div className="px-5 py-4 sm:px-6 flex items-center justify-between">
-                  <div className="flex flex-col gap-1.5">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-semibold text-slate-800">
-                        {periodStart} ~ {periodEnd}
-                      </span>
-                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${statusColor}`}>
-                        {statusLabel}
-                      </span>
+                  <button
+                    onClick={() => toggleExpand(report.id)}
+                    className="flex items-center gap-2 cursor-pointer"
+                  >
+                    {isExpanded
+                      ? <ChevronUp size={16} className="text-slate-400" />
+                      : <ChevronDown size={16} className="text-slate-400" />
+                    }
+                  </button>
+                  <button
+                    onClick={() => router.push(`/workspace/${workspaceId}/${report.id}`)}
+                    className="flex-1 flex items-center justify-between ml-3 text-left cursor-pointer"
+                  >
+                    <div className="flex flex-col gap-1.5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-slate-800">
+                          {periodStart} ~ {periodEnd}
+                        </span>
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${statusColor}`}>
+                          {statusLabel}
+                        </span>
+                      </div>
+                      <span className="text-xs text-slate-400">{typeLabel}</span>
                     </div>
-                    <span className="text-xs text-slate-400">
-                      {typeLabel}
-                    </span>
-                  </div>
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" className="text-slate-300 shrink-0">
-                    <path d="M6 4l4 4-4 4" />
-                  </svg>
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" className="text-slate-300 shrink-0">
+                      <path d="M6 4l4 4-4 4" />
+                    </svg>
+                  </button>
                 </div>
-              </button>
+                {isExpanded && progress && (
+                  <div className="border-t border-slate-100">
+                    <ReportProgressPanel progress={progress} />
+                  </div>
+                )}
+              </div>
             );
           })}
         </div>
