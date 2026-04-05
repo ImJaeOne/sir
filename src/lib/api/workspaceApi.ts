@@ -99,6 +99,15 @@ export async function createWorkspace(dto: CreateWorkspaceDto): Promise<Workspac
   return result;
 }
 
+export async function deleteWorkspace(id: string): Promise<void> {
+  const { error } = await supabase
+    .from('workspaces')
+    .delete()
+    .eq('id', id);
+
+  if (error) throw error;
+}
+
 export async function getWorkspaceProfile(workspaceId: string): Promise<WorkspaceProfile | null> {
   const { data, error } = await supabase
     .from('workspace_profiles')
@@ -131,6 +140,68 @@ export async function getReports(workspaceId: string): Promise<Report[]> {
 
   if (error) throw error;
   return data ?? [];
+}
+
+export interface ReportProgress {
+  reportId: string;
+  sessions: {
+    platform_id: string;
+    status: string;
+    failed_reason: string | null;
+    total_items: number;
+  }[];
+  hasSummary: boolean;
+  strategyCategories: string[];
+}
+
+export async function getReportProgress(workspaceId: string): Promise<ReportProgress[]> {
+  const [reportsRes, sessionsRes, strategiesRes] = await Promise.all([
+    supabase
+      .from('reports')
+      .select('id, created_at')
+      .eq('workspace_id', workspaceId)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('sessions')
+      .select('id, report_id, platform_id, status, failed_reason, total_items, created_at')
+      .eq('workspace_id', workspaceId)
+      .not('platform_id', 'is', null)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('session_strategies')
+      .select('category, created_at')
+      .eq('workspace_id', workspaceId),
+  ]);
+
+  const reports = reportsRes.data ?? [];
+  const sessions = sessionsRes.data ?? [];
+  const strategies = strategiesRes.data ?? [];
+
+  const hasSummary = strategies.some(s => s.category === null);
+  const strategyCategories = [...new Set(strategies.filter(s => s.category !== null).map(s => s.category as string))];
+
+  return reports.map(report => {
+    // 해당 리포트에 속하는 세션만 필터 + 플랫폼별 최신 1개
+    const reportSessions = sessions.filter(s => s.report_id === report.id);
+    const byPlatform = new Map<string, typeof sessions[number]>();
+    for (const s of reportSessions) {
+      if (!byPlatform.has(s.platform_id!)) {
+        byPlatform.set(s.platform_id!, s);
+      }
+    }
+
+    return {
+      reportId: report.id,
+      sessions: Array.from(byPlatform.values()).map(s => ({
+        platform_id: s.platform_id!,
+        status: s.status,
+        failed_reason: s.failed_reason,
+        total_items: s.total_items,
+      })),
+      hasSummary,
+      strategyCategories,
+    };
+  });
 }
 
 export async function updateWorkspaceProfile(

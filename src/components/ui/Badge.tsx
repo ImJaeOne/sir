@@ -67,7 +67,7 @@ export function SirLevelBadge({ score }: { score: number | null }) {
     : score >= 30
     ? { label: '주의', variant: 'amber' as BadgeVariant }
     : { label: '위험', variant: 'red' as BadgeVariant };
-  return <Badge variant={config.variant}>SIR {score} · {config.label}</Badge>;
+  return <Badge variant={config.variant}>SIR {score}</Badge>;
 }
 
 export function StatusBadge({ status }: { status: string }) {
