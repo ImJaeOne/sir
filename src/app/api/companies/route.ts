@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
       seen.add(item.isinCd);
       acc.push({
         name: item.itmsNm,
-        ticker: item.srtnCd,
+        ticker: (item.srtnCd ?? '').replace(/^[A-Za-z]/, ''),
         isinCd: item.isinCd,
         market: item.mrktCtg,
       });
