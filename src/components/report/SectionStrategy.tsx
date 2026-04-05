@@ -23,7 +23,9 @@ export function SectionStrategy({ strategies = [] }: { strategies?: StrategyGrou
         <h2 className="text-lg font-bold text-slate-800 shrink-0">대응 전략 제안</h2>
         <div className="h-px bg-slate-200 flex-1" />
       </div>
-      <ReportCard title="채널별 대응 전략" description="이번 주 온라인 여론 분석 결과를 바탕으로, 각 채널별 긍정 여론 확산 및 부정 여론 완화를 위한 주요 전략을 확인할 수 있습니다.">
+      <ReportCard>
+        <h4 className="text-sm font-semibold text-slate-700 mb-1">채널별 대응 전략</h4>
+        <p className="text-xs text-slate-400 mb-3">이번 주 온라인 여론 분석 결과를 바탕으로, 각 채널별 긍정 여론 확산 및 부정 여론 완화를 위한 주요 전략을 확인할 수 있습니다.</p>
         {strategies.length > 0 ? (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             {strategies.map((s) => (

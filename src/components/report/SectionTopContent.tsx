@@ -29,7 +29,9 @@ function NewsClusterCard({ clusters }: { clusters: NewsCluster[] }) {
   if (top3.length === 0) return null;
 
   return (
-    <ReportCard title="뉴스 TOP 3" description="관련 기사가 가장 많은 클러스터 기준으로 선정되었습니다.">
+    <ReportCard>
+      <h4 className="text-sm font-semibold text-slate-700 mb-1">뉴스 TOP 3</h4>
+      <p className="text-xs text-slate-400 mb-3">관련 기사가 가장 많은 클러스터 기준으로 선정되었습니다.</p>
       <div className="flex flex-col gap-2.5">
         {top3.map((cluster, i) => (
           <div key={cluster.id} className="relative">
@@ -103,7 +105,9 @@ export function SectionTopContent({ channelItems = [], newsClusters = [] }: { ch
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <NewsClusterCard clusters={newsClusters} />
         {channels.map(ch => (
-          <ReportCard key={ch.id} title={ch.title} description={ch.description}>
+          <ReportCard key={ch.id}>
+            <h4 className="text-sm font-semibold text-slate-700 mb-1">{ch.title}</h4>
+            <p className="text-xs text-slate-400 mb-3">{ch.description}</p>
             <div className="flex flex-col gap-2.5">
               {ch.items.map((item, i) => {
                 const badge = PLATFORM_BADGES[item.platform_id];

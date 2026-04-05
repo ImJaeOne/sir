@@ -18,11 +18,24 @@ export function ReportSection({
   );
 }
 
-export function ReportSubSection({ title, children }: { title: string; children: React.ReactNode }) {
+export function ReportSubSection({
+  title,
+  description,
+  className,
+  children,
+}: {
+  title: string;
+  description?: string;
+  className?: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="flex flex-col gap-3">
-      <h3 className="text-base font-bold text-text-accent">{title}</h3>
-      {children}
+      <div className="flex flex-col gap-1">
+        <h3 className="text-base font-bold text-text-accent">{title}</h3>
+        <p className="text-sm font-normal text-text-muted">{description}</p>
+      </div>
+      <div className={`${className}`}>{children}</div>
     </div>
   );
 }

@@ -297,10 +297,7 @@ export function SectionSentimentDetail({ pdfMode = false, channelStats = [], cha
       </div>
 
       {/* 긍정/중립/부정 비율 차트 */}
-      <ReportCard
-        title="채널별 긍정·중립·부정 여론 비중"
-        description="채널별 감정 분포를 100% 누적 막대로 비교하여 여론 구조를 직관적으로 보여줍니다."
-      >
+      <ReportCard>
         <div className="flex items-stretch gap-3">
           <div className="shrink-0 w-44 flex flex-col justify-evenly pr-3 border-r border-slate-100 gap-3">
             <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4 flex flex-col items-center gap-1.5">
@@ -364,10 +361,7 @@ export function SectionSentimentDetail({ pdfMode = false, channelStats = [], cha
       </ReportCard>
 
       {/* 채널별 수집 데이터 상세 */}
-      <ReportCard
-        title="채널별 수집 데이터 상세 보기"
-        description="각 채널명을 클릭하면 접고 펼치는 방식으로 수집된 세부 콘텐츠 목록을 확인할 수 있습니다."
-      >
+      <ReportCard>
         <div className="flex flex-col gap-2">
           {channelStats.map(ch => {
             const trend = ch.positive >= ch.negative ? '긍정 우세' : '부정 우세';
