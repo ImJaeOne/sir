@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -16,7 +16,7 @@ import {
   useSearchTrend,
   usePrevReport,
 } from '@/hooks/report/useReportQuery';
-import { SectionHighlight } from '@/components/report/SectionHighlight';
+import { Highlight } from '@/components/report/Highlight';
 import { SectionReputation } from '@/components/report/SectionReputation';
 import { SectionSentimentDetail } from '@/components/report/SectionSentimentDetail';
 import { SectionTopContent } from '@/components/report/SectionTopContent';
@@ -98,6 +98,21 @@ export default function ReportPage() {
     };
   })();
 
+  const highlightProps = useMemo(
+    () => ({
+      sirScore,
+      totalItems,
+      riskCount,
+      summary: summary ?? [],
+      sirStockData: sirStockData ?? [],
+      sirRanking,
+      companyName: workspace?.company_name ?? '',
+      isInitial,
+      snapshotDiff,
+    }),
+    [sirScore, totalItems, riskCount, summary, sirStockData, sirRanking, workspace?.company_name, isInitial, snapshotDiff],
+  );
+
   const loadingSteps = [
     { loading: wsLoading, label: '워크스페이스 접근 중...' },
     { loading: !channelItems && !itemsLoading === false, label: '세션 접근 중...' },
@@ -168,17 +183,7 @@ export default function ReportPage() {
           </div>
         </div>
 
-        <SectionHighlight
-          sirScore={sirScore}
-          totalItems={totalItems}
-          riskCount={riskCount}
-          summary={summary ?? []}
-          sirStockData={sirStockData ?? []}
-          sirRanking={sirRanking}
-          companyName={workspace?.company_name ?? ''}
-          isInitial={isInitial}
-          snapshotDiff={snapshotDiff}
-        />
+        <Highlight {...highlightProps} />
 
         <div className="print-break">
           <SectionReputation

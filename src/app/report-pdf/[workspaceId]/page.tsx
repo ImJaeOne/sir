@@ -5,7 +5,7 @@ import {
   useWorkspaceSir, useWeeklySummary, useSirStockData, useSirRanking,
   useChannelItems, useChannelStats, useNewsClusters, useRiskItems, useStrategies,
 } from '@/hooks/report/useReportQuery';
-import { SectionHighlight } from '@/components/report/SectionHighlight';
+import { Highlight } from '@/components/report/Highlight';
 import { SectionReputation } from '@/components/report/SectionReputation';
 import { SectionSentimentDetail } from '@/components/report/SectionSentimentDetail';
 import { SectionTopContent } from '@/components/report/SectionTopContent';
@@ -45,7 +45,7 @@ export default function ReportPdfPage() {
       <div className="max-w-6xl mx-auto flex flex-col gap-8">
         <div>
           <PageHeader companyName={companyName} ticker={ticker} />
-          <SectionHighlight pdfMode sirScore={workspace?.sir_score} totalItems={channelItems?.length} riskCount={riskItems?.length} summary={summary ?? []} sirStockData={sirStockData ?? []} sirRanking={sirRanking} companyName={companyName} />
+          <Highlight pdfMode sirScore={workspace?.sir_score} totalItems={channelItems?.length} riskCount={riskItems?.length} summary={summary ?? []} sirStockData={sirStockData ?? []} sirRanking={sirRanking} companyName={companyName} />
         </div>
         <div className="print-break">
           <PageHeader companyName={companyName} ticker={ticker} />
