@@ -17,8 +17,7 @@ import {
   usePrevReport,
 } from '@/hooks/report/useReportQuery';
 import { Highlight } from '@/components/report/Highlight';
-import { SectionReputation } from '@/components/report/SectionReputation';
-import { SectionSentimentDetail } from '@/components/report/SectionSentimentDetail';
+import { OnlineReputation } from '@/components/report/OnlineReputation';
 import { SectionTopContent } from '@/components/report/SectionTopContent';
 import { SectionRiskContent } from '@/components/report/SectionRiskContent';
 import { SectionStrategy } from '@/components/report/SectionStrategy';
@@ -110,7 +109,29 @@ export default function ReportPage() {
       isInitial,
       snapshotDiff,
     }),
-    [sirScore, totalItems, riskCount, summary, sirStockData, sirRanking, workspace?.company_name, isInitial, snapshotDiff],
+    [
+      sirScore,
+      totalItems,
+      riskCount,
+      summary,
+      sirStockData,
+      sirRanking,
+      workspace?.company_name,
+      isInitial,
+      snapshotDiff,
+    ]
+  );
+
+  const onlineReputationProps = useMemo(
+    () => ({
+      naverTrend: searchTrend?.naver ?? [],
+      googleTrend: searchTrend?.google ?? [],
+      channelStats: channelStats ?? [],
+      channelItems: channelItems ?? [],
+      newsClusters: newsClusters ?? [],
+      isInitial,
+    }),
+    [searchTrend, channelStats, channelItems, newsClusters, isInitial]
   );
 
   const loadingSteps = [
@@ -182,25 +203,8 @@ export default function ReportPage() {
             </div>
           </div>
         </div>
-
         <Highlight {...highlightProps} />
-
-        <div className="print-break">
-          <SectionReputation
-            naverTrend={searchTrend?.naver ?? []}
-            googleTrend={searchTrend?.google ?? []}
-            channelStats={channelStats ?? []}
-            isInitial={isInitial}
-          />
-        </div>
-
-        <div className="print-break">
-          <SectionSentimentDetail
-            channelStats={channelStats ?? []}
-            channelItems={channelItems ?? []}
-            newsClusters={newsClusters ?? []}
-          />
-        </div>
+        <OnlineReputation {...onlineReputationProps} />
 
         <div className="print-break">
           <SectionTopContent channelItems={channelItems ?? []} newsClusters={newsClusters ?? []} />

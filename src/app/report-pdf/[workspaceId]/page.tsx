@@ -6,8 +6,7 @@ import {
   useChannelItems, useChannelStats, useNewsClusters, useRiskItems, useStrategies,
 } from '@/hooks/report/useReportQuery';
 import { Highlight } from '@/components/report/Highlight';
-import { SectionReputation } from '@/components/report/SectionReputation';
-import { SectionSentimentDetail } from '@/components/report/SectionSentimentDetail';
+import { OnlineReputation } from '@/components/report/OnlineReputation';
 import { SectionTopContent } from '@/components/report/SectionTopContent';
 import { SectionRiskContent } from '@/components/report/SectionRiskContent';
 import { SectionStrategy } from '@/components/report/SectionStrategy';
@@ -49,11 +48,7 @@ export default function ReportPdfPage() {
         </div>
         <div className="print-break">
           <PageHeader companyName={companyName} ticker={ticker} />
-          <SectionReputation pdfMode naverTrend={[]} googleTrend={[]} channelStats={channelStats ?? []} />
-        </div>
-        <div className="print-break">
-          <PageHeader companyName={companyName} ticker={ticker} />
-          <SectionSentimentDetail pdfMode channelStats={channelStats ?? []} channelItems={channelItems ?? []} newsClusters={newsClusters ?? []} />
+          <OnlineReputation pdfMode naverTrend={[]} googleTrend={[]} channelStats={channelStats ?? []} channelItems={channelItems ?? []} newsClusters={newsClusters ?? []} />
         </div>
         <div className="print-break">
           <PageHeader companyName={companyName} ticker={ticker} />
