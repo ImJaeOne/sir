@@ -28,25 +28,33 @@ export function Snapshot({
       title: '오늘의 SIR 지수',
       description: '1,000점 만점 기준',
       value: `${Math.round(score)}점`,
-      change: snapshotDiff ? formatChange(snapshotDiff.scoreDiff, '점', '상승', '하락', prefix) : undefined,
-    },
-    {
-      title: 'SIR 순위',
-      description: `총 참여 기업 ${sirRanking.total}개`,
-      value: getSirTier(score),
-      change: snapshotDiff ? formatChange(snapshotDiff.tierDiff, '구간', '상승', '하락', prefix) : undefined,
+      change: snapshotDiff
+        ? formatChange(snapshotDiff.scoreDiff, '점', '상승', '하락', prefix)
+        : undefined,
     },
     {
       title: '이번 주 수집된 평판 데이터 수',
       description: '6개 채널 통합 수집',
       value: `${totalItems.toLocaleString()}개`,
-      change: snapshotDiff ? formatChange(snapshotDiff.itemsDiff, '개', '증가', '감소', prefix) : undefined,
+      change: snapshotDiff
+        ? formatChange(snapshotDiff.itemsDiff, '개', '증가', '감소', prefix)
+        : undefined,
     },
     {
       title: '이번 주 리스크 높은 콘텐츠 수',
       description: '즉시 검토 권장',
       value: `${riskCount.toLocaleString()}개`,
-      change: snapshotDiff ? formatChange(snapshotDiff.riskDiff, '개', '증가', '감소', prefix, true) : undefined,
+      change: snapshotDiff
+        ? formatChange(snapshotDiff.riskDiff, '개', '증가', '감소', prefix, true)
+        : undefined,
+    },
+    {
+      title: 'SIR 순위',
+      description: `총 참여 기업 ${sirRanking.total}개`,
+      value: getSirTier(score),
+      change: snapshotDiff
+        ? formatChange(snapshotDiff.tierDiff, '구간', '상승', '하락', prefix)
+        : undefined,
     },
   ];
 

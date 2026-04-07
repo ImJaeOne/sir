@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { SirStockChart } from '@/components/chart/SirStockChart';
 import { ReportCard } from '@/components/report/ReportCard';
 import { ReportSubSection } from '@/components/report/ReportSection';
-import { ChartSearchIcon } from '@/components/icons/ChartSearchIcon';
 import type { SirStockPoint } from '@/lib/api/reportApi';
 
 type TimeFrame = 'daily' | 'weekly';
@@ -34,9 +33,12 @@ export function SirStockPanel({ pdfMode, sirStockData }: SirStockPanelProps) {
     <ReportSubSection
       title="SIR 지수 & 주가 지수"
       description="SIR 지수와 주가 흐름을 이중축으로 배치해 평판 변화와 시장 반응 간의 동행 구간을 직관적으로 확인할 수 있습니다."
-      className="flex gap-4"
+      tooltip={
+        'SIR 지수와 주가 흐름을 이중축으로 배치해 평판 변화와\n시장 반응 간의 동행 구간을 직관적으로 확인할 수 있습니다.'
+      }
+      width={310}
     >
-      <ReportCard className="flex-1" px={20} py={20}>
+      <ReportCard px={20} py={20}>
         <div className="flex flex-col gap-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1">
@@ -71,27 +73,6 @@ export function SirStockPanel({ pdfMode, sirStockData }: SirStockPanelProps) {
           <SirStockChart timeFrame={timeFrame} pdfMode={pdfMode} data={sirStockData} />
         </div>
       </ReportCard>
-      <div className="relative rounded-xl bg-bg-dark w-[200px] px-5 py-5 overflow-hidden">
-        <div className="text-white flex flex-col justify-between h-full">
-          <div className="flex flex-col flex-1 gap-2">
-            <p className="text-base font-bold">SIR 지수란?</p>
-            <p className="text-sm font-normal">
-              SIR 지수와 주가 흐름을 이중축으로 배치해 평판 변화와 시장 반응 간의 동행 구간을
-              직관적으로 확인할 수 있습니다.
-            </p>
-          </div>
-          <div className="flex flex-col flex-1 gap-2">
-            <p className="text-base font-bold">SIR 지수 산출 항목</p>
-            <p className="text-sm font-normal">
-              SIR 지수와 주가 흐름을 이중축으로 배치해 평판 변화와 시장 반응 간의 동행 구간을
-              직관적으로 확인할 수 있습니다.
-            </p>
-          </div>
-          <div className="flex justify-end">
-            <ChartSearchIcon size={50} />
-          </div>
-        </div>
-      </div>
     </ReportSubSection>
   );
 }

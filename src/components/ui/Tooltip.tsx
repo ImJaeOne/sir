@@ -8,9 +8,11 @@ const positionStyles = {
 export function Tooltip({
   text,
   position = 'right',
+  width = 224,
 }: {
   text: string;
   position?: 'right' | 'bottom' | 'left' | 'top';
+  width?: number;
 }) {
   return (
     <span className="relative group" onClick={(e) => e.stopPropagation()}>
@@ -22,11 +24,17 @@ export function Tooltip({
         className="text-slate-400 cursor-help"
       >
         <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5" />
-        <path d="M8 7v4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-        <circle cx="8" cy="5" r="0.75" fill="currentColor" />
+        <path
+          d="M6.5 6.5a1.5 1.5 0 1 1 1.5 1.5v1"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+        />
+        <circle cx="8" cy="11.5" r="0.75" fill="currentColor" />
       </svg>
       <span
-        className={`absolute ${positionStyles[position]} px-3 py-2 text-xs text-slate-700 bg-white rounded-lg shadow-lg border border-slate-100 w-56 opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 line-clamp-2`}
+        style={{ width }}
+        className={`absolute ${positionStyles[position]} px-3 py-2 text-xs text-white bg-bg-accent rounded-lg shadow-lg border border-slate-100 opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 whitespace-pre-line`}
       >
         {text}
       </span>

@@ -18,22 +18,31 @@ export function ReportSection({
   );
 }
 
+import { Tooltip } from '@/components/ui/Tooltip';
+
 export function ReportSubSection({
   title,
   description,
+  tooltip,
+  width,
   className,
   children,
 }: {
   title: string;
   description?: string;
+  tooltip?: string;
+  width?: number;
   className?: string;
   children: React.ReactNode;
 }) {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-col gap-1">
-        <h3 className="text-base font-bold text-text-accent">{title}</h3>
-        <p className="text-sm font-normal text-text-muted">{description}</p>
+        <div className="flex items-center gap-1.5">
+          <h3 className="text-base font-bold text-text-accent">{title}</h3>
+          {tooltip && <Tooltip text={tooltip} width={width} />}
+        </div>
+        {description && <p className="text-sm font-normal text-text-muted">{description}</p>}
       </div>
       <div className={`${className}`}>{children}</div>
     </div>

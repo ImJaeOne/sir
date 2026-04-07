@@ -23,7 +23,7 @@ export function SirRankingBar({ tiers, pdfMode }: SirRankingBarProps) {
   const ticks = Array.from({ length: max / 5 + 1 }, (_, i) => i * 5);
 
   return (
-    <div className="flex flex-col gap-2 w-full relative">
+    <div className="flex flex-col gap-2 w-full relative outline-none **:outline-none">
       <p className="absolute right-1 -top-5 text-text-muted text-xs">(단위: 기업 수)</p>
 
       <ReportCard className="flex-1" px={20} py={10}>
