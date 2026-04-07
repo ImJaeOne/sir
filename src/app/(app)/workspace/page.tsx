@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { CompanySearch } from '@/components/ui/CompanySearch';
 import { Tooltip } from '@/components/ui/Tooltip';
+import { BlacklistEditor } from '@/components/ui/BlacklistEditor';
+import { createClient } from '@/lib/supabase/client';
 import { useWorkspaces } from '@/hooks/workspace/useWorkspaceQuery';
 import { useCreateWorkspace, useDeleteWorkspace } from '@/hooks/workspace/useWorkspaceMutation';
 import type { Workspace } from '@/types/workspace';
@@ -22,6 +24,8 @@ function CreateWorkspaceModal({
   const [selectedCompany, setSelectedCompany] = useState<{ name: string; ticker: string } | null>(null);
   const [industry, setIndustry] = useState('');
   const [businessSummary, setBusinessSummary] = useState('');
+  const [dcBlacklist, setDcBlacklist] = useState<string[]>([]);
+  const [ytBlacklist, setYtBlacklist] = useState<string[]>([]);
 
   const handleCreate = () => {
     if (!selectedCompany) return;
@@ -36,7 +40,16 @@ function CreateWorkspaceModal({
         },
       },
       {
-        onSuccess: (workspace) => {
+        onSuccess: async (workspace) => {
+          // 블랙리스트 저장
+          const allBlacklist = [
+            ...dcBlacklist.map((value) => ({ platform_id: 'dcinside', type: 'gallery', value })),
+            ...ytBlacklist.map((value) => ({ platform_id: 'youtube', type: 'keyword', value })),
+          ];
+          if (allBlacklist.length > 0) {
+            const supabase = createClient();
+            await supabase.from('content_blacklist').upsert(allBlacklist, { onConflict: 'platform_id,type,value' });
+          }
           toast.success('워크스페이스가 생성되었습니다.');
           onCreated(workspace);
         },
@@ -101,6 +114,24 @@ function CreateWorkspaceModal({
             />
           </div>
         </div>
+
+        <BlacklistEditor
+          title="디시인사이드 갤러리 블랙리스트"
+          description="크롤링 시 제외할 갤러리명을 입력하세요"
+          placeholder="예: 리그오브레전드"
+          items={dcBlacklist}
+          onAdd={(v) => setDcBlacklist((prev) => [...prev, v])}
+          onRemove={(v) => setDcBlacklist((prev) => prev.filter((x) => x !== v))}
+        />
+
+        <BlacklistEditor
+          title="유튜브 키워드 블랙리스트"
+          description="제목/설명에 포함된 영상을 제외합니다"
+          placeholder="예: LoL, 리그오브레전드"
+          items={ytBlacklist}
+          onAdd={(v) => setYtBlacklist((prev) => [...prev, v])}
+          onRemove={(v) => setYtBlacklist((prev) => prev.filter((x) => x !== v))}
+        />
 
         <div className="flex justify-end gap-2 pt-2">
           <button
