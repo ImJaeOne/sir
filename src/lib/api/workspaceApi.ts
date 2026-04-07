@@ -169,16 +169,13 @@ export async function getReportProgress(workspaceId: string): Promise<ReportProg
       .order('created_at', { ascending: false }),
     supabase
       .from('session_strategies')
-      .select('category, created_at')
+      .select('report_id, category, created_at')
       .eq('workspace_id', workspaceId),
   ]);
 
   const reports = reportsRes.data ?? [];
   const sessions = sessionsRes.data ?? [];
   const strategies = strategiesRes.data ?? [];
-
-  const hasSummary = strategies.some(s => s.category === null);
-  const strategyCategories = [...new Set(strategies.filter(s => s.category !== null).map(s => s.category as string))];
 
   return reports.map(report => {
     // 해당 리포트에 속하는 세션만 필터 + 플랫폼별 최신 1개
@@ -189,6 +186,11 @@ export async function getReportProgress(workspaceId: string): Promise<ReportProg
         byPlatform.set(s.platform_id!, s);
       }
     }
+
+    // 해당 리포트의 전략/총평만 필터
+    const reportStrategies = strategies.filter(s => s.report_id === report.id);
+    const hasSummary = reportStrategies.some(s => s.category === null);
+    const strategyCategories = [...new Set(reportStrategies.filter(s => s.category !== null).map(s => s.category as string))];
 
     return {
       reportId: report.id,
