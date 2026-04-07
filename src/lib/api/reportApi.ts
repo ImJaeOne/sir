@@ -86,16 +86,16 @@ export interface SirRanking {
 }
 
 const TIER_RANGES = [
-  { label: '하위 4구간 (0~99)', min: 0, max: 100 },
-  { label: '하위 3구간 (100~199)', min: 100, max: 200 },
-  { label: '하위 2구간 (200~299)', min: 200, max: 300 },
-  { label: '하위 1구간 (300~399)', min: 300, max: 400 },
-  { label: '중위 3구간 (400~499)', min: 400, max: 500 },
-  { label: '중위 2구간 (500~599)', min: 500, max: 600 },
-  { label: '중위 1구간 (600~699)', min: 600, max: 700 },
-  { label: '상위 3구간 (700~799)', min: 700, max: 800 },
-  { label: '상위 2구간 (800~899)', min: 800, max: 900 },
   { label: '상위 1구간 (900~1000)', min: 900, max: 1001 },
+  { label: '상위 2구간 (800~899)', min: 800, max: 900 },
+  { label: '상위 3구간 (700~799)', min: 700, max: 800 },
+  { label: '중위 1구간 (600~699)', min: 600, max: 700 },
+  { label: '중위 2구간 (500~599)', min: 500, max: 600 },
+  { label: '중위 3구간 (400~499)', min: 400, max: 500 },
+  { label: '하위 1구간 (300~399)', min: 300, max: 400 },
+  { label: '하위 2구간 (200~299)', min: 200, max: 300 },
+  { label: '하위 3구간 (100~199)', min: 100, max: 200 },
+  { label: '하위 4구간 (0~99)', min: 0, max: 100 },
 ];
 
 export async function getSirRanking(workspaceId: string): Promise<SirRanking> {
@@ -191,9 +191,8 @@ export async function getChannelStats(workspaceId: string, channelItems: Channel
   }
 
   return CHANNEL_CONFIG
-    .filter(c => byChannel.has(c.id))
     .map(c => {
-      const counts = byChannel.get(c.id)!;
+      const counts = byChannel.get(c.id) ?? { positive: 0, negative: 0, neutral: 0 };
       const sirScores = sirByChannel.get(c.id) ?? [];
       const avgSir = sirScores.length > 0 ? Math.round(sirScores.reduce((a, b) => a + b, 0) / sirScores.length) : 500;
       return {

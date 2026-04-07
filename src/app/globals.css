@@ -23,6 +23,7 @@ body {
   --color-text-sub: #5a606c;
   --color-text-disabled: #c9c9c9;
   --color-text-green: #17d82d;
+  --color-text-gray-cell: #828ea680;
 
   /* border */
   --color-border-light: #d8dee9;
@@ -40,6 +41,8 @@ body {
   --color-bg-green: #17d82d26;
   --color-bg-danger: #ff4d3d26;
   --color-bg-gray-button: #828ea61a;
+  --color-bg-gray-cell: #828ea680;
+  --color-bg-gray-track: #828ea626;
 
   /* chart */
   --color-chart-sir: #17d82d;

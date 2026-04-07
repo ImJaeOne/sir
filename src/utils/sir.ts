@@ -1,3 +1,16 @@
+export function getSirTier(score: number): string {
+  if (score >= 900) return '상위 1구간';
+  if (score >= 800) return '상위 2구간';
+  if (score >= 700) return '상위 3구간';
+  if (score >= 600) return '중위 1구간';
+  if (score >= 500) return '중위 2구간';
+  if (score >= 400) return '중위 3구간';
+  if (score >= 300) return '하위 1구간';
+  if (score >= 200) return '하위 2구간';
+  if (score >= 100) return '하위 3구간';
+  return '하위 4구간';
+}
+
 /**
  * SIR(Social Investment Risk) 지수 계산
  *
