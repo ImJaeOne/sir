@@ -2,6 +2,7 @@
 
 import { Md } from '@/components/ui/Markdown';
 import { ReportCard } from './ReportCard';
+import { EmptyState } from '@/components/ui/EmptyState';
 import type { StrategyGroup } from '@/lib/api/reportApi';
 
 function StrategyCard({ label, strategy }: StrategyGroup) {
@@ -33,7 +34,7 @@ export function SectionStrategy({ strategies = [] }: { strategies?: StrategyGrou
             ))}
           </div>
         ) : (
-          <p className="text-sm text-slate-400">전략 데이터가 없습니다. 전략 생성을 실행해주세요.</p>
+          <EmptyState message="전략 데이터가 없습니다. 전략 생성을 실행해주세요." />
         )}
       </ReportCard>
 

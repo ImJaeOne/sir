@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { ReportCard } from '@/components/report/ReportCard';
+import { EmptyState } from '@/components/ui/EmptyState';
 import type { ChannelItem, NewsCluster } from '@/lib/api/reportApi';
 
 const PLATFORM_TO_CHANNEL: Record<string, string> = {
@@ -94,8 +95,6 @@ export function SectionTopContent({ channelItems = [], newsClusters = [] }: { ch
       });
       return { ...ch, items: sorted.slice(0, 3) };
     })
-    .filter(ch => ch.items.length > 0);
-
   return (
     <section className="flex flex-col gap-6">
       <div className="flex items-center gap-3">
@@ -108,30 +107,34 @@ export function SectionTopContent({ channelItems = [], newsClusters = [] }: { ch
           <ReportCard key={ch.id}>
             <h4 className="text-sm font-semibold text-slate-700 mb-1">{ch.title}</h4>
             <p className="text-xs text-slate-400 mb-3">{ch.description}</p>
-            <div className="flex flex-col gap-2.5">
-              {ch.items.map((item, i) => {
-                const badge = PLATFORM_BADGES[item.platform_id];
-                return (
-                  <a key={item.id} href={item.link} target="_blank" rel="noopener noreferrer" className="flex items-start gap-3 group hover:bg-slate-50 rounded-lg px-2 py-2 -mx-2 transition-colors">
-                    <span className={`shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-sm font-bold ${
-                      i === 0 ? 'bg-blue-500 text-white' : 'bg-slate-100 text-slate-500'
-                    }`}>
-                      {i + 1}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        {badge && <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0 ${badge.className}`}>{badge.label}</span>}
-                        <p className="text-sm text-slate-800 font-medium truncate group-hover:text-blue-600 transition-colors">{item.title}</p>
+            {ch.items.length === 0 ? (
+              <EmptyState message="수집된 데이터가 없습니다." />
+            ) : (
+              <div className="flex flex-col gap-2.5">
+                {ch.items.map((item, i) => {
+                  const badge = PLATFORM_BADGES[item.platform_id];
+                  return (
+                    <a key={item.id} href={item.link} target="_blank" rel="noopener noreferrer" className="flex items-start gap-3 group hover:bg-slate-50 rounded-lg px-2 py-2 -mx-2 transition-colors">
+                      <span className={`shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-sm font-bold ${
+                        i === 0 ? 'bg-blue-500 text-white' : 'bg-slate-100 text-slate-500'
+                      }`}>
+                        {i + 1}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          {badge && <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0 ${badge.className}`}>{badge.label}</span>}
+                          <p className="text-sm text-slate-800 font-medium truncate group-hover:text-blue-600 transition-colors">{item.title}</p>
+                        </div>
+                        {ch.sortBy === 'views' && item.views != null
+                          ? <p className="text-xs text-slate-400 mt-0.5">조회수 {item.views.toLocaleString()}회</p>
+                          : (item.summary || item.content) && <p className="text-xs text-slate-400 mt-0.5 truncate">{(item.summary || item.content || '').slice(0, 60)}</p>
+                        }
                       </div>
-                      {ch.sortBy === 'views' && item.views != null
-                        ? <p className="text-xs text-slate-400 mt-0.5">조회수 {item.views.toLocaleString()}회</p>
-                        : (item.summary || item.content) && <p className="text-xs text-slate-400 mt-0.5 truncate">{(item.summary || item.content || '').slice(0, 60)}</p>
-                      }
-                    </div>
-                  </a>
-                );
-              })}
-            </div>
+                    </a>
+                  );
+                })}
+              </div>
+            )}
           </ReportCard>
         ))}
       </div>
