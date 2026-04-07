@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { SirStockChart } from '@/components/chart/SirStockChart';
 import { ReportCard } from '@/components/report/ReportCard';
 import { ReportSubSection } from '@/components/report/ReportSection';
+import { ChartLegend } from '@/components/ui/ChartLegend';
 import type { SirStockPoint } from '@/lib/api/reportApi';
 
 type TimeFrame = 'daily' | 'weekly';
@@ -13,13 +14,10 @@ const TIME_FRAMES = [
   { key: 'weekly', label: '주' },
 ] as const;
 
-const LEGEND_ITEMS = [{ color: 'bg-chart-sir', label: 'SIR 지수' }];
-
-const STOCK_LEGEND = {
-  upColor: 'bg-chart-stock-up',
-  downColor: 'bg-chart-stock-down',
-  label: '주가 지수',
-};
+const LEGEND_ITEMS = [
+  { color: 'bg-chart-sir', label: 'SIR 지수' },
+  { color: 'bg-chart-stock-up', secondColor: 'bg-chart-stock-down', label: '주가 지수' },
+];
 
 interface SirStockPanelProps {
   pdfMode: boolean;
@@ -36,7 +34,6 @@ export function SirStockPanel({ pdfMode, sirStockData }: SirStockPanelProps) {
       tooltip={
         'SIR 지수와 주가 흐름을 이중축으로 배치해 평판 변화와\n시장 반응 간의 동행 구간을 직관적으로 확인할 수 있습니다.'
       }
-      width={310}
     >
       <ReportCard px={20} py={20}>
         <div className="flex flex-col gap-4">
@@ -56,19 +53,7 @@ export function SirStockPanel({ pdfMode, sirStockData }: SirStockPanelProps) {
                 </button>
               ))}
             </div>
-            <div className="flex items-center gap-3 text-xs text-text-muted">
-              {LEGEND_ITEMS.map((item) => (
-                <span key={item.label} className="flex items-center gap-1">
-                  <span className={`w-2.5 h-2.5 rounded-full ${item.color}`} />
-                  {item.label}
-                </span>
-              ))}
-              <span className="flex items-center gap-1">
-                <span className={`w-2.5 h-2.5 rounded-full ${STOCK_LEGEND.upColor}`} />
-                <span className={`w-2.5 h-2.5 rounded-full ${STOCK_LEGEND.downColor}`} />
-                {STOCK_LEGEND.label}
-              </span>
-            </div>
+            <ChartLegend items={LEGEND_ITEMS} />
           </div>
           <SirStockChart timeFrame={timeFrame} pdfMode={pdfMode} data={sirStockData} />
         </div>

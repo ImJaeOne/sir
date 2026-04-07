@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import {
   ComposedChart,
   Line,
@@ -85,7 +85,7 @@ export function SirStockChart({
             />
             <XAxis
               dataKey="date"
-              tick={{ fontSize: 11, fill: '#94a3b8' }}
+              tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }}
               axisLine={{ stroke: '#d8dee9' }}
               tickLine={false}
               interval={2}
@@ -95,7 +95,7 @@ export function SirStockChart({
               yAxisId="sir"
               orientation="left"
               domain={[0, 1000]}
-              tick={{ fontSize: 11, fill: '#94a3b8' }}
+              tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }}
               axisLine={{ stroke: '#d8dee9' }}
               tickLine={false}
               width={35}
@@ -104,7 +104,7 @@ export function SirStockChart({
                 angle: -90,
                 position: 'outside',
                 dx: -20,
-                style: { fontSize: 10, fill: '#94a3b8', textAnchor: 'middle' },
+                style: { fontSize: 10, fill: 'var(--color-text-muted)', textAnchor: 'middle' },
               }}
             />
             {/* 오른쪽: 주가 */}
@@ -112,7 +112,7 @@ export function SirStockChart({
               yAxisId="price"
               orientation="right"
               domain={[minPrice, maxPrice]}
-              tick={{ fontSize: 11, fill: '#94a3b8' }}
+              tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }}
               axisLine={{ stroke: '#d8dee9' }}
               tickLine={false}
               width={50}
@@ -121,7 +121,7 @@ export function SirStockChart({
                 value: '주가',
                 angle: 90,
                 position: 'insideRight',
-                style: { fontSize: 10, fill: '#94a3b8', textAnchor: 'middle' },
+                style: { fontSize: 10, fill: 'var(--color-text-muted)', textAnchor: 'middle' },
               }}
             />
             <Tooltip
@@ -139,7 +139,7 @@ export function SirStockChart({
                 const d = payload[0]?.payload;
                 if (!d) return null;
                 return (
-                  <div className="bg-bg-dark-95 border border-slate-200 rounded-lg px-4 py-4 shadow-card">
+                  <div className="bg-bg-dark-95 border border-white rounded-lg px-4 py-4 shadow-card">
                     <p className="font-normal text-text-green mb-1 text-sm">
                       {d.fullDate ? d.fullDate.replace(/-/g, '.') : label}
                     </p>
@@ -182,7 +182,7 @@ export function SirStockChart({
               fill="transparent"
               barSize={14}
               isAnimationActive={false}
-              shape={(props: any) => {
+              shape={(props) => {
                 const { x, y, width, height, payload } = props;
                 if (!payload?.open_price) return null;
 

@@ -37,8 +37,12 @@ body {
   --color-bg-light: #f4f5f6;
   --color-bg-blue: #e8f4ff;
   --color-bg-accent: #362cff;
-  --color-bg-pupple: #b04aff26;
-  --color-bg-green: #17d82d26;
+  --color-bg-pupple: #9747ff;
+  --color-bg-pupple-15: #b04aff26;
+  --color-bg-skyblue: #66b6ff;
+  --color-bg-skyblue-15: #66b6ff26;
+  --color-bg-green: #17d82d;
+  --color-bg-green-15: #17d82d26;
   --color-bg-danger: #ff4d3d26;
   --color-bg-gray-button: #828ea61a;
   --color-bg-gray-cell: #828ea680;

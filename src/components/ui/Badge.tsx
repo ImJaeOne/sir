@@ -3,11 +3,11 @@
 type BadgeVariant = 'blue' | 'green' | 'yellow' | 'red' | 'slate' | 'violet' | 'amber';
 
 const VARIANT_STYLES: Record<BadgeVariant, string> = {
-  blue: 'text-blue-600 bg-blue-50 border-blue-100',
+  blue: 'text-text-accent bg-bg-blue',
   green: 'text-green-700 bg-green-50 border-green-100',
   yellow: 'text-yellow-700 bg-yellow-50 border-yellow-100',
-  red: 'text-red-700 bg-red-50 border-red-100',
-  slate: 'text-slate-500 bg-slate-100 border-slate-200',
+  red: 'text-text-danger bg-bg-danger',
+  slate: 'text-text-muted bg-bg-light border-none',
   violet: 'text-violet-600 bg-violet-50 border-violet-100',
   amber: 'text-amber-700 bg-amber-50 border-amber-100',
 };
@@ -21,7 +21,7 @@ interface BadgeProps {
 export function Badge({ children, variant = 'slate', className = '' }: BadgeProps) {
   return (
     <span
-      className={`text-xs font-medium px-2 py-0.5 rounded-full border ${VARIANT_STYLES[variant]} ${className}`}
+      className={`text-xs font-medium px-5 py-2 rounded-[10px] ${VARIANT_STYLES[variant]} ${className}`}
     >
       {children}
     </span>
@@ -42,7 +42,7 @@ export function KeywordBadge({ keyword }: { keyword: string }) {
 
 export function SirBadge({ score }: { score: number | null }) {
   if (score === null) return null;
-  const variant: BadgeVariant = score >= 70 ? 'green' : score >= 50 ? 'yellow' : 'red';
+  const variant: BadgeVariant = score >= 70 ? 'blue' : score >= 50 ? 'yellow' : 'red';
   return (
     <Badge variant={variant} className="font-bold">
       SIR {score}
@@ -60,13 +60,14 @@ export function CountBadge({ count, label }: { count: number; label: string }) {
 
 export function SirLevelBadge({ score }: { score: number | null }) {
   if (score === null) return null;
-  const config = score >= 70
-    ? { label: '양호', variant: 'green' as BadgeVariant }
-    : score >= 50
-    ? { label: '안정', variant: 'yellow' as BadgeVariant }
-    : score >= 30
-    ? { label: '주의', variant: 'amber' as BadgeVariant }
-    : { label: '위험', variant: 'red' as BadgeVariant };
+  const config =
+    score >= 70
+      ? { label: '양호', variant: 'green' as BadgeVariant }
+      : score >= 50
+        ? { label: '안정', variant: 'yellow' as BadgeVariant }
+        : score >= 30
+          ? { label: '주의', variant: 'amber' as BadgeVariant }
+          : { label: '위험', variant: 'red' as BadgeVariant };
   return <Badge variant={config.variant}>SIR {score}</Badge>;
 }
 

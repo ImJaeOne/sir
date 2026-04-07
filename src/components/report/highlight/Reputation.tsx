@@ -16,8 +16,8 @@ import type { SummarySection } from '@/lib/api/reportApi';
 
 const SUMMARY_SECTIONS = [
   { label: 'SIR 지수 및\n시장 지위 평가', icon: ReputationIcon, bg: 'bg-bg-blue' },
-  { label: '채널별 여론\n다이내믹스', icon: DynamicsIcon, bg: 'bg-bg-pupple' },
-  { label: '긍정 모멘텀 분석', icon: MomentumIcon, bg: 'bg-bg-green' },
+  { label: '채널별 여론\n다이내믹스', icon: DynamicsIcon, bg: 'bg-bg-pupple-15' },
+  { label: '긍정 모멘텀 분석', icon: MomentumIcon, bg: 'bg-bg-green-15' },
   { label: '리스크 분석', icon: LiskIcon, bg: 'bg-bg-danger' },
 ];
 
@@ -40,7 +40,7 @@ function SummaryAccordion({ sections }: { sections: SummarySection[] }) {
                       </div>
                     );
                   })()}
-                <div className="w-[130px] whitespace-pre-line text-sm text-text-muted font-bold">
+                <div className="w-[130px] whitespace-pre-line text-sm text-text-muted font-semibold">
                   {SUMMARY_SECTIONS[i]?.label ?? `섹션 ${i + 1}`}
                 </div>
               </div>
