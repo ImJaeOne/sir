@@ -20,7 +20,7 @@ import { Highlight } from '@/components/report/Highlight';
 import { OnlineReputation } from '@/components/report/OnlineReputation';
 import { TopContent } from '@/components/report/TopContent';
 import { RiskContent } from '@/components/report/RiskContent';
-import { SectionStrategy } from '@/components/report/SectionStrategy';
+import { Strategy } from '@/components/report/Strategy';
 
 export default function ReportPage() {
   const params = useParams();
@@ -221,9 +221,7 @@ export default function ReportPage() {
         <TopContent {...topContentProps} />
         <RiskContent {...riskItemProps} />
 
-        <div className="print-break">
-          <SectionStrategy strategies={strategies ?? []} />
-        </div>
+        <Strategy strategies={strategies ?? []} />
       </div>
     </div>
   );

@@ -51,7 +51,7 @@ export function NewsTopList({ clusters }: NewsTopListProps) {
                 {i + 1}
               </span>
               <div className="flex-1 min-w-0">
-                <div className="flex">
+                <div className="flex gap-2">
                   <p className="text-sm text-text-dark font-semibold">
                     {cluster.representative_title}
                   </p>

@@ -9,7 +9,7 @@ import { Highlight } from '@/components/report/Highlight';
 import { OnlineReputation } from '@/components/report/OnlineReputation';
 import { TopContent } from '@/components/report/TopContent';
 import { RiskContent } from '@/components/report/RiskContent';
-import { SectionStrategy } from '@/components/report/SectionStrategy';
+import { Strategy } from '@/components/report/Strategy';
 
 function PageHeader({ companyName, ticker }: { companyName: string; ticker: string }) {
   return (
@@ -60,7 +60,7 @@ export default function ReportPdfPage() {
         </div>
         <div className="print-break">
           <PageHeader companyName={companyName} ticker={ticker} />
-          <SectionStrategy strategies={strategies ?? []} />
+          <Strategy strategies={strategies ?? []} />
         </div>
       </div>
     </div>
