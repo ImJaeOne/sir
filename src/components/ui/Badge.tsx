@@ -1,5 +1,7 @@
 'use client';
 
+import { cn } from '@/lib/utils';
+
 type BadgeVariant = 'blue' | 'green' | 'yellow' | 'red' | 'slate' | 'violet' | 'amber';
 
 const VARIANT_STYLES: Record<BadgeVariant, string> = {
@@ -7,7 +9,7 @@ const VARIANT_STYLES: Record<BadgeVariant, string> = {
   green: 'text-green-700 bg-green-50 border-green-100',
   yellow: 'text-yellow-700 bg-yellow-50 border-yellow-100',
   red: 'text-text-danger bg-bg-danger',
-  slate: 'text-text-muted bg-bg-light border-none',
+  slate: 'text-text-muted bg-bg-light',
   violet: 'text-violet-600 bg-violet-50 border-violet-100',
   amber: 'text-amber-700 bg-amber-50 border-amber-100',
 };
@@ -15,13 +17,19 @@ const VARIANT_STYLES: Record<BadgeVariant, string> = {
 interface BadgeProps {
   children: React.ReactNode;
   variant?: BadgeVariant;
+  bordered?: boolean;
   className?: string;
 }
 
-export function Badge({ children, variant = 'slate', className = '' }: BadgeProps) {
+export function Badge({ children, variant = 'slate', bordered = false, className = '' }: BadgeProps) {
   return (
     <span
-      className={`text-xs font-medium px-5 py-2 rounded-[10px] ${VARIANT_STYLES[variant]} ${className}`}
+      className={cn(
+        'text-xs font-medium px-5 py-2 rounded-[10px]',
+        VARIANT_STYLES[variant],
+        bordered && 'border border-current',
+        className,
+      )}
     >
       {children}
     </span>

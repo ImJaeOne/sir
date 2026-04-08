@@ -19,7 +19,7 @@ import {
 import { Highlight } from '@/components/report/Highlight';
 import { OnlineReputation } from '@/components/report/OnlineReputation';
 import { TopContent } from '@/components/report/TopContent';
-import { SectionRiskContent } from '@/components/report/SectionRiskContent';
+import { RiskContent } from '@/components/report/RiskContent';
 import { SectionStrategy } from '@/components/report/SectionStrategy';
 
 export default function ReportPage() {
@@ -142,6 +142,11 @@ export default function ReportPage() {
     [channelItems, newsClusters]
   );
 
+  const riskItemProps = useMemo(
+    () => ({ riskItems: riskItems ?? [] }),
+    [riskItems],
+  );
+
   const loadingSteps = [
     { loading: wsLoading, label: '워크스페이스 접근 중...' },
     { loading: !channelItems && !itemsLoading === false, label: '세션 접근 중...' },
@@ -214,10 +219,7 @@ export default function ReportPage() {
         <Highlight {...highlightProps} />
         <OnlineReputation {...onlineReputationProps} />
         <TopContent {...topContentProps} />
-
-        <div className="print-break">
-          <SectionRiskContent riskItems={riskItems ?? []} />
-        </div>
+        <RiskContent {...riskItemProps} />
 
         <div className="print-break">
           <SectionStrategy strategies={strategies ?? []} />
