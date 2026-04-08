@@ -7,7 +7,7 @@ import {
 } from '@/hooks/report/useReportQuery';
 import { Highlight } from '@/components/report/Highlight';
 import { OnlineReputation } from '@/components/report/OnlineReputation';
-import { SectionTopContent } from '@/components/report/SectionTopContent';
+import { TopContent } from '@/components/report/TopContent';
 import { SectionRiskContent } from '@/components/report/SectionRiskContent';
 import { SectionStrategy } from '@/components/report/SectionStrategy';
 
@@ -52,7 +52,7 @@ export default function ReportPdfPage() {
         </div>
         <div className="print-break">
           <PageHeader companyName={companyName} ticker={ticker} />
-          <SectionTopContent channelItems={channelItems ?? []} newsClusters={newsClusters ?? []} />
+          <TopContent channelItems={channelItems ?? []} newsClusters={newsClusters ?? []} />
         </div>
         <div className="print-break">
           <PageHeader companyName={companyName} ticker={ticker} />

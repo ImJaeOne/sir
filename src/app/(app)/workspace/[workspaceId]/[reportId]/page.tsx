@@ -18,7 +18,7 @@ import {
 } from '@/hooks/report/useReportQuery';
 import { Highlight } from '@/components/report/Highlight';
 import { OnlineReputation } from '@/components/report/OnlineReputation';
-import { SectionTopContent } from '@/components/report/SectionTopContent';
+import { TopContent } from '@/components/report/TopContent';
 import { SectionRiskContent } from '@/components/report/SectionRiskContent';
 import { SectionStrategy } from '@/components/report/SectionStrategy';
 
@@ -134,6 +134,14 @@ export default function ReportPage() {
     [searchTrend, channelStats, channelItems, newsClusters, isInitial]
   );
 
+  const topContentProps = useMemo(
+    () => ({
+      channelItems: channelItems ?? [],
+      newsClusters: newsClusters ?? [],
+    }),
+    [channelItems, newsClusters]
+  );
+
   const loadingSteps = [
     { loading: wsLoading, label: '워크스페이스 접근 중...' },
     { loading: !channelItems && !itemsLoading === false, label: '세션 접근 중...' },
@@ -205,10 +213,7 @@ export default function ReportPage() {
         </div>
         <Highlight {...highlightProps} />
         <OnlineReputation {...onlineReputationProps} />
-
-        <div className="print-break">
-          <SectionTopContent channelItems={channelItems ?? []} newsClusters={newsClusters ?? []} />
-        </div>
+        <TopContent {...topContentProps} />
 
         <div className="print-break">
           <SectionRiskContent riskItems={riskItems ?? []} />
