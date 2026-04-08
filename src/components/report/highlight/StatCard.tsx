@@ -39,7 +39,7 @@ export function StatCard({
       <div
         className={cn(
           'w-full flex justify-center py-1.5 rounded-lg',
-          change?.type === 'down' ? 'bg-bg-danger' : 'bg-bg-blue',
+          change?.type === 'down' ? 'bg-bg-danger' : change?.type === 'neutral' ? 'bg-bg-light' : 'bg-bg-blue',
         )}
       >
         {change && (
