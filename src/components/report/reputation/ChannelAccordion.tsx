@@ -17,10 +17,10 @@ const CHANNEL_CONFIG: Record<string, { icon: React.ComponentType<{ size?: number
   };
 
 const channelDescriptions: Record<string, string> = {
-  뉴스: '주요 포털 및 언론사 기사 수집',
-  블로그: '주요 포털 블로그 포스팅 수집',
-  유튜브: '영상 요약 기반 분석',
-  커뮤니티: '네이버 종목토론방, 디시인사이드 게시글 수집',
+  뉴스: '국내 주요 언론사',
+  블로그: '포털 및 개인 블로그',
+  유튜브: '기업 관련 영상',
+  커뮤니티: '증권 관련 온라인 커뮤니티',
 };
 
 interface ChannelAccordionProps {

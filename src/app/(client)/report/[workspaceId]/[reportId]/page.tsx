@@ -1,4 +1,5 @@
 'use client';
+'use no memo';
 
 import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
@@ -24,6 +25,7 @@ export default function ClientReportPage() {
 
   useEffect(() => {
     if (isFetching > 0) startedRef.current = true;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (isFetching === 0 && startedRef.current) setReady(true);
   }, [isFetching]);
 
@@ -37,7 +39,7 @@ export default function ClientReportPage() {
       <div className={`px-10 py-10 bg-bg-light ${ready ? '' : 'invisible'}`}>
         <div className="mx-auto w-[1200px] flex flex-col gap-10">
           <section id="section-highlight" className="flex flex-col gap-10">
-            <ReportHeader workspaceId={workspaceId} reportId={reportId} />
+            <ReportHeader workspaceId={workspaceId} reportId={reportId} showPdfButton={false} />
             <Highlight workspaceId={workspaceId} reportId={reportId} />
           </section>
           <OnlineReputation workspaceId={workspaceId} reportId={reportId} />

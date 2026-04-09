@@ -1,4 +1,5 @@
 'use client';
+'use no memo';
 
 import { useEffect, useRef, useState } from 'react';
 import { useIsFetching } from '@tanstack/react-query';
@@ -33,6 +34,7 @@ export function SidebarSectionNav({ isOpen }: SidebarSectionNavProps) {
   const [showActive, setShowActive] = useState(false);
   useEffect(() => {
     if (isFetching > 0) startedFetchingRef.current = true;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (isFetching === 0 && startedFetchingRef.current) setShowActive(true);
   }, [isFetching]);
 

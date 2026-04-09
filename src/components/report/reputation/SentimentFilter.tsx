@@ -10,9 +10,10 @@ const SENTIMENT_FILTERS = [
 interface SentimentFilterProps {
   value: string;
   onChange: (key: string) => void;
+  counts?: Record<string, number>;
 }
 
-export function SentimentFilter({ value, onChange }: SentimentFilterProps) {
+export function SentimentFilter({ value, onChange, counts }: SentimentFilterProps) {
   return (
     <div className="flex gap-4 mt-1 border-b border-border-light">
       {SENTIMENT_FILTERS.map((f) => (
@@ -27,6 +28,7 @@ export function SentimentFilter({ value, onChange }: SentimentFilterProps) {
             }`}
           >
             {f.label}
+            {counts && ` (${counts[f.key] ?? 0})`}
           </div>
           <div
             className={`h-0.5 w-full rounded-full transition-colors ${
