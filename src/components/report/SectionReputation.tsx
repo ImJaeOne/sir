@@ -93,11 +93,7 @@ export function SectionReputation({
       </div>
 
       {/* 검색량 추이 */}
-      <ReportCard
-        title="최근 30일 기업명 키워드 검색 관심도 추이"
-        description="네이버·구글 기준 검색 관심도 추이를 확인하여 온라인 관심도 확대 여부를 파악합니다."
-        tooltip="검색어 트렌드는 요청된 기간 중 검색 횟수가 가장 높은 시점을 100으로 두고 나머지는 상대적 값으로 제공하고 있습니다."
-      >
+      <ReportCard>
         <div className={pdfMode ? 'h-48' : 'h-64'}>
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData} margin={{ top: 10, right: 20, bottom: 0, left: 10 }}>
@@ -158,10 +154,7 @@ export function SectionReputation({
       </ReportCard>
 
       {/* 채널별 수집량 비중 */}
-      <ReportCard
-        title="채널별 데이터 수집량 비중"
-        description="전체 수집 데이터 중 어떤 채널이 큰 비중을 차지하는지 파악할 수 있습니다."
-      >
+      <ReportCard>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-center">
           <div className={pdfMode ? 'h-48' : 'h-64'}>
             <ResponsivePie
@@ -216,10 +209,7 @@ export function SectionReputation({
       </ReportCard>
 
       {/* 채널별 SIR 감정 지수 */}
-      <ReportCard
-        title="데이터 수집 채널별 SIR 감정 지수"
-        description="각 채널에서 수집된 콘텐츠의 감성 분석 결과를 SIR 점수로 확인합니다."
-      >
+      <ReportCard>
         <div className="grid grid-cols-2 gap-3">
           {channelStats.map((ch) => (
             <SirCard

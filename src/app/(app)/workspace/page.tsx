@@ -5,10 +5,12 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { CompanySearch } from '@/components/ui/CompanySearch';
 import { Tooltip } from '@/components/ui/Tooltip';
+import { BlacklistEditor } from '@/components/ui/BlacklistEditor';
+import { createClient } from '@/lib/supabase/client';
 import { useWorkspaces } from '@/hooks/workspace/useWorkspaceQuery';
-import { useCreateWorkspace } from '@/hooks/workspace/useWorkspaceMutation';
+import { useCreateWorkspace, useDeleteWorkspace } from '@/hooks/workspace/useWorkspaceMutation';
 import type { Workspace } from '@/types/workspace';
-import { CompanyBadge, TickerBadge, SirLevelBadge } from '@/components/ui/Badge';
+import { TickerBadge, SirLevelBadge } from '@/components/ui/Badge';
 
 
 function CreateWorkspaceModal({
@@ -22,6 +24,8 @@ function CreateWorkspaceModal({
   const [selectedCompany, setSelectedCompany] = useState<{ name: string; ticker: string } | null>(null);
   const [industry, setIndustry] = useState('');
   const [businessSummary, setBusinessSummary] = useState('');
+  const [dcBlacklist, setDcBlacklist] = useState<string[]>([]);
+  const [ytBlacklist, setYtBlacklist] = useState<string[]>([]);
 
   const handleCreate = () => {
     if (!selectedCompany) return;
@@ -36,7 +40,16 @@ function CreateWorkspaceModal({
         },
       },
       {
-        onSuccess: (workspace) => {
+        onSuccess: async (workspace) => {
+          // 블랙리스트 저장
+          const allBlacklist = [
+            ...dcBlacklist.map((value) => ({ platform_id: 'dcinside', type: 'gallery', value })),
+            ...ytBlacklist.map((value) => ({ platform_id: 'youtube', type: 'keyword', value })),
+          ];
+          if (allBlacklist.length > 0) {
+            const supabase = createClient();
+            await supabase.from('content_blacklist').upsert(allBlacklist, { onConflict: 'platform_id,type,value' });
+          }
           toast.success('워크스페이스가 생성되었습니다.');
           onCreated(workspace);
         },
@@ -102,6 +115,24 @@ function CreateWorkspaceModal({
           </div>
         </div>
 
+        <BlacklistEditor
+          title="디시인사이드 갤러리 블랙리스트"
+          description="크롤링 시 제외할 갤러리명을 입력하세요"
+          placeholder="예: 리그오브레전드"
+          items={dcBlacklist}
+          onAdd={(v) => setDcBlacklist((prev) => [...prev, v])}
+          onRemove={(v) => setDcBlacklist((prev) => prev.filter((x) => x !== v))}
+        />
+
+        <BlacklistEditor
+          title="유튜브 키워드 블랙리스트"
+          description="제목/설명에 포함된 영상을 제외합니다"
+          placeholder="예: LoL, 리그오브레전드"
+          items={ytBlacklist}
+          onAdd={(v) => setYtBlacklist((prev) => [...prev, v])}
+          onRemove={(v) => setYtBlacklist((prev) => prev.filter((x) => x !== v))}
+        />
+
         <div className="flex justify-end gap-2 pt-2">
           <button
             onClick={onClose}
@@ -126,8 +157,10 @@ export default function DashboardPage() {
   const router = useRouter();
   const [showCreate, setShowCreate] = useState(false);
   const [workspaceSearch, setWorkspaceSearch] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState<Workspace | null>(null);
 
   const { data: workspaces = [], isLoading } = useWorkspaces();
+  const deleteWorkspace = useDeleteWorkspace();
 
   const handleSelect = (ws: Workspace) => {
     router.push(`/workspace/${ws.id}`);
@@ -156,6 +189,44 @@ export default function DashboardPage() {
               router.push(`/workspace/${workspace.id}`);
             }}
           />
+        )}
+
+        {/* Delete confirm modal */}
+        {deleteTarget && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            <div className="absolute inset-0 bg-black/40" onClick={() => setDeleteTarget(null)} />
+            <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 p-6 flex flex-col gap-4">
+              <h2 className="text-base font-bold text-slate-800">워크스페이스 삭제</h2>
+              <p className="text-sm text-slate-500">
+                <span className="font-semibold text-slate-700">{deleteTarget.company_name}</span> 워크스페이스를 삭제하시겠습니까? 관련된 모든 보고서와 데이터가 삭제됩니다.
+              </p>
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  onClick={() => setDeleteTarget(null)}
+                  className="px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-500 hover:bg-slate-100 transition-colors cursor-pointer"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={() => {
+                    deleteWorkspace.mutate(deleteTarget.id, {
+                      onSuccess: () => {
+                        toast.success('워크스페이스가 삭제되었습니다.');
+                        setDeleteTarget(null);
+                      },
+                      onError: () => {
+                        toast.error('삭제에 실패했습니다.');
+                      },
+                    });
+                  }}
+                  disabled={deleteWorkspace.isPending}
+                  className="bg-red-500 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-red-600 transition-colors cursor-pointer disabled:opacity-40"
+                >
+                  {deleteWorkspace.isPending ? '삭제 중...' : '삭제'}
+                </button>
+              </div>
+            </div>
+          </div>
         )}
 
         {/* Existing workspaces */}
@@ -187,27 +258,26 @@ export default function DashboardPage() {
             const rest = isSearching ? workspaces.filter((ws) => !matched.includes(ws)) : [];
 
             const renderCard = (ws: Workspace) => (
-              <button
+              <div
                 key={ws.id}
-                onClick={() => handleSelect(ws)}
-                className="w-full bg-white rounded-2xl border border-slate-100 shadow-sm p-5 sm:p-6 flex items-center justify-between gap-4 hover:shadow-md hover:border-slate-200 transition-all duration-200 cursor-pointer text-left"
+                className="group w-full bg-white rounded-2xl border border-slate-100 shadow-sm px-5 py-4 flex items-center gap-4 hover:shadow-md hover:border-slate-200 transition-all duration-200"
               >
-                <div className="flex flex-col gap-2 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-base font-semibold text-slate-800 truncate">{ws.company_name}</h3>
-                    <SirLevelBadge score={ws.sir_score} />
+                <button
+                  onClick={() => handleSelect(ws)}
+                  className="flex-1 flex items-center gap-4 text-left cursor-pointer min-w-0"
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-base font-semibold text-slate-800 truncate">{ws.company_name}</h3>
+                      <TickerBadge ticker={ws.ticker} />
+                      <SirLevelBadge score={ws.sir_score} />
+                    </div>
+                    <span className="text-xs text-slate-400 mt-1 block">
+                      {(ws as any).latest_report
+                        ? `최근 보고서: ${(ws as any).latest_report.period_start.replace(/-/g, '.')} ~ ${(ws as any).latest_report.period_end.replace(/-/g, '.')}`
+                        : '보고서 없음'}
+                    </span>
                   </div>
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <CompanyBadge companyName={ws.company_name} />
-                    <TickerBadge ticker={ws.ticker} />
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className="text-xs text-slate-400 whitespace-nowrap">
-                    {(ws as any).latest_report
-                      ? `${(ws as any).latest_report.period_start.replace(/-/g, '.')} ~ ${(ws as any).latest_report.period_end.replace(/-/g, '.')}`
-                      : '보고서 없음'}
-                  </span>
                   <svg
                     width="16"
                     height="16"
@@ -220,8 +290,19 @@ export default function DashboardPage() {
                   >
                     <path d="M6 4l4 4-4 4" />
                   </svg>
-                </div>
-              </button>
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDeleteTarget(ws);
+                  }}
+                  className="shrink-0 p-2 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors cursor-pointer"
+                >
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                    <path d="M2 4h12M5.33 4V2.67a1.33 1.33 0 011.34-1.34h2.66a1.33 1.33 0 011.34 1.34V4M6.67 7.33v4M9.33 7.33v4M3.33 4l.67 9.33a1.33 1.33 0 001.33 1.34h5.34a1.33 1.33 0 001.33-1.34L12.67 4" />
+                  </svg>
+                </button>
+              </div>
             );
 
             if (!isSearching) {

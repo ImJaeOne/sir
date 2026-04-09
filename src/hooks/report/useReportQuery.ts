@@ -15,7 +15,10 @@ import type { ChannelStat, ChannelItem, RiskItem } from '@/lib/api/reportApi';
 import { workspaceKeys } from '@/hooks/workspace/useWorkspaceQuery';
 import { getWorkspace } from '@/lib/api/workspaceApi';
 
+import { createClient } from '@/lib/supabase/client';
+
 export const reportKeys = {
+  info: (reportId: string) => ['report', reportId, 'info'] as const,
   summary: (id: string) => ['report', id, 'summary'] as const,
   sirStock: (id: string) => ['report', id, 'sirStock'] as const,
   sirRanking: (id: string) => ['report', id, 'sirRanking'] as const,
@@ -35,6 +38,24 @@ const REPORT_OPTS = {
   refetchOnWindowFocus: false,
 } as const;
 
+/** 리포트 기본 정보 (type, period, created_at) */
+export function useReportInfo(reportId: string) {
+  return useQuery({
+    queryKey: reportKeys.info(reportId),
+    queryFn: async () => {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from('reports')
+        .select('type, period_start, period_end, created_at')
+        .eq('id', reportId)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!reportId,
+    ...REPORT_OPTS,
+  });
+}
+
 // ── 기초 쿼리 (네트워크 요청) ──
 
 /** workspace sir_score — workspaceKeys 캐시 재사용 */
@@ -48,10 +69,10 @@ export function useWorkspaceSir(workspaceId: string) {
 }
 
 /** 총평 — session_strategies(platform_id=null) */
-export function useWeeklySummary(workspaceId: string) {
+export function useWeeklySummary(workspaceId: string, reportId?: string) {
   return useQuery({
-    queryKey: reportKeys.summary(workspaceId),
-    queryFn: () => getWeeklySummary(workspaceId),
+    queryKey: [...reportKeys.summary(workspaceId), reportId],
+    queryFn: () => getWeeklySummary(workspaceId, reportId),
     enabled: !!workspaceId,
     ...REPORT_OPTS,
   });
@@ -113,10 +134,10 @@ export function useRiskItems(workspaceId: string) {
   });
 }
 
-export function useStrategies(workspaceId: string) {
+export function useStrategies(workspaceId: string, reportId?: string) {
   return useQuery({
-    queryKey: reportKeys.strategies(workspaceId),
-    queryFn: () => getStrategies(workspaceId),
+    queryKey: [...reportKeys.strategies(workspaceId), reportId],
+    queryFn: () => getStrategies(workspaceId, reportId),
     enabled: !!workspaceId,
     ...REPORT_OPTS,
   });

@@ -38,11 +38,10 @@ export function SectionRiskContent({ riskItems = [] }: { riskItems?: RiskItem[] 
       </div>
 
       {/* 탐지 내역 */}
-      <ReportCard
-        title="리스크 콘텐츠 탐지 내역"
-        description="부정적 게시물 중 위험 수위가 높은 게시물을 AI가 분류한 것으로 고객 확인을 거쳐 신고 및 게시물 삭제 등의 후속조치 여부 결정이 필요합니다."
-        emphasis="※ SIR 팀에 신고 대행을 요청하거나 직접 신고 처리를 통해 리스크를 해결하시기 바랍니다."
-      >
+      <ReportCard>
+        <h4 className="text-sm font-semibold text-slate-700 mb-1">리스크 콘텐츠 탐지 내역</h4>
+        <p className="text-xs text-slate-400 mb-1">부정적 게시물 중 위험 수위가 높은 게시물을 AI가 분류한 것으로 고객 확인을 거쳐 신고 및 게시물 삭제 등의 후속조치 여부 결정이 필요합니다.</p>
+        <p className="text-xs text-red-400 mb-3">※ SIR 팀에 신고 대행을 요청하거나 직접 신고 처리를 통해 리스크를 해결하시기 바랍니다.</p>
         {riskItems.length > 0 ? (
           <table className="w-full text-sm table-fixed">
             <colgroup>

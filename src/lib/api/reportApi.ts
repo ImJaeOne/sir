@@ -4,19 +4,30 @@ const supabase = createClient();
 
 // ── 주간 총평 ──
 
-export interface SummarySection {
-  summary: string;
-  detail: string;
+export interface SummarySubsection {
+  title: string;
+  points: string[];
 }
 
-export async function getWeeklySummary(workspaceId: string): Promise<SummarySection[]> {
-  const { data } = await supabase
+export interface SummarySection {
+  summary: string;
+  subsections: SummarySubsection[];
+}
+
+export async function getWeeklySummary(workspaceId: string, reportId?: string): Promise<SummarySection[]> {
+  let query = supabase
     .from('session_strategies')
     .select('all_strategy')
     .eq('workspace_id', workspaceId)
     .is('category', null)
     .order('created_at', { ascending: false })
     .limit(1);
+
+  if (reportId) {
+    query = query.eq('report_id', reportId);
+  }
+
+  const { data } = await query;
   return data?.[0]?.all_strategy ?? [];
 }
 
@@ -86,16 +97,16 @@ export interface SirRanking {
 }
 
 const TIER_RANGES = [
-  { label: '하위 4구간 (0~99)', min: 0, max: 100 },
-  { label: '하위 3구간 (100~199)', min: 100, max: 200 },
-  { label: '하위 2구간 (200~299)', min: 200, max: 300 },
-  { label: '하위 1구간 (300~399)', min: 300, max: 400 },
-  { label: '중위 3구간 (400~499)', min: 400, max: 500 },
-  { label: '중위 2구간 (500~599)', min: 500, max: 600 },
-  { label: '중위 1구간 (600~699)', min: 600, max: 700 },
-  { label: '상위 3구간 (700~799)', min: 700, max: 800 },
-  { label: '상위 2구간 (800~899)', min: 800, max: 900 },
   { label: '상위 1구간 (900~1000)', min: 900, max: 1001 },
+  { label: '상위 2구간 (800~899)', min: 800, max: 900 },
+  { label: '상위 3구간 (700~799)', min: 700, max: 800 },
+  { label: '중위 1구간 (600~699)', min: 600, max: 700 },
+  { label: '중위 2구간 (500~599)', min: 500, max: 600 },
+  { label: '중위 3구간 (400~499)', min: 400, max: 500 },
+  { label: '하위 1구간 (300~399)', min: 300, max: 400 },
+  { label: '하위 2구간 (200~299)', min: 200, max: 300 },
+  { label: '하위 3구간 (100~199)', min: 100, max: 200 },
+  { label: '하위 4구간 (0~99)', min: 0, max: 100 },
 ];
 
 export async function getSirRanking(workspaceId: string): Promise<SirRanking> {
@@ -191,9 +202,8 @@ export async function getChannelStats(workspaceId: string, channelItems: Channel
   }
 
   return CHANNEL_CONFIG
-    .filter(c => byChannel.has(c.id))
     .map(c => {
-      const counts = byChannel.get(c.id)!;
+      const counts = byChannel.get(c.id) ?? { positive: 0, negative: 0, neutral: 0 };
       const sirScores = sirByChannel.get(c.id) ?? [];
       const avgSir = sirScores.length > 0 ? Math.round(sirScores.reduce((a, b) => a + b, 0) / sirScores.length) : 500;
       return {
@@ -351,10 +361,31 @@ export async function getRiskItems(workspaceId: string): Promise<RiskItem[]> {
 
 // ── 대응 전략 ──
 
+export interface StrategyAction {
+  platform: string;
+  topic: string;
+  contents: string[];
+}
+
+export interface StrategyData {
+  background: {
+    summary: string;
+    points: string[];
+  };
+  proposal: {
+    summary: string;
+    actions: StrategyAction[];
+  };
+  effect: {
+    summary: string;
+    points: string[];
+  };
+}
+
 export interface StrategyGroup {
   category: string;
   label: string;
-  strategy: string;
+  strategy: StrategyData;
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -365,18 +396,24 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 const CATEGORY_ORDER = ['news', 'sns', 'community'];
 
-export async function getStrategies(workspaceId: string): Promise<StrategyGroup[]> {
-  const { data } = await supabase
+export async function getStrategies(workspaceId: string, reportId?: string): Promise<StrategyGroup[]> {
+  let query = supabase
     .from('session_strategies')
     .select('category, strategy')
     .eq('workspace_id', workspaceId)
     .not('category', 'is', null)
     .order('created_at', { ascending: false });
 
+  if (reportId) {
+    query = query.eq('report_id', reportId);
+  }
+
+  const { data } = await query;
+
   const items = (data ?? []).map((row) => ({
     category: row.category,
     label: CATEGORY_LABELS[row.category] ?? row.category,
-    strategy: row.strategy ?? '',
+    strategy: row.strategy ?? { background: { summary: '', points: [] }, proposal: { summary: '', actions: [] }, effect: { summary: '', points: [] } },
   }));
 
   return items.sort((a, b) => CATEGORY_ORDER.indexOf(a.category) - CATEGORY_ORDER.indexOf(b.category));

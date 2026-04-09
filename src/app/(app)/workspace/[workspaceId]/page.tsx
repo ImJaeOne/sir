@@ -1,16 +1,18 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { TickerBadge } from '@/components/ui/Badge';
-import { useWorkspace, useWorkspaceProfile, useReports, workspaceKeys } from '@/hooks/workspace/useWorkspaceQuery';
+import { BlacklistEditor } from '@/components/ui/BlacklistEditor';
+import { useWorkspace, useWorkspaceProfile, useReports, useReportProgress, useReportRealtimeSync, workspaceKeys } from '@/hooks/workspace/useWorkspaceQuery';
 import { useUpdateWorkspaceProfile } from '@/hooks/workspace/useWorkspaceMutation';
 import { createClient } from '@/lib/supabase/client';
-import type { Report } from '@/lib/api/workspaceApi';
+import type { Report, ReportProgress } from '@/lib/api/workspaceApi';
 import type { WorkspaceProfile } from '@/types/workspace';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 
 function EditProfileModal({
   workspaceId,
@@ -27,26 +29,68 @@ function EditProfileModal({
   const [industry, setIndustry] = useState(initialIndustry);
   const [businessSummary, setBusinessSummary] = useState(initialSummary);
 
-  const hasChanges =
-    industry.trim() !== initialIndustry || businessSummary.trim() !== initialSummary;
+  // 블랙리스트 (디시 갤러리 + 유튜브 키워드)
+  const [initialDcBlacklist, setInitialDcBlacklist] = useState<string[]>([]);
+  const [dcBlacklist, setDcBlacklist] = useState<string[]>([]);
+  const [initialYtBlacklist, setInitialYtBlacklist] = useState<string[]>([]);
+  const [ytBlacklist, setYtBlacklist] = useState<string[]>([]);
 
-  const handleSave = () => {
+  useEffect(() => {
+    const supabase = createClient();
+    supabase
+      .from('content_blacklist')
+      .select('platform_id, type, value')
+      .in('platform_id', ['dcinside', 'youtube'])
+      .then(({ data }) => {
+        const dc = data?.filter((d) => d.platform_id === 'dcinside' && d.type === 'gallery').map((d) => d.value) ?? [];
+        const yt = data?.filter((d) => d.platform_id === 'youtube' && d.type === 'keyword').map((d) => d.value) ?? [];
+        setInitialDcBlacklist(dc);
+        setDcBlacklist(dc);
+        setInitialYtBlacklist(yt);
+        setYtBlacklist(yt);
+      });
+  }, []);
+
+  const dcChanged = dcBlacklist.length !== initialDcBlacklist.length || dcBlacklist.some((v) => !initialDcBlacklist.includes(v));
+  const ytChanged = ytBlacklist.length !== initialYtBlacklist.length || ytBlacklist.some((v) => !initialYtBlacklist.includes(v));
+
+  const hasChanges =
+    industry.trim() !== initialIndustry ||
+    businessSummary.trim() !== initialSummary ||
+    dcChanged || ytChanged;
+
+  const handleSave = async () => {
     if (!hasChanges) return;
-    updateProfile.mutate(
-      {
+
+    const profileChanged =
+      industry.trim() !== initialIndustry || businessSummary.trim() !== initialSummary;
+    if (profileChanged) {
+      updateProfile.mutate({
         industry: industry.trim() || null,
         business_summary: businessSummary.trim() || null,
-      },
-      {
-        onSuccess: () => {
-          toast.success('회사 프로필이 저장되었습니다.');
-          onClose();
-        },
-        onError: () => {
-          toast.error('저장에 실패했습니다.');
-        },
-      }
-    );
+      });
+    }
+
+    const supabase = createClient();
+
+    // 디시 블랙리스트 저장
+    if (dcChanged) {
+      const added = dcBlacklist.filter((v) => !initialDcBlacklist.includes(v));
+      const removed = initialDcBlacklist.filter((v) => !dcBlacklist.includes(v));
+      if (removed.length > 0) await supabase.from('content_blacklist').delete().eq('platform_id', 'dcinside').eq('type', 'gallery').in('value', removed);
+      if (added.length > 0) await supabase.from('content_blacklist').insert(added.map((value) => ({ platform_id: 'dcinside', type: 'gallery', value })));
+    }
+
+    // 유튜브 블랙리스트 저장
+    if (ytChanged) {
+      const added = ytBlacklist.filter((v) => !initialYtBlacklist.includes(v));
+      const removed = initialYtBlacklist.filter((v) => !ytBlacklist.includes(v));
+      if (removed.length > 0) await supabase.from('content_blacklist').delete().eq('platform_id', 'youtube').eq('type', 'keyword').in('value', removed);
+      if (added.length > 0) await supabase.from('content_blacklist').insert(added.map((value) => ({ platform_id: 'youtube', type: 'keyword', value })));
+    }
+
+    toast.success('저장되었습니다.');
+    onClose();
   };
 
   return (
@@ -102,6 +146,24 @@ function EditProfileModal({
           />
         </div>
 
+        <BlacklistEditor
+          title="디시인사이드 갤러리 블랙리스트"
+          description="크롤링 시 제외할 갤러리명을 입력하세요"
+          placeholder="예: 리그오브레전드"
+          items={dcBlacklist}
+          onAdd={(v) => setDcBlacklist((prev) => [...prev, v])}
+          onRemove={(v) => setDcBlacklist((prev) => prev.filter((x) => x !== v))}
+        />
+
+        <BlacklistEditor
+          title="유튜브 키워드 블랙리스트"
+          description="제목/설명에 포함된 영상을 제외합니다"
+          placeholder="예: LoL, 리그오브레전드"
+          items={ytBlacklist}
+          onAdd={(v) => setYtBlacklist((prev) => [...prev, v])}
+          onRemove={(v) => setYtBlacklist((prev) => prev.filter((x) => x !== v))}
+        />
+
         <div className="flex justify-end gap-2 pt-2">
           <button
             onClick={onClose}
@@ -116,6 +178,87 @@ function EditProfileModal({
           >
             저장
           </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const PLATFORM_LABELS: Record<string, string> = {
+  naver_news: '뉴스',
+  naver_blog: '블로그',
+  youtube: '유튜브',
+  naver_stock: '종토방',
+  dcinside: '디시인사이드',
+};
+
+const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
+  pending: { label: '대기', color: 'text-slate-400' },
+  crawling: { label: '크롤링 중', color: 'text-blue-500' },
+  analyzing: { label: '분석 중', color: 'text-amber-500' },
+  clustering: { label: '클러스터링 중', color: 'text-violet-500' },
+  done: { label: '완료', color: 'text-emerald-500' },
+  failed: { label: '실패', color: 'text-red-500' },
+};
+
+function SessionStatusDot({ status }: { status: string }) {
+  const dotColor =
+    status === 'done' ? 'bg-emerald-400' :
+    status === 'failed' ? 'bg-red-400' :
+    status === 'pending' ? 'bg-slate-300' :
+    'bg-amber-400 animate-pulse';
+  return <span className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />;
+}
+
+const ALL_PLATFORMS = ['naver_news', 'naver_blog', 'youtube', 'naver_stock', 'dcinside'];
+
+function ReportProgressPanel({ progress }: { progress: ReportProgress }) {
+  const sessionMap = new Map(progress.sessions.map((s) => [s.platform_id, s]));
+
+  return (
+    <div className="px-5 pb-4 flex flex-col gap-3">
+      {/* 플랫폼별 세션 상태 */}
+      <div className="flex flex-col gap-1.5">
+        <span className="text-xs font-semibold text-slate-500">플랫폼별 수집 현황</span>
+        <div className="grid grid-cols-2 gap-1.5">
+          {ALL_PLATFORMS.map((platformId) => {
+            const s = sessionMap.get(platformId);
+            const status = s?.status ?? 'pending';
+            const cfg = STATUS_CONFIG[status] ?? { label: '대기', color: 'text-slate-400' };
+            return (
+              <div key={platformId} className="flex items-center gap-2 bg-slate-50 rounded-lg px-3 py-2">
+                <SessionStatusDot status={status} />
+                <span className="text-xs text-slate-600 font-medium">{PLATFORM_LABELS[platformId] ?? platformId}</span>
+                {status === 'done' && (
+                  <span className="text-[10px] text-slate-400 ml-auto">{s?.total_items ?? 0}건</span>
+                )}
+                <span className={`text-xs font-semibold ${status !== 'done' ? 'ml-auto' : ''} ${cfg.color}`}>
+                  {status === 'failed' && s?.failed_reason ? `${cfg.label} (${s.failed_reason})` : cfg.label}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 총평 & 전략 */}
+      <div className="flex flex-col gap-1.5">
+        <span className="text-xs font-semibold text-slate-500">보고서 생성 현황</span>
+        <div className="grid grid-cols-2 gap-1.5">
+          <div className="flex items-center gap-2 bg-slate-50 rounded-lg px-3 py-2">
+            <SessionStatusDot status={progress.hasSummary ? 'done' : 'crawling'} />
+            <span className="text-xs text-slate-600 font-medium">총평</span>
+            <span className={`text-xs font-semibold ml-auto ${progress.hasSummary ? 'text-emerald-500' : 'text-slate-400'}`}>
+              {progress.hasSummary ? '완료' : '대기'}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 bg-slate-50 rounded-lg px-3 py-2">
+            <SessionStatusDot status={progress.strategyCategories.length > 0 ? 'done' : 'crawling'} />
+            <span className="text-xs text-slate-600 font-medium">대응 전략</span>
+            <span className={`text-xs font-semibold ml-auto ${progress.strategyCategories.length > 0 ? 'text-emerald-500' : 'text-slate-400'}`}>
+              {progress.strategyCategories.length > 0 ? `${progress.strategyCategories.length}개 채널` : '대기'}
+            </span>
+          </div>
         </div>
       </div>
     </div>
@@ -155,8 +298,21 @@ function CreateReportButton({ workspaceId }: { workspaceId: string }) {
       if (!res.ok) throw new Error('보고서 생성 실패');
 
       const data = await res.json();
-      toast.success(`보고서가 생성되었습니다. (${data.period_start} ~ ${data.period_end})`);
       queryClient.invalidateQueries({ queryKey: workspaceKeys.reports(workspaceId) });
+
+      // 파이프라인 즉시 시작
+      const pipelineRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/pipeline/all`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ workspace_id: workspaceId, report_id: data.report_id }),
+      });
+
+      if (!pipelineRes.ok) throw new Error('파이프라인 시작 실패');
+
+      toast.success(`분석이 시작되었습니다. (${data.period_start} ~ ${data.period_end})`);
     } catch (e) {
       toast.error('보고서 생성에 실패했습니다.');
     } finally {
@@ -170,7 +326,7 @@ function CreateReportButton({ workspaceId }: { workspaceId: string }) {
       disabled={loading}
       className="bg-blue-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-700 active:scale-95 transition-all duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
     >
-      {loading ? '생성 중...' : '첫 보고서 생성하기'}
+      {loading ? '시작 중...' : '분석 시작하기'}
     </button>
   );
 }
@@ -184,6 +340,33 @@ export default function WorkspaceDetailPage() {
   const { data: profile } = useWorkspaceProfile(workspaceId);
   const [showEditProfile, setShowEditProfile] = useState(false);
   const { data: reports, isLoading } = useReports(workspaceId);
+  const { data: progressList } = useReportProgress(workspaceId);
+  useReportRealtimeSync(workspaceId);
+
+  // 진행 중인 보고서는 기본 열림, 완료된 보고서는 닫힘
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+
+  const toggleExpand = (id: string) => {
+    setExpandedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  // 진행 중인 보고서 자동 열기 (reports/progressList 로드 후)
+  const [initialized, setInitialized] = useState(false);
+  if (!initialized && reports && progressList) {
+    const inProgress = new Set<string>();
+    for (const report of reports) {
+      if (report.status !== 'published') {
+        inProgress.add(report.id);
+      }
+    }
+    if (inProgress.size > 0) setExpandedIds(inProgress);
+    setInitialized(true);
+  }
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
@@ -246,32 +429,50 @@ export default function WorkspaceDetailPage() {
               ? 'bg-emerald-50 text-emerald-700'
               : 'bg-amber-50 text-amber-700';
             const statusLabel = report.status === 'published' ? '검토 완료' : '검토 대기';
+            const isExpanded = expandedIds.has(report.id);
+            const progress = progressList?.find(p => p.reportId === report.id);
 
             return (
-              <button
+              <div
                 key={report.id}
-                onClick={() => router.push(`/workspace/${workspaceId}/${report.id}`)}
-                className="w-full bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden hover:border-blue-200 hover:shadow-md transition-all cursor-pointer text-left"
+                className="w-full bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden transition-all"
               >
                 <div className="px-5 py-4 sm:px-6 flex items-center justify-between">
-                  <div className="flex flex-col gap-1.5">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-semibold text-slate-800">
-                        {periodStart} ~ {periodEnd}
-                      </span>
-                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${statusColor}`}>
-                        {statusLabel}
-                      </span>
+                  <button
+                    onClick={() => toggleExpand(report.id)}
+                    className="flex items-center gap-2 cursor-pointer"
+                  >
+                    {isExpanded
+                      ? <ChevronUp size={16} className="text-slate-400" />
+                      : <ChevronDown size={16} className="text-slate-400" />
+                    }
+                  </button>
+                  <button
+                    onClick={() => router.push(`/workspace/${workspaceId}/${report.id}`)}
+                    className="flex-1 flex items-center justify-between ml-3 text-left cursor-pointer"
+                  >
+                    <div className="flex flex-col gap-1.5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-slate-800">
+                          {periodStart} ~ {periodEnd}
+                        </span>
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${statusColor}`}>
+                          {statusLabel}
+                        </span>
+                      </div>
+                      <span className="text-xs text-slate-400">{typeLabel}</span>
                     </div>
-                    <span className="text-xs text-slate-400">
-                      {typeLabel}
-                    </span>
-                  </div>
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" className="text-slate-300 shrink-0">
-                    <path d="M6 4l4 4-4 4" />
-                  </svg>
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" className="text-slate-300 shrink-0">
+                      <path d="M6 4l4 4-4 4" />
+                    </svg>
+                  </button>
                 </div>
-              </button>
+                {isExpanded && progress && (
+                  <div className="border-t border-slate-100">
+                    <ReportProgressPanel progress={progress} />
+                  </div>
+                )}
+              </div>
             );
           })}
         </div>

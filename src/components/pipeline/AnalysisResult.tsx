@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { PLATFORM_CATEGORIES, CATEGORY_LABELS } from '@/constants/platforms';
 import { ChevronIcon } from '@/components/ui/ChevronIcon';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { AnalysisCharts } from '@/components/pipeline/AnalysisCharts';
 import { useToggleSet } from '@/hooks/useToggleSet';
 import type { CrawlItem, Cluster, CommunityItem, SnsItem } from '@/types/news';
@@ -138,7 +139,7 @@ export function AnalysisResult({ clusters, standaloneItems, crawlItems, communit
   }, [crawlItems]);
 
   if (analysisData.length === 0) {
-    return <p className="text-sm text-slate-400">분석 데이터가 없습니다</p>;
+    return <EmptyState message="분석 데이터가 없습니다." />;
   }
 
   const allSirItems = [

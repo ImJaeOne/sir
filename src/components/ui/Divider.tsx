@@ -1,0 +1,3 @@
+export function Divider() {
+  return <div className="w-full h-px bg-border-light opacity-50" />;
+}

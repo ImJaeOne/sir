@@ -1,14 +1,16 @@
 export function ReportSection({
+  id,
   icon,
   title,
   children,
 }: {
+  id?: string;
   icon: React.ReactNode;
   title: string;
   children: React.ReactNode;
 }) {
   return (
-    <section className="flex flex-col gap-6">
+    <section id={id} className="flex flex-col gap-6">
       <div className="flex items-center gap-2.5">
         {icon}
         <h2 className="text-xl font-bold text-text-dark shrink-0">{title}</h2>
@@ -18,11 +20,33 @@ export function ReportSection({
   );
 }
 
-export function ReportSubSection({ title, children }: { title: string; children: React.ReactNode }) {
+import { Tooltip } from '@/components/ui/Tooltip';
+
+export function ReportSubSection({
+  title,
+  description,
+  tooltip,
+  tooltipVariant = 'default',
+  className,
+  children,
+}: {
+  title: string;
+  description?: string;
+  tooltip?: string;
+  tooltipVariant?: 'default' | 'danger';
+  className?: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="flex flex-col gap-3">
-      <h3 className="text-base font-bold text-text-accent">{title}</h3>
-      {children}
+      <div className="flex flex-col gap-1">
+        <div className="flex items-center gap-1.5">
+          <h3 className="text-base font-bold text-text-accent">{title}</h3>
+          {tooltip && <Tooltip text={tooltip} variant={tooltipVariant} />}
+        </div>
+        {description && <p className="text-sm font-normal text-text-muted">{description}</p>}
+      </div>
+      <div className={`${className}`}>{children}</div>
     </div>
   );
 }
