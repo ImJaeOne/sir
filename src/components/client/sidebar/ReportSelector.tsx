@@ -48,7 +48,7 @@ export function ReportSelector() {
 
   return (
     <>
-      <div className="px-3 py-2">
+      <div className="px-3 w-full">
         <button
           onClick={() => setShowModal(true)}
           className="w-full flex items-center gap-2.5 rounded-lg text-sm transition-colors cursor-pointer justify-center border border-bg-dark px-3 py-2.5 hover:bg-bg-light"

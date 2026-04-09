@@ -10,14 +10,16 @@ import { LoadingOverlay } from '@/components/ui/Loading';
 interface ReportHeaderProps {
   workspaceId: string;
   reportId: string;
+  showPdfButton?: boolean;
 }
 
-export function ReportHeader({ workspaceId, reportId }: ReportHeaderProps) {
+export function ReportHeader({ workspaceId, reportId, showPdfButton = true }: ReportHeaderProps) {
   const [downloading, setDownloading] = useState(false);
   const { data: workspace } = useWorkspace(workspaceId);
   const { data: report } = useReportInfo(reportId);
 
   const handleDownload = async () => {
+    if (!showPdfButton) return;
     setDownloading(true);
     try {
       const supabase = createClient();
@@ -62,13 +64,15 @@ export function ReportHeader({ workspaceId, reportId }: ReportHeaderProps) {
       {downloading && <LoadingOverlay text="보고서 다운로드 중" />}
       <div className="w-full flex justify-between items-center">
         <p className="text-base text-text-muted font-bold">SIR Weekly Report</p>
-        <button
-          onClick={handleDownload}
-          disabled={downloading}
-          className="text-base font-bold text-text-muted bg-bg-gray-button hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed px-4 py-3 rounded-[10px] transition-colors cursor-pointer shrink-0"
-        >
-          {downloading ? 'PDF 생성 중...' : 'PDF 다운로드'}
-        </button>
+        {showPdfButton && (
+          <button
+            onClick={handleDownload}
+            disabled={downloading}
+            className="text-base font-bold text-text-muted bg-bg-gray-button hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed px-4 py-3 rounded-[10px] transition-colors cursor-pointer shrink-0"
+          >
+            {downloading ? 'PDF 생성 중...' : 'PDF 다운로드'}
+          </button>
+        )}
       </div>
       <div className="flex items-center justify-between bg-bg-dark px-10 py-8 rounded-xl">
         <h1 className="flex items-center gap-3 font-bold">
