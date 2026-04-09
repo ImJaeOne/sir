@@ -1,11 +1,11 @@
 'use client';
 
+import { useChannelItems, useNewsClusters } from '@/hooks/report/useReportQuery';
 import { ReportSection } from '@/components/report/ReportSection';
 import { TopContentCard } from '@/components/report/top-content/TopContentCard';
 import { NewsTopList } from '@/components/report/top-content/NewsTopList';
 import { ChannelTopList } from '@/components/report/top-content/ChannelTopList';
 import { TopContentsIcon } from '@/components/icons/TopContentsIcon';
-import type { ChannelItem, NewsCluster } from '@/lib/api/reportApi';
 
 const PLATFORM_TO_CHANNEL: Record<string, string> = {
   naver_blog: 'blog',
@@ -35,14 +35,16 @@ const CHANNEL_ORDER = [
   },
 ];
 
-export interface TopContentProps {
-  channelItems?: ChannelItem[];
-  newsClusters?: NewsCluster[];
+interface TopContentProps {
+  workspaceId: string;
 }
 
-export function TopContent({ channelItems = [], newsClusters = [] }: TopContentProps) {
-  const byChannel = new Map<string, ChannelItem[]>();
-  for (const item of channelItems) {
+export function TopContent({ workspaceId }: TopContentProps) {
+  const { data: channelItems } = useChannelItems(workspaceId);
+  const { data: newsClusters } = useNewsClusters(workspaceId);
+
+  const byChannel = new Map<string, typeof channelItems extends (infer T)[] | undefined ? T[] : never>();
+  for (const item of channelItems ?? []) {
     if (item.platform_id === 'naver_news') continue;
     const channel = PLATFORM_TO_CHANNEL[item.platform_id] ?? item.platform_id;
     if (!byChannel.has(channel)) byChannel.set(channel, []);
@@ -67,7 +69,7 @@ export function TopContent({ channelItems = [], newsClusters = [] }: TopContentP
             title="뉴스 TOP 3"
             description="관련 기사가 가장 많은 클러스터 기준으로 선정되었습니다."
           >
-            <NewsTopList clusters={newsClusters} />
+            <NewsTopList clusters={newsClusters ?? []} />
           </TopContentCard>
 
           {channels.map((ch) => (

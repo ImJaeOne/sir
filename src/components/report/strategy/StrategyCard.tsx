@@ -15,10 +15,12 @@ const CHANNEL_CONFIG: Record<
   community: { icon: CommunityIcon, label: '커뮤니티 채널\n대응 전략', bg: 'bg-bg-green-15' },
 };
 
+import type { StrategyData } from '@/lib/api/reportApi';
+
 interface StrategyCardProps {
   category: string;
   label: string;
-  strategy: string;
+  strategy: StrategyData;
 }
 
 export function StrategyCard({ category, strategy }: StrategyCardProps) {

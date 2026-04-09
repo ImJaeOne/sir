@@ -3,11 +3,11 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Md } from '@/components/ui/Markdown';
 import { ReportCard } from '@/components/report/ReportCard';
 import { ReportSubSection } from '@/components/report/ReportSection';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Divider } from '@/components/ui/Divider';
+import { CheckListIcon } from '@/components/icons/CheckListIcon';
 import { ReputationIcon } from '@/components/icons/ReputationIcon';
 import { DynamicsIcon } from '@/components/icons/DynamicsIcon';
 import { MomentumIcon } from '@/components/icons/MomentumIcon';
@@ -57,8 +57,20 @@ function SummaryAccordion({ sections }: { sections: SummarySection[] }) {
                   )}
                 </button>
                 {openIdx === i && (
-                  <div className="mt-3">
-                    <Md type="reputation">{section.detail}</Md>
+                  <div className="mt-3 flex flex-col gap-3">
+                    {section.subsections.map((sub, j) => (
+                      <div key={j} className="rounded-[10px] bg-bg-light px-5 py-4 flex flex-col gap-2">
+                        <h5 className="text-sm font-semibold text-text-dark">{sub.title}</h5>
+                        <ul className="flex flex-col gap-1.5">
+                          {sub.points.map((point, k) => (
+                            <li key={k} className="flex items-center gap-2">
+                              <CheckListIcon size={16} />
+                              <span className="text-sm text-text-muted leading-relaxed">{point}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>

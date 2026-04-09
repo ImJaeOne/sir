@@ -4,19 +4,30 @@ const supabase = createClient();
 
 // ── 주간 총평 ──
 
-export interface SummarySection {
-  summary: string;
-  detail: string;
+export interface SummarySubsection {
+  title: string;
+  points: string[];
 }
 
-export async function getWeeklySummary(workspaceId: string): Promise<SummarySection[]> {
-  const { data } = await supabase
+export interface SummarySection {
+  summary: string;
+  subsections: SummarySubsection[];
+}
+
+export async function getWeeklySummary(workspaceId: string, reportId?: string): Promise<SummarySection[]> {
+  let query = supabase
     .from('session_strategies')
     .select('all_strategy')
     .eq('workspace_id', workspaceId)
     .is('category', null)
     .order('created_at', { ascending: false })
     .limit(1);
+
+  if (reportId) {
+    query = query.eq('report_id', reportId);
+  }
+
+  const { data } = await query;
   return data?.[0]?.all_strategy ?? [];
 }
 
@@ -350,10 +361,31 @@ export async function getRiskItems(workspaceId: string): Promise<RiskItem[]> {
 
 // ── 대응 전략 ──
 
+export interface StrategyAction {
+  platform: string;
+  topic: string;
+  contents: string[];
+}
+
+export interface StrategyData {
+  background: {
+    summary: string;
+    points: string[];
+  };
+  proposal: {
+    summary: string;
+    actions: StrategyAction[];
+  };
+  effect: {
+    summary: string;
+    points: string[];
+  };
+}
+
 export interface StrategyGroup {
   category: string;
   label: string;
-  strategy: string;
+  strategy: StrategyData;
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -364,18 +396,24 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 const CATEGORY_ORDER = ['news', 'sns', 'community'];
 
-export async function getStrategies(workspaceId: string): Promise<StrategyGroup[]> {
-  const { data } = await supabase
+export async function getStrategies(workspaceId: string, reportId?: string): Promise<StrategyGroup[]> {
+  let query = supabase
     .from('session_strategies')
     .select('category, strategy')
     .eq('workspace_id', workspaceId)
     .not('category', 'is', null)
     .order('created_at', { ascending: false });
 
+  if (reportId) {
+    query = query.eq('report_id', reportId);
+  }
+
+  const { data } = await query;
+
   const items = (data ?? []).map((row) => ({
     category: row.category,
     label: CATEGORY_LABELS[row.category] ?? row.category,
-    strategy: row.strategy ?? '',
+    strategy: row.strategy ?? { background: { summary: '', points: [] }, proposal: { summary: '', actions: [] }, effect: { summary: '', points: [] } },
   }));
 
   return items.sort((a, b) => CATEGORY_ORDER.indexOf(a.category) - CATEGORY_ORDER.indexOf(b.category));
