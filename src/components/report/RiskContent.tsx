@@ -15,7 +15,7 @@ export function RiskContent({ workspaceId }: RiskContentProps) {
 
   return (
     <div className="print-break">
-      <ReportSection icon={<LiskContentIcon size={36} />} title="리스크 콘텐츠 관리">
+      <ReportSection id="section-risk" icon={<LiskContentIcon size={36} />} title="리스크 콘텐츠 관리">
         <ReportSubSection
           title="리스크 콘텐츠 탐지 내역"
           description="부정적 게시물 중 위험 수위가 높은 게시물을 AI가 분류한 것으로 고객 확인을 거쳐 신고 및 게시물 삭제 등의 후속조치 여부 결정이 필요합니다."

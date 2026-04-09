@@ -48,7 +48,7 @@ export function useReportInfo(reportId: string) {
         .from('reports')
         .select('type, period_start, period_end, created_at')
         .eq('id', reportId)
-        .single();
+        .maybeSingle();
       return data;
     },
     enabled: !!reportId,

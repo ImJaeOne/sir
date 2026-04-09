@@ -16,7 +16,7 @@ export function Strategy({ workspaceId, reportId }: StrategyProps) {
 
   return (
     <div className="print-break">
-      <ReportSection icon={<StrategyIcon size={36} />} title="대응 전략 제안">
+      <ReportSection id="section-strategy" icon={<StrategyIcon size={36} />} title="대응 전략 제안">
         <ReportSubSection
           title="채널별 대응 전략"
           description="이번 주 온라인 여론 분석 결과를 바탕으로, 각 채널별 긍정 여론 확산 및 부정 여론 완화를 위한 주요 전략을 확인할 수 있습니다."

@@ -1,14 +1,16 @@
 export function ReportSection({
+  id,
   icon,
   title,
   children,
 }: {
+  id?: string;
   icon: React.ReactNode;
   title: string;
   children: React.ReactNode;
 }) {
   return (
-    <section className="flex flex-col gap-6">
+    <section id={id} className="flex flex-col gap-6">
       <div className="flex items-center gap-2.5">
         {icon}
         <h2 className="text-xl font-bold text-text-dark shrink-0">{title}</h2>

@@ -62,7 +62,7 @@ export function TopContent({ workspaceId }: TopContentProps) {
 
   return (
     <div className="print-break">
-      <ReportSection icon={<TopContentsIcon size={36} />} title="채널별 상위 콘텐츠">
+      <ReportSection id="section-top-content" icon={<TopContentsIcon size={36} />} title="채널별 상위 콘텐츠">
         <div className="grid grid-cols-2 gap-6">
           <TopContentCard
             channelId="news"
