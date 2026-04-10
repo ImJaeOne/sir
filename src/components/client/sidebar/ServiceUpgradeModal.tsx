@@ -9,16 +9,13 @@ import { submitUpgradeInquiry } from '@/lib/api/inquiryApi';
 interface ServiceUpgradeModalProps {
   open: boolean;
   onClose: () => void;
+  title?: string;
   description?: React.ReactNode;
+  subDescription?: React.ReactNode;
 }
 
-const DEFAULT_DESCRIPTION = (
-  <>
-    상품 업그레이드 안내가 필요하신가요?
-    <br />
-    아래 양식에 맞춰 접수하시면 신속하게 연락드리겠습니다.
-  </>
-);
+const DEFAULT_DESCRIPTION = '상품 업그레이드 안내가 필요하신가요?';
+const DEFAULT_SUB_DESCRIPTION = '아래 양식에 맞춰 접수하시면 신속하게 연락드리겠습니다.';
 
 const PRIVACY_TERMS = `개인정보의 수집 및 이용 목적
 ㈜이노다이브는(이하 ‘회사’는)는 고객님의 개인정보를 중요시하며, “정보통신망 이용촉진 및 정보보호”에 관한 법률을 준수하고 있습니다. 회사는 개인정보취급방침을 통하여 고객님께서 제공하시는 개인정보가 어떠한 용도와 방식으로 이용되고 있으며, 개인정보보호를 위해 어떠한 조치가 취해지고 있는지 알려드립니다. 회사는 개인정보취급방침을 개정하는 경우 웹사이트 공지사항(또는 개별공지)을 통하여 공지할 것입니다.
@@ -36,7 +33,13 @@ const PRIVACY_TERMS = `개인정보의 수집 및 이용 목적
 - 보존 기간 : 5년 
 - 계약 또는 청약철회 등에 관한 기록 : 5년 (전자상거래등에서의 소비자보호에 관한 법률)`;
 
-export function ServiceUpgradeModal({ open, onClose, description }: ServiceUpgradeModalProps) {
+export function ServiceUpgradeModal({
+  open,
+  onClose,
+  title = '서비스 업그레이드',
+  description,
+  subDescription,
+}: ServiceUpgradeModalProps) {
   const [companyName, setCompanyName] = useState('');
   const [contactName, setContactName] = useState('');
   const [phone, setPhone] = useState('');
@@ -86,7 +89,7 @@ export function ServiceUpgradeModal({ open, onClose, description }: ServiceUpgra
     <Modal
       open={open}
       onClose={handleClose}
-      title="서비스 업그레이드"
+      title={title}
       size="lg"
       footer={
         <Button onClick={handleSubmit} disabled={!isValid || submitting} fullWidth>
@@ -94,9 +97,14 @@ export function ServiceUpgradeModal({ open, onClose, description }: ServiceUpgra
         </Button>
       }
     >
-      <p className="text-sm text-text-muted leading-relaxed">
-        {description ?? DEFAULT_DESCRIPTION}
-      </p>
+      <div className="flex flex-col gap-1">
+        <p className="text-base font-semibold text-text-dark leading-relaxed">
+          {description ?? DEFAULT_DESCRIPTION}
+        </p>
+        <p className="text-sm text-text-muted leading-relaxed">
+          {subDescription ?? DEFAULT_SUB_DESCRIPTION}
+        </p>
+      </div>
 
       {/* 회사명 */}
       <div className="flex flex-col gap-2">

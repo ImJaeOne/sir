@@ -10,6 +10,7 @@ import { OnlineReputation } from '@/components/report/OnlineReputation';
 import { TopContent } from '@/components/report/TopContent';
 import { RiskContent } from '@/components/report/RiskContent';
 import { Strategy } from '@/components/report/Strategy';
+import { ServiceCTA } from '@/components/report/ServiceCTA';
 import { Loading } from '@/components/ui/Loading';
 
 export default function ClientReportPage() {
@@ -46,6 +47,7 @@ export default function ClientReportPage() {
           <TopContent workspaceId={workspaceId} />
           <RiskContent workspaceId={workspaceId} />
           <Strategy workspaceId={workspaceId} reportId={reportId} />
+          <ServiceCTA />
         </div>
       </div>
     </div>

@@ -2,7 +2,13 @@
 
 import type { ButtonHTMLAttributes } from 'react';
 
-type Variant = 'primary' | 'secondary' | 'danger' | 'ghost' | 'outline';
+type Variant =
+  | 'primary'
+  | 'secondary'
+  | 'danger'
+  | 'ghost'
+  | 'outline'
+  | 'outlineAccent';
 type Size = 'sm' | 'md' | 'lg';
 
 const VARIANT_CLASS: Record<Variant, string> = {
@@ -14,6 +20,8 @@ const VARIANT_CLASS: Record<Variant, string> = {
   ghost: 'text-text-muted hover:bg-bg-light disabled:opacity-40 disabled:cursor-not-allowed',
   outline:
     'border border-bg-dark text-text-dark hover:bg-bg-light disabled:opacity-40 disabled:cursor-not-allowed',
+  outlineAccent:
+    'bg-white border border-bg-accent text-text-accent hover:bg-bg-blue disabled:opacity-40 disabled:cursor-not-allowed',
 };
 
 const SIZE_CLASS: Record<Size, string> = {
