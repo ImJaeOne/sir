@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { CompanySearch } from '@/components/ui/CompanySearch';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { BlacklistEditor } from '@/components/ui/BlacklistEditor';
+import { Modal } from '@/components/ui/Modal';
 import { createClient } from '@/lib/supabase/client';
 import { useWorkspaces } from '@/hooks/workspace/useWorkspaceQuery';
 import { useCreateWorkspace, useDeleteWorkspace } from '@/hooks/workspace/useWorkspaceMutation';
@@ -65,75 +66,13 @@ function CreateWorkspaceModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* backdrop */}
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-
-      {/* modal */}
-      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 p-6 flex flex-col gap-4 max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between">
-          <h2 className="text-base font-bold text-slate-800">새 워크스페이스 생성</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors cursor-pointer">
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-              <path d="M5 5l10 10M15 5L5 15" />
-            </svg>
-          </button>
-        </div>
-
-        {/* 회사명 */}
-        <CompanySearch onChange={(company) => setSelectedCompany(company)} />
-
-        {/* 회사 프로필 */}
-        <div className="flex flex-col gap-4 pt-2">
-          <div className="flex items-center gap-1.5">
-            <label className="text-xs font-semibold text-slate-700 uppercase tracking-wide">
-              회사 프로필
-            </label>
-            <Tooltip text="AI 분석의 정확도 향상을 위한 필드입니다." />
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide">업종</label>
-            <input
-              type="text"
-              value={industry}
-              onChange={(e) => setIndustry(e.target.value)}
-              placeholder="예: 게임, 반도체, 바이오"
-              className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2.5 outline-none focus:border-blue-400 transition-colors"
-            />
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide">사업 개요</label>
-            <textarea
-              value={businessSummary}
-              onChange={(e) => setBusinessSummary(e.target.value)}
-              placeholder="주요 사업 내용, 매출 구조, 자회사 등"
-              rows={3}
-              className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2.5 outline-none focus:border-blue-400 transition-colors resize-none"
-            />
-          </div>
-        </div>
-
-        <BlacklistEditor
-          title="디시인사이드 갤러리 블랙리스트"
-          description="크롤링 시 제외할 갤러리명을 입력하세요"
-          placeholder="예: 리그오브레전드"
-          items={dcBlacklist}
-          onAdd={(v) => setDcBlacklist((prev) => [...prev, v])}
-          onRemove={(v) => setDcBlacklist((prev) => prev.filter((x) => x !== v))}
-        />
-
-        <BlacklistEditor
-          title="유튜브 키워드 블랙리스트"
-          description="제목/설명에 포함된 영상을 제외합니다"
-          placeholder="예: LoL, 리그오브레전드"
-          items={ytBlacklist}
-          onAdd={(v) => setYtBlacklist((prev) => [...prev, v])}
-          onRemove={(v) => setYtBlacklist((prev) => prev.filter((x) => x !== v))}
-        />
-
-        <div className="flex justify-end gap-2 pt-2">
+    <Modal
+      open
+      onClose={onClose}
+      title="새 워크스페이스 생성"
+      size="lg"
+      footer={
+        <>
           <button
             onClick={onClose}
             className="px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-500 hover:bg-slate-100 transition-colors cursor-pointer"
@@ -147,9 +86,62 @@ function CreateWorkspaceModal({
           >
             생성
           </button>
+        </>
+      }
+    >
+      {/* 회사명 */}
+      <CompanySearch onChange={(company) => setSelectedCompany(company)} />
+
+      {/* 회사 프로필 */}
+      <div className="flex flex-col gap-4 pt-2">
+        <div className="flex items-center gap-1.5">
+          <label className="text-xs font-semibold text-slate-700 uppercase tracking-wide">
+            회사 프로필
+          </label>
+          <Tooltip text="AI 분석의 정확도 향상을 위한 필드입니다." />
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide">업종</label>
+          <input
+            type="text"
+            value={industry}
+            onChange={(e) => setIndustry(e.target.value)}
+            placeholder="예: 게임, 반도체, 바이오"
+            className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2.5 outline-none focus:border-blue-400 transition-colors"
+          />
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide">사업 개요</label>
+          <textarea
+            value={businessSummary}
+            onChange={(e) => setBusinessSummary(e.target.value)}
+            placeholder="주요 사업 내용, 매출 구조, 자회사 등"
+            rows={3}
+            className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2.5 outline-none focus:border-blue-400 transition-colors resize-none"
+          />
         </div>
       </div>
-    </div>
+
+      <BlacklistEditor
+        title="디시인사이드 갤러리 블랙리스트"
+        description="크롤링 시 제외할 갤러리명을 입력하세요"
+        placeholder="예: 리그오브레전드"
+        items={dcBlacklist}
+        onAdd={(v) => setDcBlacklist((prev) => [...prev, v])}
+        onRemove={(v) => setDcBlacklist((prev) => prev.filter((x) => x !== v))}
+      />
+
+      <BlacklistEditor
+        title="유튜브 키워드 블랙리스트"
+        description="제목/설명에 포함된 영상을 제외합니다"
+        placeholder="예: LoL, 리그오브레전드"
+        items={ytBlacklist}
+        onAdd={(v) => setYtBlacklist((prev) => [...prev, v])}
+        onRemove={(v) => setYtBlacklist((prev) => prev.filter((x) => x !== v))}
+      />
+    </Modal>
   );
 }
 
@@ -192,42 +184,47 @@ export default function DashboardPage() {
         )}
 
         {/* Delete confirm modal */}
-        {deleteTarget && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center">
-            <div className="absolute inset-0 bg-black/40" onClick={() => setDeleteTarget(null)} />
-            <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 p-6 flex flex-col gap-4">
-              <h2 className="text-base font-bold text-slate-800">워크스페이스 삭제</h2>
-              <p className="text-sm text-slate-500">
-                <span className="font-semibold text-slate-700">{deleteTarget.company_name}</span> 워크스페이스를 삭제하시겠습니까? 관련된 모든 보고서와 데이터가 삭제됩니다.
-              </p>
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  onClick={() => setDeleteTarget(null)}
-                  className="px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-500 hover:bg-slate-100 transition-colors cursor-pointer"
-                >
-                  취소
-                </button>
-                <button
-                  onClick={() => {
-                    deleteWorkspace.mutate(deleteTarget.id, {
-                      onSuccess: () => {
-                        toast.success('워크스페이스가 삭제되었습니다.');
-                        setDeleteTarget(null);
-                      },
-                      onError: () => {
-                        toast.error('삭제에 실패했습니다.');
-                      },
-                    });
-                  }}
-                  disabled={deleteWorkspace.isPending}
-                  className="bg-red-500 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-red-600 transition-colors cursor-pointer disabled:opacity-40"
-                >
-                  {deleteWorkspace.isPending ? '삭제 중...' : '삭제'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        <Modal
+          open={!!deleteTarget}
+          onClose={() => setDeleteTarget(null)}
+          title="워크스페이스 삭제"
+          size="sm"
+          footer={
+            <>
+              <button
+                onClick={() => setDeleteTarget(null)}
+                className="px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-500 hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                취소
+              </button>
+              <button
+                onClick={() => {
+                  if (!deleteTarget) return;
+                  deleteWorkspace.mutate(deleteTarget.id, {
+                    onSuccess: () => {
+                      toast.success('워크스페이스가 삭제되었습니다.');
+                      setDeleteTarget(null);
+                    },
+                    onError: () => {
+                      toast.error('삭제에 실패했습니다.');
+                    },
+                  });
+                }}
+                disabled={deleteWorkspace.isPending}
+                className="bg-red-500 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-red-600 transition-colors cursor-pointer disabled:opacity-40"
+              >
+                {deleteWorkspace.isPending ? '삭제 중...' : '삭제'}
+              </button>
+            </>
+          }
+        >
+          {deleteTarget && (
+            <p className="text-sm text-slate-500">
+              <span className="font-semibold text-slate-700">{deleteTarget.company_name}</span>{' '}
+              워크스페이스를 삭제하시겠습니까? 관련된 모든 보고서와 데이터가 삭제됩니다.
+            </p>
+          )}
+        </Modal>
 
         {/* Existing workspaces */}
         <div className="flex flex-col gap-3">

@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 import { DayPicker } from 'react-day-picker';
 import { ko } from 'react-day-picker/locale';
-import { X } from 'lucide-react';
+import { Modal } from '@/components/ui/Modal';
 import 'react-day-picker/style.css';
 
 interface Report {
@@ -103,65 +103,55 @@ export function ReportCalendarModal({ reports, currentReportId, onSelect, onClos
   const defaultMonth = reports[0]?.period_end ? parseDate(reports[0].period_end) ?? undefined : undefined;
 
   return (
-    <>
-      <div className="fixed inset-0 z-50 bg-black/20" onClick={onClose} />
-      <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
-        <div className="pointer-events-auto bg-white rounded-2xl shadow-xl p-6 max-w-md w-full mx-4">
-          {/* 헤더 */}
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-bold text-text-dark">지난 보고서</h3>
-            <button onClick={onClose} className="text-text-muted hover:text-text-dark transition-colors cursor-pointer">
-              <X size={20} />
-            </button>
+    <Modal open onClose={onClose} title="지난 보고서" size="md">
+      {/* 범례 */}
+      <div className="flex gap-4">
+        {Object.entries(TYPE_LABEL).map(([type, label]) => (
+          <div key={type} className="flex items-center gap-1.5">
+            <div
+              className="w-3 h-3 rounded-sm"
+              style={{ backgroundColor: TYPE_COLORS[type]?.bg.replace('0.15', '0.5') }}
+            />
+            <span className="text-xs text-text-muted">{label}</span>
           </div>
-
-          {/* 범례 */}
-          <div className="flex gap-4 mb-3">
-            {Object.entries(TYPE_LABEL).map(([type, label]) => (
-              <div key={type} className="flex items-center gap-1.5">
-                <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: TYPE_COLORS[type]?.bg.replace('0.15', '0.5') }} />
-                <span className="text-xs text-text-muted">{label}</span>
-              </div>
-            ))}
-          </div>
-
-          {/* 달력 */}
-          <style>{`
-            .report-calendar .rdp-day { position: relative; }
-            .report-calendar .rdp-day:hover { opacity: 0.8; }
-            .report-calendar .rdp-today { font-weight: bold; }
-          `}</style>
-          <DayPicker
-            className="report-calendar"
-            locale={ko}
-            defaultMonth={defaultMonth}
-            modifiers={modifiers}
-            modifiersStyles={modifiersStyles}
-            onDayClick={handleDayClick}
-            showOutsideDays
-          />
-
-          {/* 보고서 목록 */}
-          <div className="mt-4 border-t border-border-light pt-3 max-h-40 overflow-y-auto flex flex-col gap-1">
-            {reports.map((r) => {
-              const isActive = r.id === currentReportId;
-              return (
-                <button
-                  key={r.id}
-                  onClick={() => onSelect(r.id)}
-                  className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors cursor-pointer
-                    ${isActive ? 'bg-blue-50 text-blue-600 font-medium' : 'text-text-dark hover:bg-bg-light'}`}
-                >
-                  <span className="font-medium">{TYPE_LABEL[r.type] ?? r.type}</span>
-                  <span className={`ml-2 text-xs ${isActive ? 'text-blue-400' : 'text-text-muted'}`}>
-                    {formatPeriod(r.period_start, r.period_end)}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
+        ))}
       </div>
-    </>
+
+      {/* 달력 */}
+      <style>{`
+        .report-calendar .rdp-day { position: relative; }
+        .report-calendar .rdp-day:hover { opacity: 0.8; }
+        .report-calendar .rdp-today { font-weight: bold; }
+      `}</style>
+      <DayPicker
+        className="report-calendar"
+        locale={ko}
+        defaultMonth={defaultMonth}
+        modifiers={modifiers}
+        modifiersStyles={modifiersStyles}
+        onDayClick={handleDayClick}
+        showOutsideDays
+      />
+
+      {/* 보고서 목록 */}
+      <div className="border-t border-border-light pt-3 max-h-40 overflow-y-auto flex flex-col gap-1">
+        {reports.map((r) => {
+          const isActive = r.id === currentReportId;
+          return (
+            <button
+              key={r.id}
+              onClick={() => onSelect(r.id)}
+              className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors cursor-pointer
+                ${isActive ? 'bg-blue-50 text-blue-600 font-medium' : 'text-text-dark hover:bg-bg-light'}`}
+            >
+              <span className="font-medium">{TYPE_LABEL[r.type] ?? r.type}</span>
+              <span className={`ml-2 text-xs ${isActive ? 'text-blue-400' : 'text-text-muted'}`}>
+                {formatPeriod(r.period_start, r.period_end)}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </Modal>
   );
 }
