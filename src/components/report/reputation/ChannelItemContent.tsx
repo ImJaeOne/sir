@@ -22,6 +22,7 @@ export function ChannelItemContent({ name, items }: ChannelItemContentProps) {
   const parentRef = useRef<HTMLDivElement>(null);
 
   const showSource = name !== '블로그' && name !== '유튜브';
+  const showBody = name !== '커뮤니티';
   const sortFn = CHANNEL_SORT[name];
   const sorted = sortFn ? [...items].sort(sortFn) : items;
   const filtered = filter === 'all' ? sorted : sorted.filter((i) => i.sentiment === filter);
@@ -48,10 +49,7 @@ export function ChannelItemContent({ name, items }: ChannelItemContentProps) {
   return (
     <>
       <SentimentFilter value={filter} onChange={setFilter} counts={counts} />
-      <div
-        ref={parentRef}
-        className="max-h-[600px] overflow-y-auto"
-      >
+      <div ref={parentRef} className="max-h-[600px] overflow-y-auto">
         <div
           style={{
             height: `${rowVirtualizer.getTotalSize()}px`,
@@ -75,7 +73,7 @@ export function ChannelItemContent({ name, items }: ChannelItemContentProps) {
                 }}
                 className="border-b border-border-light pr-4"
               >
-                <div className="flex gap-2 py-4">
+                <div className={`flex gap-2 py-4 ${showBody ? '' : 'items-center'}`}>
                   <SentimentIcon sentiment={item.sentiment} />
                   <div className="flex-1 min-w-0 pl-4">
                     <div className="flex items-center gap-2">
@@ -91,7 +89,7 @@ export function ChannelItemContent({ name, items }: ChannelItemContentProps) {
                         <span className="text-[10px] text-text-muted shrink-0">{item.source}</span>
                       )}
                     </div>
-                    {(item.summary || item.content) && (
+                    {showBody && (item.summary || item.content) && (
                       <p className="text-sm text-text-muted mt-0.5">
                         {(item.summary || item.content || '').length > 200
                           ? (item.summary || item.content || '').slice(0, 200) + '…'

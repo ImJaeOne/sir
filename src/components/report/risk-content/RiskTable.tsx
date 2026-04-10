@@ -85,7 +85,7 @@ export function RiskTable({ riskItems }: RiskTableProps) {
     for (const tabItem of CHANNEL_TABS) {
       if (tabItem.key === 'all') continue;
       counts[tabItem.key] = riskItems.filter(
-        (i) => PLATFORM_TO_CHANNEL[i.platform_id] === tabItem.key,
+        (i) => PLATFORM_TO_CHANNEL[i.platform_id] === tabItem.key
       ).length;
     }
     return counts;
@@ -94,7 +94,7 @@ export function RiskTable({ riskItems }: RiskTableProps) {
   return (
     <div>
       {/* 채널 탭 */}
-      <div className="flex gap-4 mt-1 mb-2 border-b border-border-light">
+      <div className="flex gap-4 mt-1 border-b border-border-light">
         {CHANNEL_TABS.map((t) => {
           const active = tab === t.key;
           return (
@@ -126,7 +126,7 @@ export function RiskTable({ riskItems }: RiskTableProps) {
         <>
           {/* 헤더 */}
           <div
-            className="grid border-y border-border-light py-3 px-3 text-xs font-semibold text-text-muted text-center"
+            className="grid border-b border-border-light py-3 px-3 text-xs font-semibold text-text-muted text-center"
             style={{ gridTemplateColumns: COL_TEMPLATE }}
           >
             <div>탐지일</div>
@@ -170,9 +170,7 @@ export function RiskTable({ riskItems }: RiskTableProps) {
                     >
                       {/* 탐지일 */}
                       <div className="text-center text-xs text-text-muted">
-                        {item.published_at
-                          ? item.published_at.slice(0, 10).replace(/-/g, '.')
-                          : ''}
+                        {item.published_at ? item.published_at.slice(0, 10).replace(/-/g, '.') : ''}
                       </div>
                       {/* 채널명 */}
                       <div className="text-center text-xs text-text-muted">
