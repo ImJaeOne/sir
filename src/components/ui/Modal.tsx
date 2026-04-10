@@ -28,9 +28,10 @@ export function Modal({ open, onClose, title, size = 'md', children, footer }: M
 
       {/* dialog */}
       <div
-        className={`relative bg-white rounded-2xl shadow-xl w-full ${SIZE_CLASS[size]} mx-4 p-6 flex flex-col gap-4 max-h-[90vh] overflow-y-auto`}
+        className={`relative bg-white rounded-2xl shadow-xl w-full ${SIZE_CLASS[size]} mx-4 max-h-[90vh] flex flex-col overflow-hidden`}
       >
-        <div className="flex items-center justify-between">
+        {/* header (fixed) */}
+        <div className="flex items-center justify-between px-6 pt-6 pb-4 shrink-0">
           {title && <h2 className="text-base font-bold text-text-dark">{title}</h2>}
           <button
             onClick={onClose}
@@ -41,9 +42,13 @@ export function Modal({ open, onClose, title, size = 'md', children, footer }: M
           </button>
         </div>
 
-        <div className="flex flex-col gap-4">{children}</div>
+        {/* body (scrollable) */}
+        <div className="flex flex-col gap-4 px-6 py-2 overflow-y-auto flex-1">{children}</div>
 
-        {footer && <div className="flex justify-end gap-2 pt-2">{footer}</div>}
+        {/* footer (fixed) */}
+        {footer && (
+          <div className="flex justify-end gap-2 px-6 pt-4 pb-6 shrink-0">{footer}</div>
+        )}
       </div>
     </div>
   );

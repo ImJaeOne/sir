@@ -7,6 +7,7 @@ import { CompanySearch } from '@/components/ui/CompanySearch';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { BlacklistEditor } from '@/components/ui/BlacklistEditor';
 import { Modal } from '@/components/ui/Modal';
+import { Button } from '@/components/ui/Button';
 import { createClient } from '@/lib/supabase/client';
 import { useWorkspaces } from '@/hooks/workspace/useWorkspaceQuery';
 import { useCreateWorkspace, useDeleteWorkspace } from '@/hooks/workspace/useWorkspaceMutation';
@@ -73,19 +74,12 @@ function CreateWorkspaceModal({
       size="lg"
       footer={
         <>
-          <button
-            onClick={onClose}
-            className="px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-500 hover:bg-slate-100 transition-colors cursor-pointer"
-          >
+          <Button variant="ghost" onClick={onClose}>
             취소
-          </button>
-          <button
-            onClick={handleCreate}
-            disabled={!selectedCompany || createWorkspace.isPending}
-            className="bg-blue-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-700 active:scale-95 transition-all duration-150 cursor-pointer disabled:opacity-40 disabled:cursor-default"
-          >
+          </Button>
+          <Button onClick={handleCreate} disabled={!selectedCompany || createWorkspace.isPending}>
             생성
-          </button>
+          </Button>
         </>
       }
     >
@@ -191,13 +185,11 @@ export default function DashboardPage() {
           size="sm"
           footer={
             <>
-              <button
-                onClick={() => setDeleteTarget(null)}
-                className="px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-500 hover:bg-slate-100 transition-colors cursor-pointer"
-              >
+              <Button variant="ghost" onClick={() => setDeleteTarget(null)}>
                 취소
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="danger"
                 onClick={() => {
                   if (!deleteTarget) return;
                   deleteWorkspace.mutate(deleteTarget.id, {
@@ -211,10 +203,9 @@ export default function DashboardPage() {
                   });
                 }}
                 disabled={deleteWorkspace.isPending}
-                className="bg-red-500 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-red-600 transition-colors cursor-pointer disabled:opacity-40"
               >
                 {deleteWorkspace.isPending ? '삭제 중...' : '삭제'}
-              </button>
+              </Button>
             </>
           }
         >

@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { Badge } from '@/components/ui/Badge';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { RiskReportRequestModal } from '@/components/report/risk-content/RiskReportRequestModal';
 import type { RiskItem } from '@/lib/api/reportApi';
 
 const criticalTypeConfig: Record<
@@ -60,6 +61,7 @@ interface RiskTableProps {
 
 export function RiskTable({ riskItems }: RiskTableProps) {
   const [tab, setTab] = useState<string>('all');
+  const [reportTarget, setReportTarget] = useState<RiskItem | null>(null);
   const parentRef = useRef<HTMLDivElement>(null);
 
   const filtered = useMemo(() => {
@@ -207,12 +209,18 @@ export function RiskTable({ riskItems }: RiskTableProps) {
                       </div>
                       {/* 액션 */}
                       <div className="text-right pr-2">
-                        <Badge
-                          variant="blue"
-                          className="px-3 py-1.5 cursor-pointer hover:bg-bg-accent hover:text-white transition-colors"
+                        <button
+                          type="button"
+                          onClick={() => setReportTarget(item)}
+                          className="cursor-pointer"
                         >
-                          신고 대행 요청
-                        </Badge>
+                          <Badge
+                            variant="blue"
+                            className="px-3 py-1.5 hover:bg-bg-accent hover:text-white transition-colors"
+                          >
+                            신고 대행 요청
+                          </Badge>
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -223,6 +231,12 @@ export function RiskTable({ riskItems }: RiskTableProps) {
           <p className="text-xs text-text-muted text-center py-2">총 {filtered.length}건</p>
         </>
       )}
+
+      <RiskReportRequestModal
+        open={!!reportTarget}
+        onClose={() => setReportTarget(null)}
+        title={reportTarget?.title ?? ''}
+      />
     </div>
   );
 }
