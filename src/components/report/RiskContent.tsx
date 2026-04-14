@@ -8,10 +8,11 @@ import { LiskContentIcon } from '@/components/icons/LiskContentIcon';
 
 interface RiskContentProps {
   workspaceId: string;
+  reportId?: string;
 }
 
-export function RiskContent({ workspaceId }: RiskContentProps) {
-  const { data: riskItems } = useRiskItems(workspaceId);
+export function RiskContent({ workspaceId, reportId }: RiskContentProps) {
+  const { data: riskItems } = useRiskItems(workspaceId, reportId);
 
   return (
     <div className="print-break">

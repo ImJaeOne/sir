@@ -265,6 +265,51 @@ function ReportProgressPanel({ progress }: { progress: ReportProgress }) {
   );
 }
 
+function StartPipelineButton({ workspaceId, reportId, periodLabel }: { workspaceId: string; reportId: string; periodLabel: string }) {
+  const [loading, setLoading] = useState(false);
+  const queryClient = useQueryClient();
+
+  const handleStart = async () => {
+    setLoading(true);
+    try {
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error('인증이 필요합니다.');
+        return;
+      }
+
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/pipeline/all`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ workspace_id: workspaceId, report_id: reportId }),
+      });
+
+      if (!res.ok) throw new Error('파이프라인 시작 실패');
+
+      queryClient.invalidateQueries({ queryKey: workspaceKeys.reports(workspaceId) });
+      toast.success(`분석이 시작되었습니다. (${periodLabel})`);
+    } catch (e) {
+      toast.error('분석 시작에 실패했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <button
+      onClick={(e) => { e.stopPropagation(); handleStart(); }}
+      disabled={loading}
+      className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-blue-700 active:scale-95 transition-all duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+    >
+      {loading ? '시작 중...' : '분석 시작'}
+    </button>
+  );
+}
+
 function CreateReportButton({ workspaceId }: { workspaceId: string }) {
   const [loading, setLoading] = useState(false);
   const queryClient = useQueryClient();
@@ -299,20 +344,7 @@ function CreateReportButton({ workspaceId }: { workspaceId: string }) {
 
       const data = await res.json();
       queryClient.invalidateQueries({ queryKey: workspaceKeys.reports(workspaceId) });
-
-      // 파이프라인 즉시 시작
-      const pipelineRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/pipeline/all`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({ workspace_id: workspaceId, report_id: data.report_id }),
-      });
-
-      if (!pipelineRes.ok) throw new Error('파이프라인 시작 실패');
-
-      toast.success(`분석이 시작되었습니다. (${data.period_start} ~ ${data.period_end})`);
+      toast.success(`보고서가 생성되었습니다. (${data.period_start} ~ ${data.period_end})`);
     } catch (e) {
       toast.error('보고서 생성에 실패했습니다.');
     } finally {
@@ -326,7 +358,7 @@ function CreateReportButton({ workspaceId }: { workspaceId: string }) {
       disabled={loading}
       className="bg-blue-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-700 active:scale-95 transition-all duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
     >
-      {loading ? '시작 중...' : '분석 시작하기'}
+      {loading ? '생성 중...' : '보고서 생성'}
     </button>
   );
 }
@@ -431,6 +463,8 @@ export default function WorkspaceDetailPage() {
             const statusLabel = report.status === 'published' ? '검토 완료' : '검토 대기';
             const isExpanded = expandedIds.has(report.id);
             const progress = progressList?.find(p => p.reportId === report.id);
+            const isNotAnalyzed = !progress || progress.sessions.length === 0;
+            const periodLabel = `${periodStart} ~ ${periodEnd}`;
 
             return (
               <div
@@ -454,7 +488,7 @@ export default function WorkspaceDetailPage() {
                     <div className="flex flex-col gap-1.5">
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-semibold text-slate-800">
-                          {periodStart} ~ {periodEnd}
+                          {periodLabel}
                         </span>
                         <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${statusColor}`}>
                           {statusLabel}
@@ -462,10 +496,19 @@ export default function WorkspaceDetailPage() {
                       </div>
                       <span className="text-xs text-slate-400">{typeLabel}</span>
                     </div>
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" className="text-slate-300 shrink-0">
-                      <path d="M6 4l4 4-4 4" />
-                    </svg>
+                    {!isNotAnalyzed && (
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" className="text-slate-300 shrink-0">
+                        <path d="M6 4l4 4-4 4" />
+                      </svg>
+                    )}
                   </button>
+                  {isNotAnalyzed && (
+                    <StartPipelineButton
+                      workspaceId={workspaceId}
+                      reportId={report.id}
+                      periodLabel={periodLabel}
+                    />
+                  )}
                 </div>
                 {isExpanded && progress && (
                   <div className="border-t border-slate-100">

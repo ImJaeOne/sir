@@ -38,14 +38,14 @@ export function Highlight({ workspaceId, reportId, pdfMode = false }: HighlightP
   const { data: workspace } = useWorkspaceSir(workspaceId);
   const { data: report } = useReportInfo(reportId);
   const { data: summary } = useWeeklySummary(workspaceId, reportId);
-  const { data: sirStockData } = useSirStockData(workspaceId);
-  const { data: sirRanking } = useSirRanking(workspaceId);
-  const { data: channelItems } = useChannelItems(workspaceId);
-  const { data: riskItems } = useRiskItems(workspaceId);
+  const { data: sirStockData } = useSirStockData(workspaceId, reportId);
+  const { data: sirRanking } = useSirRanking(workspaceId, reportId);
+  const { data: channelItems } = useChannelItems(workspaceId, reportId);
+  const { data: riskItems } = useRiskItems(workspaceId, reportId);
   const { data: prevReport } = usePrevReport(workspaceId, reportId);
 
   const isInitial = report?.type === 'initial';
-  const sirScore = workspace?.sir_score ?? 0;
+  const sirScore = report?.sir_score ?? 0;
   const totalItems = channelItems?.length ?? 0;
   const riskCount = riskItems?.length ?? 0;
 
@@ -53,6 +53,7 @@ export function Highlight({ workspaceId, reportId, pdfMode = false }: HighlightP
     const getTierIdx = (s: number) => Math.min(Math.floor(s / 100), 9);
 
     if (!prevReport) {
+      // 첫 보고서 — SIR 500 기준, 나머지 0 기준
       return {
         scoreDiff: Math.round(sirScore - 500),
         tierDiff: getTierIdx(sirScore) - getTierIdx(500),
@@ -61,19 +62,13 @@ export function Highlight({ workspaceId, reportId, pdfMode = false }: HighlightP
       };
     }
 
-    const prevDate = prevReport.createdAt;
-    const currItems = (channelItems ?? []).filter((i) => i.published_at && i.published_at >= prevDate).length;
-    const prevItems = (channelItems ?? []).filter((i) => i.published_at && i.published_at < prevDate).length;
-    const currRisk = (riskItems ?? []).filter((i) => i.published_at && i.published_at >= prevDate).length;
-    const prevRisk = (riskItems ?? []).filter((i) => i.published_at && i.published_at < prevDate).length;
-
     return {
       scoreDiff: Math.round(sirScore - prevReport.sirScore),
       tierDiff: getTierIdx(sirScore) - getTierIdx(prevReport.sirScore),
-      itemsDiff: currItems - prevItems,
-      riskDiff: currRisk - prevRisk,
+      itemsDiff: totalItems - prevReport.totalItems,
+      riskDiff: riskCount - prevReport.riskCount,
     };
-  }, [sirScore, totalItems, riskCount, prevReport, channelItems, riskItems]);
+  }, [sirScore, totalItems, riskCount, prevReport]);
 
   const snapshotProps = useMemo(
     () => ({ score: sirScore, totalItems, riskCount, sirRanking: sirRanking ?? defaultRanking, isInitial, snapshotDiff }),

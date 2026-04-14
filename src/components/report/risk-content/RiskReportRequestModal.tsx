@@ -7,11 +7,10 @@ import { Button } from '@/components/ui/Button';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
 
 const REPORT_REASONS = [
-  '명예훼손, 모욕',
-  '업무 방해',
-  '허위 사실',
-  '주가조작, 시세조종',
-  '스팸, 리딩방',
+  '명예훼손',
+  '욕설 및 비방',
+  '루머',
+  '스팸',
 ] as const;
 
 const ACCEPTED_FILE_EXTENSIONS = [

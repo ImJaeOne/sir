@@ -49,19 +49,10 @@ export function ReportHeader({ workspaceId, reportId, showPdfButton = true }: Re
 
   const periodStart = report?.period_start?.replace(/-/g, '.') ?? '';
   const periodEnd = report?.period_end?.replace(/-/g, '.') ?? '';
-  const generatedAt = report?.created_at
-    ? new Date(report.created_at).toLocaleString('ko-KR', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-      })
-    : '';
 
   return (
     <div className="flex flex-col gap-4">
-      {downloading && <LoadingOverlay text="보고서 다운로드 중" />}
+      {downloading && <LoadingOverlay title="보고서를 다운로드 하고 있어요" />}
       <div className="w-full flex justify-between items-center">
         <p className="text-base text-text-muted font-bold">SIR Weekly Report</p>
         {showPdfButton && (
@@ -74,19 +65,17 @@ export function ReportHeader({ workspaceId, reportId, showPdfButton = true }: Re
           </button>
         )}
       </div>
-      <div className="flex items-center justify-between bg-bg-dark px-10 py-8 rounded-xl">
+      <div className="flex items-start justify-between bg-bg-dark px-10 py-8 rounded-xl">
         <h1 className="flex items-center gap-3 font-bold">
           <span className="text-white text-[36px]">{workspace?.company_name ?? ''}</span>
           <span className="text-text-muted text-[22px]">({workspace?.ticker ?? ''})</span>
         </h1>
-        <div className="flex flex-col gap-2 text-sm">
-          <p className="flex">
-            <span className="w-[120px] text-white font-bold">분석 기간</span>
-            <span className="text-text-muted">{periodStart} ~ {periodEnd}</span>
-          </p>
-          <p className="flex">
-            <span className="w-[120px] text-white font-bold">보고서 생성일</span>
-            <span className="text-text-muted">{generatedAt}</span>
+        <div className="flex h-full">
+          <p className="flex text-sm">
+            <span className="w-20 text-white font-bold">분석 기간</span>
+            <span className="text-text-muted">
+              {periodStart} ~ {periodEnd}
+            </span>
           </p>
         </div>
       </div>

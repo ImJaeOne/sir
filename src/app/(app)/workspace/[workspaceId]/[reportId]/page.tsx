@@ -16,7 +16,7 @@ export default function ReportPage() {
   const reportId = params?.reportId as string;
   const isFetching = useIsFetching();
 
-  if (isFetching > 0) return <Loading text="보고서 준비 중" />;
+  if (isFetching > 0) return <Loading />;
 
   return (
     <div className="px-10 py-10 bg-bg-light">
@@ -24,8 +24,8 @@ export default function ReportPage() {
         <ReportHeader workspaceId={workspaceId} reportId={reportId} />
         <Highlight workspaceId={workspaceId} reportId={reportId} />
         <OnlineReputation workspaceId={workspaceId} reportId={reportId} />
-        <TopContent workspaceId={workspaceId} />
-        <RiskContent workspaceId={workspaceId} />
+        <TopContent workspaceId={workspaceId} reportId={reportId} />
+        <RiskContent workspaceId={workspaceId} reportId={reportId} />
         <Strategy workspaceId={workspaceId} reportId={reportId} />
       </div>
     </div>

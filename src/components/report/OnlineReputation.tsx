@@ -25,9 +25,9 @@ interface OnlineReputationProps {
 export function OnlineReputation({ workspaceId, reportId, pdfMode = false }: OnlineReputationProps) {
   const { data: report } = useReportInfo(reportId);
   const { data: searchTrend } = useSearchTrend(workspaceId, reportId);
-  const { data: channelItems } = useChannelItems(workspaceId);
-  const { data: channelStats } = useChannelStats(workspaceId, channelItems);
-  const { data: newsClusters } = useNewsClusters(workspaceId);
+  const { data: channelItems } = useChannelItems(workspaceId, reportId);
+  const { data: channelStats } = useChannelStats(workspaceId, channelItems, reportId);
+  const { data: newsClusters } = useNewsClusters(workspaceId, reportId);
 
   const isInitial = report?.type === 'initial';
 

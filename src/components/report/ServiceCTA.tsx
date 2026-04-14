@@ -16,7 +16,7 @@ export function ServiceCTA() {
 
   return (
     <>
-      <section className="flex flex-col items-center justify-center gap-4 py-16">
+      <section className="flex flex-col items-center justify-center gap-4 pt-4">
         <ServiceIcon width={89} height={57} />
         <div className="flex flex-col gap-2">
           <h3 className="text-xl font-bold text-text-dark">
@@ -26,7 +26,12 @@ export function ServiceCTA() {
             위 제안을 기반으로 전문 컨설턴트가 실행 계획을 수립하고 모니터링합니다.
           </p>
         </div>
-        <Button variant="outlineAccent" size="lg" onClick={() => setShowModal(true)} className="mt-2">
+        <Button
+          variant="outlineAccent"
+          size="lg"
+          onClick={() => setShowModal(true)}
+          className="mt-2"
+        >
           서비스 신청하기
         </Button>
       </section>

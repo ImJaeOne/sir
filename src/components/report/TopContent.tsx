@@ -37,11 +37,12 @@ const CHANNEL_ORDER = [
 
 interface TopContentProps {
   workspaceId: string;
+  reportId?: string;
 }
 
-export function TopContent({ workspaceId }: TopContentProps) {
-  const { data: channelItems } = useChannelItems(workspaceId);
-  const { data: newsClusters } = useNewsClusters(workspaceId);
+export function TopContent({ workspaceId, reportId }: TopContentProps) {
+  const { data: channelItems } = useChannelItems(workspaceId, reportId);
+  const { data: newsClusters } = useNewsClusters(workspaceId, reportId);
 
   const byChannel = new Map<string, typeof channelItems extends (infer T)[] | undefined ? T[] : never>();
   for (const item of channelItems ?? []) {

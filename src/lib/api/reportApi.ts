@@ -2,6 +2,40 @@ import { createClient } from '@/lib/supabase/client';
 
 const supabase = createClient();
 
+// ── Report Meta 캐시 (session IDs + period) ──
+
+interface ReportMeta {
+  sessionIds: string[];
+  periodStart: string;
+  periodEnd: string;
+  sirScore: number;
+}
+
+const reportMetaCache = new Map<string, ReportMeta>();
+
+async function getReportMeta(reportId: string): Promise<ReportMeta> {
+  if (reportMetaCache.has(reportId)) return reportMetaCache.get(reportId)!;
+
+  const [reportRes, sessionsRes] = await Promise.all([
+    supabase
+      .from('reports')
+      .select('period_start, period_end, sir_score')
+      .eq('id', reportId)
+      .maybeSingle(),
+    supabase.from('sessions').select('id').eq('report_id', reportId),
+  ]);
+
+  const meta: ReportMeta = {
+    sessionIds: (sessionsRes.data ?? []).map((s) => s.id),
+    periodStart: reportRes.data?.period_start ?? '',
+    periodEnd: reportRes.data?.period_end ?? '',
+    sirScore: reportRes.data?.sir_score ?? 0,
+  };
+
+  reportMetaCache.set(reportId, meta);
+  return meta;
+}
+
 // ── 주간 총평 ──
 
 export interface SummarySubsection {
@@ -43,11 +77,19 @@ export interface SirStockPoint {
   close_price: number | null;
 }
 
-export async function getSirStockData(workspaceId: string): Promise<SirStockPoint[]> {
-  const [snapshotsRes, stockRes] = await Promise.all([
-    supabase.from('daily_snapshots').select('date, sir_score').eq('workspace_id', workspaceId).order('date'),
-    supabase.from('stock_prices').select('date, open_price, high_price, low_price, close_price').eq('workspace_id', workspaceId).order('date'),
-  ]);
+export async function getSirStockData(workspaceId: string, reportId?: string): Promise<SirStockPoint[]> {
+  let snapshotQuery = supabase.from('daily_snapshots').select('date, sir_score').eq('workspace_id', workspaceId).order('date');
+  let stockQuery = supabase.from('stock_prices').select('date, open_price, high_price, low_price, close_price').eq('workspace_id', workspaceId).order('date');
+
+  if (reportId) {
+    const meta = await getReportMeta(reportId);
+    if (meta.periodStart) {
+      snapshotQuery = snapshotQuery.gte('date', meta.periodStart).lte('date', meta.periodEnd);
+      stockQuery = stockQuery.gte('date', meta.periodStart).lte('date', meta.periodEnd);
+    }
+  }
+
+  const [snapshotsRes, stockRes] = await Promise.all([snapshotQuery, stockQuery]);
 
   const sirMap = new Map<string, number>();
   for (const s of snapshotsRes.data ?? []) {
@@ -109,7 +151,7 @@ const TIER_RANGES = [
   { label: '하위 4구간 (0~99)', min: 0, max: 100 },
 ];
 
-export async function getSirRanking(workspaceId: string): Promise<SirRanking> {
+export async function getSirRanking(workspaceId: string, reportId?: string): Promise<SirRanking> {
   // 각 워크스페이스의 최신 report sir_score 조회
   const { data: reports } = await supabase
     .from('reports')
@@ -126,7 +168,13 @@ export async function getSirRanking(workspaceId: string): Promise<SirRanking> {
   }
 
   const all = Array.from(latestByWs.entries()).map(([id, score]) => ({ id, sir_score: score }));
-  const myScore = latestByWs.get(workspaceId) ?? 0;
+
+  // reportId가 있으면 해당 report의 sir_score 사용, 없으면 workspace 최신값
+  let myScore = latestByWs.get(workspaceId) ?? 0;
+  if (reportId) {
+    const meta = await getReportMeta(reportId);
+    myScore = meta.sirScore;
+  }
 
   const myTierIdx = TIER_RANGES.findIndex(t => myScore >= t.min && myScore < t.max);
   const tiers = TIER_RANGES.map((t, i) => ({
@@ -171,7 +219,9 @@ const CHANNEL_CONFIG: { id: string; label: string; color: string }[] = [
 ];
 
 /** channelItems + sessions 캐시에서 channelStats를 파생 (카테고리 기반) */
-export async function getChannelStats(workspaceId: string, channelItems: ChannelItem[]): Promise<ChannelStat[]> {
+export async function getChannelStats(workspaceId: string, channelItems: ChannelItem[], reportId?: string): Promise<ChannelStat[]> {
+  // channelItems가 이미 report-scoped이므로 비어있으면 빈 stats 반환
+  if (channelItems.length === 0 && reportId) return [];
   // 채널별 감성 집계
   const byChannel = new Map<string, { positive: number; negative: number; neutral: number }>();
   for (const item of channelItems) {
@@ -186,12 +236,18 @@ export async function getChannelStats(workspaceId: string, channelItems: Channel
   }
 
   // 세션별 SIR → 카테고리별 평균
-  const { data: sessions } = await supabase
+  let sessionsQuery = supabase
     .from('sessions')
     .select('platform_id, sir_score')
     .eq('workspace_id', workspaceId)
     .eq('status', 'done')
     .order('created_at', { ascending: false });
+
+  if (reportId) {
+    sessionsQuery = sessionsQuery.eq('report_id', reportId);
+  }
+
+  const { data: sessions } = await sessionsQuery;
 
   const sirByChannel = new Map<string, number[]>();
   for (const s of sessions ?? []) {
@@ -229,17 +285,43 @@ export interface NewsCluster {
   items: { title: string; source: string; link: string }[];
 }
 
-export async function getNewsClusters(workspaceId: string): Promise<NewsCluster[]> {
+export async function getNewsClusters(workspaceId: string, reportId?: string): Promise<NewsCluster[]> {
+  if (reportId) {
+    const meta = await getReportMeta(reportId);
+    if (meta.sessionIds.length === 0) return [];
+
+    const [clusterRes, itemsRes] = await Promise.all([
+      supabase.from('news_clusters')
+        .select('id, representative_title, sentiment, summary')
+        .eq('workspace_id', workspaceId).eq('is_relevant', true)
+        .in('session_id', meta.sessionIds)
+        .order('created_at', { ascending: false }),
+      supabase.from('news_items')
+        .select('cluster_id, title, source, link')
+        .eq('workspace_id', workspaceId).not('cluster_id', 'is', null)
+        .in('session_id', meta.sessionIds),
+    ]);
+
+    const itemsByCluster = new Map<string, { title: string; source: string; link: string }[]>();
+    for (const item of itemsRes.data ?? []) {
+      if (!itemsByCluster.has(item.cluster_id)) itemsByCluster.set(item.cluster_id, []);
+      itemsByCluster.get(item.cluster_id)!.push({ title: item.title, source: item.source ?? '', link: item.link ?? '#' });
+    }
+
+    return (clusterRes.data ?? []).map(c => ({
+      id: c.id, representative_title: c.representative_title, sentiment: c.sentiment,
+      summary: c.summary, items: itemsByCluster.get(c.id) ?? [],
+    }));
+  }
+
   const [clusterRes, itemsRes] = await Promise.all([
     supabase.from('news_clusters')
       .select('id, representative_title, sentiment, summary')
-      .eq('workspace_id', workspaceId)
-      .eq('is_relevant', true)
+      .eq('workspace_id', workspaceId).eq('is_relevant', true)
       .order('created_at', { ascending: false }),
     supabase.from('news_items')
       .select('cluster_id, title, source, link')
-      .eq('workspace_id', workspaceId)
-      .not('cluster_id', 'is', null),
+      .eq('workspace_id', workspaceId).not('cluster_id', 'is', null),
   ]);
 
   const itemsByCluster = new Map<string, { title: string; source: string; link: string }[]>();
@@ -275,7 +357,34 @@ export interface ChannelItem {
   impact_score: number | null;
 }
 
-export async function getChannelItems(workspaceId: string): Promise<ChannelItem[]> {
+export async function getChannelItems(workspaceId: string, reportId?: string): Promise<ChannelItem[]> {
+  if (reportId) {
+    const meta = await getReportMeta(reportId);
+    if (meta.sessionIds.length === 0) return [];
+    const [newsRes, communityRes, snsRes] = await Promise.all([
+      supabase.from('news_items')
+        .select('id, platform_id, title, summary, sentiment, link, source, published_at, critical_type, cluster_id')
+        .eq('workspace_id', workspaceId).eq('is_relevant', true).in('session_id', meta.sessionIds),
+      supabase.from('community_items')
+        .select('id, platform_id, title, content, sentiment, link, views, published_at, critical_type')
+        .eq('workspace_id', workspaceId).eq('is_relevant', true).in('session_id', meta.sessionIds),
+      supabase.from('sns_items')
+        .select('id, platform_id, title, content, summary, sentiment, link, author, views, published_at, critical_type, impact_score')
+        .eq('workspace_id', workspaceId).eq('is_relevant', true).in('session_id', meta.sessionIds),
+    ]);
+
+    const normalize = (rows: any[], defaults: Partial<ChannelItem> = {}): ChannelItem[] =>
+      (rows ?? []).map(r => ({
+        id: r.id, platform_id: r.platform_id, title: r.title ?? '', content: r.content ?? null,
+        summary: r.summary ?? null, sentiment: r.sentiment ?? 'neutral', link: r.link ?? '#',
+        source: r.source ?? r.author ?? null, views: r.views ?? null, published_at: r.published_at ?? null,
+        critical_type: r.critical_type ?? null, cluster_id: r.cluster_id ?? null, impact_score: r.impact_score ?? null,
+        ...defaults,
+      }));
+
+    return [...normalize(newsRes.data ?? []), ...normalize(communityRes.data ?? []), ...normalize(snsRes.data ?? [])];
+  }
+
   const [newsRes, communityRes, snsRes] = await Promise.all([
     supabase.from('news_items')
       .select('id, platform_id, title, summary, sentiment, link, source, published_at, critical_type, cluster_id')
@@ -333,7 +442,29 @@ const PLATFORM_LABELS: Record<string, string> = {
   dcinside: '디시인사이드',
 };
 
-export async function getRiskItems(workspaceId: string): Promise<RiskItem[]> {
+export async function getRiskItems(workspaceId: string, reportId?: string): Promise<RiskItem[]> {
+  if (reportId) {
+    const meta = await getReportMeta(reportId);
+    if (meta.sessionIds.length === 0) return [];
+    const [newsRes, communityRes, snsRes] = await Promise.all([
+      supabase.from('news_items')
+        .select('id, platform_id, title, link, critical_type, critical_reason, published_at')
+        .eq('workspace_id', workspaceId).not('critical_type', 'is', null).in('session_id', meta.sessionIds),
+      supabase.from('community_items')
+        .select('id, platform_id, title, link, critical_type, critical_reason, published_at')
+        .eq('workspace_id', workspaceId).not('critical_type', 'is', null).in('session_id', meta.sessionIds),
+      supabase.from('sns_items')
+        .select('id, platform_id, title, link, critical_type, critical_reason, published_at')
+        .eq('workspace_id', workspaceId).not('critical_type', 'is', null).in('session_id', meta.sessionIds),
+    ]);
+    return [...(newsRes.data ?? []), ...(communityRes.data ?? []), ...(snsRes.data ?? [])]
+      .map(r => ({
+        id: r.id, platform_id: r.platform_id, title: r.title ?? '', link: r.link ?? '#',
+        critical_type: r.critical_type, critical_reason: r.critical_reason ?? null, published_at: r.published_at ?? null,
+      }))
+      .sort((a, b) => (b.published_at ?? '').localeCompare(a.published_at ?? ''));
+  }
+
   const [newsRes, communityRes, snsRes] = await Promise.all([
     supabase.from('news_items')
       .select('id, platform_id, title, link, critical_type, critical_reason, published_at')
@@ -424,6 +555,8 @@ export async function getStrategies(workspaceId: string, reportId?: string): Pro
 export interface PrevReport {
   sirScore: number;
   createdAt: string;
+  totalItems: number;
+  riskCount: number;
 }
 
 export async function getPrevReport(workspaceId: string, currentReportId: string): Promise<PrevReport | null> {
@@ -439,7 +572,26 @@ export async function getPrevReport(workspaceId: string, currentReportId: string
   if (currIdx === -1 || currIdx + 1 >= data.length) return null;
 
   const prev = data[currIdx + 1];
-  return { sirScore: prev.sir_score ?? 0, createdAt: prev.created_at };
+
+  // 이전 report의 아이템/리스크 건수 조회 (session 기반)
+  const meta = await getReportMeta(prev.id);
+  let totalItems = 0;
+  let riskCount = 0;
+
+  if (meta.sessionIds.length > 0) {
+    const [newsCount, communityCount, snsCount, newsRisk, communityRisk, snsRisk] = await Promise.all([
+      supabase.from('news_items').select('id', { count: 'exact', head: true }).eq('workspace_id', workspaceId).eq('is_relevant', true).in('session_id', meta.sessionIds),
+      supabase.from('community_items').select('id', { count: 'exact', head: true }).eq('workspace_id', workspaceId).eq('is_relevant', true).in('session_id', meta.sessionIds),
+      supabase.from('sns_items').select('id', { count: 'exact', head: true }).eq('workspace_id', workspaceId).eq('is_relevant', true).in('session_id', meta.sessionIds),
+      supabase.from('news_items').select('id', { count: 'exact', head: true }).eq('workspace_id', workspaceId).not('critical_type', 'is', null).in('session_id', meta.sessionIds),
+      supabase.from('community_items').select('id', { count: 'exact', head: true }).eq('workspace_id', workspaceId).not('critical_type', 'is', null).in('session_id', meta.sessionIds),
+      supabase.from('sns_items').select('id', { count: 'exact', head: true }).eq('workspace_id', workspaceId).not('critical_type', 'is', null).in('session_id', meta.sessionIds),
+    ]);
+    totalItems = (newsCount.count ?? 0) + (communityCount.count ?? 0) + (snsCount.count ?? 0);
+    riskCount = (newsRisk.count ?? 0) + (communityRisk.count ?? 0) + (snsRisk.count ?? 0);
+  }
+
+  return { sirScore: prev.sir_score ?? 0, createdAt: prev.created_at, totalItems, riskCount };
 }
 
 // ── 검색 트렌드 ──

@@ -11,6 +11,7 @@ import { TopContent } from '@/components/report/TopContent';
 import { RiskContent } from '@/components/report/RiskContent';
 import { Strategy } from '@/components/report/Strategy';
 import { ServiceCTA } from '@/components/report/ServiceCTA';
+import { ReportDisclaimer } from '@/components/report/ReportDisclaimer';
 import { Loading } from '@/components/ui/Loading';
 
 export default function ClientReportPage() {
@@ -34,7 +35,7 @@ export default function ClientReportPage() {
     <div className="relative">
       {!ready && (
         <div className="absolute inset-0 z-50 bg-bg-light min-h-screen">
-          <Loading text="보고서 준비 중" />
+          <Loading />
         </div>
       )}
       <div className={`px-10 py-10 bg-bg-light ${ready ? '' : 'invisible'}`}>
@@ -44,10 +45,11 @@ export default function ClientReportPage() {
             <Highlight workspaceId={workspaceId} reportId={reportId} />
           </section>
           <OnlineReputation workspaceId={workspaceId} reportId={reportId} />
-          <TopContent workspaceId={workspaceId} />
-          <RiskContent workspaceId={workspaceId} />
+          <TopContent workspaceId={workspaceId} reportId={reportId} />
+          <RiskContent workspaceId={workspaceId} reportId={reportId} />
           <Strategy workspaceId={workspaceId} reportId={reportId} />
           <ServiceCTA />
+          <ReportDisclaimer />
         </div>
       </div>
     </div>

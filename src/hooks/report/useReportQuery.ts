@@ -46,7 +46,7 @@ export function useReportInfo(reportId: string) {
       const supabase = createClient();
       const { data } = await supabase
         .from('reports')
-        .select('type, period_start, period_end, created_at')
+        .select('type, period_start, period_end, created_at, sir_score')
         .eq('id', reportId)
         .maybeSingle();
       return data;
@@ -78,57 +78,57 @@ export function useWeeklySummary(workspaceId: string, reportId?: string) {
   });
 }
 
-export function useSirStockData(workspaceId: string) {
+export function useSirStockData(workspaceId: string, reportId?: string) {
   return useQuery({
-    queryKey: reportKeys.sirStock(workspaceId),
-    queryFn: () => getSirStockData(workspaceId),
+    queryKey: [...reportKeys.sirStock(workspaceId), reportId],
+    queryFn: () => getSirStockData(workspaceId, reportId),
     enabled: !!workspaceId,
     ...REPORT_OPTS,
   });
 }
 
-export function useSirRanking(workspaceId: string) {
+export function useSirRanking(workspaceId: string, reportId?: string) {
   return useQuery({
-    queryKey: reportKeys.sirRanking(workspaceId),
-    queryFn: () => getSirRanking(workspaceId),
+    queryKey: [...reportKeys.sirRanking(workspaceId), reportId],
+    queryFn: () => getSirRanking(workspaceId, reportId),
     enabled: !!workspaceId,
     ...REPORT_OPTS,
   });
 }
 
 /** 모든 관련 아이템 — channelStats, sentimentDetail, topContent에서 공유 */
-export function useChannelItems(workspaceId: string) {
+export function useChannelItems(workspaceId: string, reportId?: string) {
   return useQuery({
-    queryKey: reportKeys.channelItems(workspaceId),
-    queryFn: () => getChannelItems(workspaceId),
+    queryKey: [...reportKeys.channelItems(workspaceId), reportId],
+    queryFn: () => getChannelItems(workspaceId, reportId),
     enabled: !!workspaceId,
     ...REPORT_OPTS,
   });
 }
 
-export function useNewsClusters(workspaceId: string) {
+export function useNewsClusters(workspaceId: string, reportId?: string) {
   return useQuery({
-    queryKey: reportKeys.newsClusters(workspaceId),
-    queryFn: () => getNewsClusters(workspaceId),
+    queryKey: [...reportKeys.newsClusters(workspaceId), reportId],
+    queryFn: () => getNewsClusters(workspaceId, reportId),
     enabled: !!workspaceId,
     ...REPORT_OPTS,
   });
 }
 
 /** channelItems에서 파생 — channelItems 캐시 필요 */
-export function useChannelStats(workspaceId: string, channelItems?: ChannelItem[]) {
+export function useChannelStats(workspaceId: string, channelItems?: ChannelItem[], reportId?: string) {
   return useQuery({
-    queryKey: reportKeys.channelStats(workspaceId),
-    queryFn: () => getChannelStats(workspaceId, channelItems!),
+    queryKey: [...reportKeys.channelStats(workspaceId), reportId],
+    queryFn: () => getChannelStats(workspaceId, channelItems!, reportId),
     enabled: !!workspaceId && !!channelItems,
     ...REPORT_OPTS,
   });
 }
 
-export function useRiskItems(workspaceId: string) {
+export function useRiskItems(workspaceId: string, reportId?: string) {
   return useQuery({
-    queryKey: reportKeys.riskItems(workspaceId),
-    queryFn: () => getRiskItems(workspaceId),
+    queryKey: [...reportKeys.riskItems(workspaceId), reportId],
+    queryFn: () => getRiskItems(workspaceId, reportId),
     enabled: !!workspaceId,
     ...REPORT_OPTS,
   });

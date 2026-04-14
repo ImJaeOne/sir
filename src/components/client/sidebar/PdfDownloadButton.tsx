@@ -69,7 +69,7 @@ export function PdfDownloadButton() {
 
   return (
     <>
-      {downloading && <LoadingOverlay text="보고서 다운로드 중" />}
+      {downloading && <LoadingOverlay title="보고서를 다운로드 하고 있어요" />}
       <div className="px-3 w-full">
         <button
           onClick={handleDownload}
