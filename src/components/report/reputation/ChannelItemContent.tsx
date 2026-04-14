@@ -49,6 +49,11 @@ export function ChannelItemContent({ name, items }: ChannelItemContentProps) {
   return (
     <>
       <SentimentFilter value={filter} onChange={setFilter} counts={counts} />
+      {filtered.length === 0 ? (
+        <div className="flex items-center justify-center py-16 text-xs text-text-muted">
+          {{ all: '수집된', positive: '긍정', neutral: '중립', negative: '부정' }[filter] ?? '수집된'} 데이터가 없습니다.
+        </div>
+      ) : (
       <div ref={parentRef} className="max-h-[600px] overflow-y-auto">
         <div
           style={{
@@ -103,6 +108,7 @@ export function ChannelItemContent({ name, items }: ChannelItemContentProps) {
           })}
         </div>
       </div>
+      )}
       <p className="text-xs text-text-muted text-center py-2">총 {filtered.length}건</p>
     </>
   );

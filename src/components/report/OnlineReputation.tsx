@@ -7,6 +7,7 @@ import {
   useChannelStats,
   useNewsClusters,
   useReportInfo,
+  usePrevReport,
 } from '@/hooks/report/useReportQuery';
 import { ReportSection } from '@/components/report/ReportSection';
 import { SearchTrendPanel } from '@/components/report/reputation/SearchTrendPanel';
@@ -28,8 +29,10 @@ export function OnlineReputation({ workspaceId, reportId, pdfMode = false }: Onl
   const { data: channelItems } = useChannelItems(workspaceId, reportId);
   const { data: channelStats } = useChannelStats(workspaceId, channelItems, reportId);
   const { data: newsClusters } = useNewsClusters(workspaceId, reportId);
+  const { data: prevReport } = usePrevReport(workspaceId, reportId);
 
   const isInitial = report?.type === 'initial';
+  const prevIsInitial = prevReport?.type === 'initial';
 
   const searchTrendProps = useMemo(
     () => ({ naverTrend: searchTrend?.naver ?? [], googleTrend: searchTrend?.google ?? [], pdfMode }),
@@ -56,7 +59,7 @@ export function OnlineReputation({ workspaceId, reportId, pdfMode = false }: Onl
       <ReportSection id="section-reputation" icon={<OnlineReputationIcon size={36} />} title="온라인 평판 종합">
         <SearchTrendPanel {...searchTrendProps} />
         <ChannelVolumePanel {...channelVolumeProps} />
-        <ChannelSirPanel channelStats={channelStats ?? []} isInitial={isInitial} />
+        <ChannelSirPanel channelStats={channelStats ?? []} isInitial={isInitial} prevIsInitial={prevIsInitial} prevChannelSirMap={prevReport?.channelSirMap ?? {}} />
         <SentimentPanel {...sentimentProps} />
         <ChannelDetailPanel {...channelDetailProps} />
       </ReportSection>

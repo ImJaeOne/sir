@@ -12,7 +12,7 @@ const CHANNEL_CONFIG: Record<string, { icon: React.ComponentType<{ size?: number
   {
     뉴스: { icon: NewsIcon, bg: 'bg-bg-blue' },
     블로그: { icon: BlogIcon, bg: 'bg-bg-pupple-15' },
-    유튜브: { icon: YoutubeIcon, bg: 'bg-bg-skyblue-15' },
+    유튜브: { icon: YoutubeIcon, bg: 'bg-bg-youtube-15' },
     커뮤니티: { icon: CommunityIcon, bg: 'bg-bg-green-15' },
   };
 

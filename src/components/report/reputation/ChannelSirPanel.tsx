@@ -7,9 +7,11 @@ import type { ChannelStat } from '@/lib/api/reportApi';
 interface ChannelSirPanelProps {
   channelStats: ChannelStat[];
   isInitial: boolean;
+  prevIsInitial: boolean;
+  prevChannelSirMap: Record<string, number>;
 }
 
-export function ChannelSirPanel({ channelStats, isInitial }: ChannelSirPanelProps) {
+export function ChannelSirPanel({ channelStats, isInitial, prevIsInitial, prevChannelSirMap }: ChannelSirPanelProps) {
   return (
     <ReportSubSection
       title="데이터 수집 채널별 SIR 감정 지수"
@@ -17,7 +19,7 @@ export function ChannelSirPanel({ channelStats, isInitial }: ChannelSirPanelProp
     >
       <div className="grid grid-cols-4 gap-3">
         {channelStats.map((ch) => (
-          <SirCard key={ch.id} stat={ch} isInitial={isInitial} />
+          <SirCard key={ch.id} stat={ch} isInitial={isInitial} prevIsInitial={prevIsInitial} prevSir={prevChannelSirMap[ch.id]} />
         ))}
       </div>
     </ReportSubSection>

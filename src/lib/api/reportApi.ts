@@ -563,6 +563,7 @@ export interface PrevReport {
   createdAt: string;
   totalItems: number;
   riskCount: number;
+  channelSirMap: Record<string, number>;
 }
 
 export async function getPrevReport(workspaceId: string, currentReportId: string): Promise<PrevReport | null> {
@@ -597,7 +598,27 @@ export async function getPrevReport(workspaceId: string, currentReportId: string
     riskCount = (newsRisk.count ?? 0) + (communityRisk.count ?? 0) + (snsRisk.count ?? 0);
   }
 
-  return { type: prev.type as string, sirScore: prev.sir_score ?? 0, createdAt: prev.created_at, totalItems, riskCount };
+  // 이전 report의 채널별 SIR 평균
+  const { data: prevSessions } = await supabase
+    .from('sessions')
+    .select('platform_id, sir_score')
+    .eq('report_id', prev.id)
+    .eq('status', 'done');
+
+  const sirByChannel = new Map<string, number[]>();
+  for (const s of prevSessions ?? []) {
+    if (s.sir_score == null) continue;
+    const channel = PLATFORM_TO_CHANNEL[s.platform_id] ?? s.platform_id;
+    if (!sirByChannel.has(channel)) sirByChannel.set(channel, []);
+    sirByChannel.get(channel)!.push(s.sir_score);
+  }
+
+  const channelSirMap: Record<string, number> = {};
+  for (const [ch, scores] of sirByChannel) {
+    channelSirMap[ch] = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
+  }
+
+  return { type: prev.type as string, sirScore: prev.sir_score ?? 0, createdAt: prev.created_at, totalItems, riskCount, channelSirMap };
 }
 
 // ── 검색 트렌드 ──

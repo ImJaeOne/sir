@@ -110,8 +110,9 @@ export function NewsClusterContent({ clusters, unclustered }: NewsClusterContent
   const sortedClusters = [...clusters].sort((a, b) => b.items.length - a.items.length);
   const filteredClusters =
     filter === 'all' ? sortedClusters : sortedClusters.filter((c) => c.sentiment === filter);
+  const sortedUnclustered = [...unclustered].sort((a, b) => (b.published_at ?? '').localeCompare(a.published_at ?? ''));
   const filteredUnclustered =
-    filter === 'all' ? unclustered : unclustered.filter((i) => i.sentiment === filter);
+    filter === 'all' ? sortedUnclustered : sortedUnclustered.filter((i) => i.sentiment === filter);
 
   const countBySentiment = (s: string) =>
     sortedClusters
@@ -161,6 +162,11 @@ export function NewsClusterContent({ clusters, unclustered }: NewsClusterContent
   return (
     <>
       <SentimentFilter value={filter} onChange={setFilter} counts={counts} />
+      {rows.length === 0 ? (
+        <div className="flex items-center justify-center py-16 text-xs text-text-muted">
+          {{ all: '수집된', positive: '긍정', neutral: '중립', negative: '부정' }[filter] ?? '수집된'} 데이터가 없습니다.
+        </div>
+      ) : (
       <div ref={parentRef} className="max-h-[600px] overflow-y-auto">
         <div
           style={{
@@ -200,6 +206,7 @@ export function NewsClusterContent({ clusters, unclustered }: NewsClusterContent
           })}
         </div>
       </div>
+      )}
       <p className="text-xs text-text-muted text-center py-2">
         클러스터 {filteredClusters.length}건 · 개별 기사 {filteredUnclustered.length}건
       </p>
