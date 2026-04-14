@@ -51,10 +51,10 @@ export function ReportHeader({ workspaceId, reportId, showPdfButton = true }: Re
   const periodEnd = report?.period_end?.replace(/-/g, '.') ?? '';
 
   return (
-    <div className="flex flex-col gap-4">
-      {downloading && <LoadingOverlay title="보고서를 다운로드 하고 있어요" />}
+    <div className="flex flex-col gap-2">
+      {downloading && <LoadingOverlay title="보고서를 다운로드 중입니다." />}
       <div className="w-full flex justify-between items-center">
-        <p className="text-base text-text-muted font-bold">SIR Weekly Report</p>
+        <p className="text-base text-text-muted font-semibold">SIR Weekly Report</p>
         {showPdfButton && (
           <button
             onClick={handleDownload}
