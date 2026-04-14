@@ -70,9 +70,11 @@ export function Highlight({ workspaceId, reportId, pdfMode = false }: HighlightP
     };
   }, [sirScore, totalItems, riskCount, prevReport]);
 
+  const prevIsInitial = prevReport?.type === 'initial';
+
   const snapshotProps = useMemo(
-    () => ({ score: sirScore, totalItems, riskCount, sirRanking: sirRanking ?? defaultRanking, isInitial, snapshotDiff }),
-    [sirScore, totalItems, riskCount, sirRanking, isInitial, snapshotDiff],
+    () => ({ score: sirScore, totalItems, riskCount, sirRanking: sirRanking ?? defaultRanking, isInitial, prevIsInitial, snapshotDiff }),
+    [sirScore, totalItems, riskCount, sirRanking, isInitial, prevIsInitial, snapshotDiff],
   );
 
   const sirStockProps = useMemo(
@@ -80,9 +82,11 @@ export function Highlight({ workspaceId, reportId, pdfMode = false }: HighlightP
     [pdfMode, sirStockData],
   );
 
+  const avgScore = workspace?.sir_score ?? 0;
+
   const sirRankingProps = useMemo(
-    () => ({ score: sirScore, companyName: workspace?.company_name ?? '', sirRanking: sirRanking ?? defaultRanking, pdfMode }),
-    [sirScore, workspace?.company_name, sirRanking, pdfMode],
+    () => ({ score: sirScore, avgScore, companyName: workspace?.company_name ?? '', sirRanking: sirRanking ?? defaultRanking, pdfMode }),
+    [sirScore, avgScore, workspace?.company_name, sirRanking, pdfMode],
   );
 
   return (

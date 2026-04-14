@@ -83,9 +83,14 @@ export async function getSirStockData(workspaceId: string, reportId?: string): P
 
   if (reportId) {
     const meta = await getReportMeta(reportId);
-    if (meta.periodStart) {
-      snapshotQuery = snapshotQuery.gte('date', meta.periodStart).lte('date', meta.periodEnd);
-      stockQuery = stockQuery.gte('date', meta.periodStart).lte('date', meta.periodEnd);
+    if (meta.periodEnd) {
+      // 최대 1년치 (weekly 52주 대응)
+      const end = new Date(meta.periodEnd);
+      const start365 = new Date(end);
+      start365.setDate(start365.getDate() - 364);
+      const startStr = start365.toISOString().slice(0, 10);
+      snapshotQuery = snapshotQuery.gte('date', startStr).lte('date', meta.periodEnd);
+      stockQuery = stockQuery.gte('date', startStr).lte('date', meta.periodEnd);
     }
   }
 
@@ -553,6 +558,7 @@ export async function getStrategies(workspaceId: string, reportId?: string): Pro
 // ── 이전 리포트 비교 ──
 
 export interface PrevReport {
+  type: string;
   sirScore: number;
   createdAt: string;
   totalItems: number;
@@ -562,7 +568,7 @@ export interface PrevReport {
 export async function getPrevReport(workspaceId: string, currentReportId: string): Promise<PrevReport | null> {
   const { data } = await supabase
     .from('reports')
-    .select('id, sir_score, created_at')
+    .select('id, type, sir_score, created_at')
     .eq('workspace_id', workspaceId)
     .order('created_at', { ascending: false });
 
@@ -591,7 +597,7 @@ export async function getPrevReport(workspaceId: string, currentReportId: string
     riskCount = (newsRisk.count ?? 0) + (communityRisk.count ?? 0) + (snsRisk.count ?? 0);
   }
 
-  return { sirScore: prev.sir_score ?? 0, createdAt: prev.created_at, totalItems, riskCount };
+  return { type: prev.type as string, sirScore: prev.sir_score ?? 0, createdAt: prev.created_at, totalItems, riskCount };
 }
 
 // ── 검색 트렌드 ──

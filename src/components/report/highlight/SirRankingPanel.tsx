@@ -12,12 +12,13 @@ import type { SirRanking } from '@/lib/api/reportApi';
 
 interface SirRankingPanelProps {
   score: number;
+  avgScore: number;
   companyName: string;
   sirRanking: SirRanking;
   pdfMode: boolean;
 }
 
-export function SirRankingPanel({ score, companyName, sirRanking, pdfMode }: SirRankingPanelProps) {
+export function SirRankingPanel({ score, avgScore, companyName, sirRanking, pdfMode }: SirRankingPanelProps) {
   return (
     <ReportSubSection
       title="SIR 주간 순위"
@@ -31,8 +32,8 @@ export function SirRankingPanel({ score, companyName, sirRanking, pdfMode }: Sir
         <SirRankingCard label={`${companyName} 순위`} value={getSirTier(score)}>
           <TierStack score={score} />
         </SirRankingCard>
-        <SirRankingCard label="SIR 전체 평균 점수" value={`${sirRanking.average}점`}>
-          <SirScoreDonut score={sirRanking.average} icon={<SirAvgIcon size={18} />} />
+        <SirRankingCard label="SIR 전체 평균 점수" value={`${avgScore}점`}>
+          <SirScoreDonut score={avgScore} icon={<SirAvgIcon size={18} />} />
         </SirRankingCard>
       </div>
       <SirRankingBar tiers={sirRanking.tiers} pdfMode={pdfMode} />

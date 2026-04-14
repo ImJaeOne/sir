@@ -10,6 +10,7 @@ interface SnapshotProps {
   riskCount: number;
   sirRanking: SirRanking;
   isInitial: boolean;
+  prevIsInitial: boolean;
   snapshotDiff?: SnapshotDiff;
 }
 
@@ -19,13 +20,14 @@ export function Snapshot({
   riskCount,
   sirRanking,
   isInitial,
+  prevIsInitial,
   snapshotDiff,
 }: SnapshotProps) {
-  const prefix = isInitial ? '' : '전주 대비 ';
+  const prefix = isInitial ? '' : prevIsInitial ? '전월 대비 ' : '전주 대비 ';
 
   const cards = [
     {
-      title: '오늘의 SIR 지수',
+      title: '주간 SIR 지수',
       description: '1,000점 만점 기준',
       value: `${Math.round(score)}점`,
       change: snapshotDiff
@@ -33,7 +35,7 @@ export function Snapshot({
         : undefined,
     },
     {
-      title: '이번 주 수집된 평판 데이터 수',
+      title: '주간 수집된 평판 데이터 수',
       description: '6개 채널 통합 수집',
       value: `${totalItems.toLocaleString()}개`,
       change: snapshotDiff
@@ -41,7 +43,7 @@ export function Snapshot({
         : undefined,
     },
     {
-      title: '이번 주 리스크 높은 콘텐츠 수',
+      title: '주간 리스크 높은 콘텐츠 수',
       description: '즉시 검토 권장',
       value: `${riskCount.toLocaleString()}개`,
       change: snapshotDiff
@@ -49,7 +51,7 @@ export function Snapshot({
         : undefined,
     },
     {
-      title: 'SIR 순위',
+      title: '주간 SIR 순위',
       description: `총 참여 기업 ${sirRanking.total}개`,
       value: getSirTier(score),
       change: snapshotDiff

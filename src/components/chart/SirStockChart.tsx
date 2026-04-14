@@ -16,39 +16,42 @@ import type { SirStockPoint } from '@/lib/api/reportApi';
 
 type TimeFrame = 'daily' | 'weekly';
 
-function getWeekKey(dateStr: string): string {
-  // MM-DD → 주차 키 (해당 주의 월요일 기준)
-  const year = 2026; // 목데이터 기준
-  const [m, d] = dateStr.split('-').map(Number);
-  const date = new Date(year, m - 1, d);
+function getWeekKey(fullDate: string): string {
+  // YYYY-MM-DD → 해당 주 월요일 기준 키
+  const date = new Date(fullDate);
   const day = date.getDay();
   const monday = new Date(date);
   monday.setDate(date.getDate() - (day === 0 ? 6 : day - 1));
-  return `${String(monday.getMonth() + 1).padStart(2, '0')}-${String(monday.getDate()).padStart(2, '0')}`;
+  return monday.toISOString().slice(0, 10);
 }
 
 function aggregateWeekly(data: SirStockPoint[]) {
   const weeks = new Map<string, SirStockPoint[]>();
   for (const d of data) {
-    const key = getWeekKey(d.date);
+    const key = getWeekKey(d.fullDate ?? d.date);
     if (!weeks.has(key)) weeks.set(key, []);
     weeks.get(key)!.push(d);
   }
 
-  return Array.from(weeks.entries()).map(([weekStart, items]) => {
-    const sirItems = items.filter((i) => i.sir != null);
-    const priceItems = items.filter((i) => i.high_price != null);
-    return {
-      date: `${weekStart}~`,
-      sir: sirItems.length
-        ? Math.round(sirItems.reduce((s, i) => s + (i.sir ?? 0), 0) / sirItems.length)
-        : null,
-      open_price: priceItems[0]?.open_price ?? null,
-      close_price: priceItems[priceItems.length - 1]?.close_price ?? null,
-      high_price: priceItems.length ? Math.max(...priceItems.map((i) => i.high_price!)) : null,
-      low_price: priceItems.length ? Math.min(...priceItems.map((i) => i.low_price!)) : null,
-    };
-  });
+  return Array.from(weeks.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .slice(-52)
+    .map(([weekStart, items]) => {
+      const sirItems = items.filter((i) => i.sir != null);
+      const priceItems = items.filter((i) => i.high_price != null);
+      const label = weekStart.slice(5).replace('-', '/');
+      return {
+        date: `${label}~`,
+        fullDate: weekStart,
+        sir: sirItems.length
+          ? Math.round(sirItems.reduce((s, i) => s + (i.sir ?? 0), 0) / sirItems.length)
+          : null,
+        open_price: priceItems[0]?.open_price ?? null,
+        close_price: priceItems[priceItems.length - 1]?.close_price ?? null,
+        high_price: priceItems.length ? Math.max(...priceItems.map((i) => i.high_price!)) : null,
+        low_price: priceItems.length ? Math.min(...priceItems.map((i) => i.low_price!)) : null,
+      };
+    });
 }
 
 export function SirStockChart({
@@ -61,7 +64,9 @@ export function SirStockChart({
   data?: SirStockPoint[];
 }) {
   const displayData = useMemo(() => {
-    const source = timeFrame === 'weekly' ? aggregateWeekly(chartInput) : chartInput;
+    const source = timeFrame === 'weekly'
+      ? aggregateWeekly(chartInput)
+      : chartInput.slice(-30);
     return source.map((d) => ({ ...d, _candle: d.high_price }));
   }, [timeFrame, chartInput]);
 
