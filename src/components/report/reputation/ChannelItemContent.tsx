@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { SentimentIcon } from '@/components/report/reputation/SentimentIcon';
 import { SentimentFilter } from '@/components/report/reputation/SentimentFilter';
+import { EmptyState } from '@/components/ui/EmptyState';
 import type { ChannelItem } from '@/lib/api/reportApi';
 
 const CHANNEL_SORT: Record<string, (a: ChannelItem, b: ChannelItem) => number> = {
@@ -46,68 +47,72 @@ export function ChannelItemContent({ name, items }: ChannelItemContentProps) {
     rowVirtualizer.scrollToOffset(0, { behavior: 'smooth' });
   }, [filter]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const emptyMessage = useMemo(() => {
+    return `${{ all: '수집된', positive: '긍정', neutral: '중립', negative: '부정' }[filter] ?? '수집된'} 데이터가 없습니다.`;
+  }, [filter]);
+
   return (
     <>
       <SentimentFilter value={filter} onChange={setFilter} counts={counts} />
       {filtered.length === 0 ? (
-        <div className="flex items-center justify-center py-16 text-xs text-text-muted">
-          {{ all: '수집된', positive: '긍정', neutral: '중립', negative: '부정' }[filter] ?? '수집된'} 데이터가 없습니다.
-        </div>
+        <EmptyState message={emptyMessage} />
       ) : (
-      <div ref={parentRef} className="max-h-[600px] overflow-y-auto">
-        <div
-          style={{
-            height: `${rowVirtualizer.getTotalSize()}px`,
-            width: '100%',
-            position: 'relative',
-          }}
-        >
-          {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-            const item = filtered[virtualRow.index];
-            return (
-              <div
-                key={virtualRow.key}
-                data-index={virtualRow.index}
-                ref={rowVirtualizer.measureElement}
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: '100%',
-                  transform: `translateY(${virtualRow.start}px)`,
-                }}
-                className="border-b border-border-light pr-4"
-              >
-                <div className={`flex gap-2 py-4 ${showBody ? '' : 'items-center'}`}>
-                  <SentimentIcon sentiment={item.sentiment} />
-                  <div className="flex-1 min-w-0 pl-4">
-                    <div className="flex items-center gap-2">
-                      <a
-                        href={item.link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm text-text-dark font-semibold hover:text-blue-600 hover:underline transition-colors"
-                      >
-                        {item.title}
-                      </a>
-                      {showSource && item.source && (
-                        <span className="text-[10px] text-text-muted shrink-0">{item.source}</span>
+        <div ref={parentRef} className="max-h-[600px] overflow-y-auto">
+          <div
+            style={{
+              height: `${rowVirtualizer.getTotalSize()}px`,
+              width: '100%',
+              position: 'relative',
+            }}
+          >
+            {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+              const item = filtered[virtualRow.index];
+              return (
+                <div
+                  key={virtualRow.key}
+                  data-index={virtualRow.index}
+                  ref={rowVirtualizer.measureElement}
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    transform: `translateY(${virtualRow.start}px)`,
+                  }}
+                  className="border-b border-border-light pr-4"
+                >
+                  <div className={`flex gap-2 py-4 ${showBody ? '' : 'items-center'}`}>
+                    <SentimentIcon sentiment={item.sentiment} />
+                    <div className="flex-1 min-w-0 pl-4">
+                      <div className="flex items-center gap-2">
+                        <a
+                          href={item.link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm text-text-dark font-semibold hover:text-blue-600 hover:underline transition-colors"
+                        >
+                          {item.title}
+                        </a>
+                        {showSource && item.source && (
+                          <span className="text-[10px] text-text-muted shrink-0">
+                            {item.source}
+                          </span>
+                        )}
+                      </div>
+                      {showBody && (item.summary || item.content) && (
+                        <p className="text-sm text-text-muted mt-0.5">
+                          {(item.summary || item.content || '').length > 200
+                            ? (item.summary || item.content || '').slice(0, 200) + '…'
+                            : item.summary || item.content}
+                        </p>
                       )}
                     </div>
-                    {showBody && (item.summary || item.content) && (
-                      <p className="text-sm text-text-muted mt-0.5">
-                        {(item.summary || item.content || '').length > 200
-                          ? (item.summary || item.content || '').slice(0, 200) + '…'
-                          : item.summary || item.content}
-                      </p>
-                    )}
                   </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
-      </div>
       )}
       <p className="text-xs text-text-muted text-center py-2">총 {filtered.length}건</p>
     </>

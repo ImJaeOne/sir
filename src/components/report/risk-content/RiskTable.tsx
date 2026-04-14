@@ -34,7 +34,6 @@ const PLATFORM_TO_CHANNEL: Record<string, string> = {
 
 const CHANNEL_TABS = [
   { key: 'all', label: '전체' },
-  { key: 'news', label: '뉴스' },
   { key: 'blog', label: '블로그' },
   { key: 'youtube', label: '유튜브' },
   { key: 'community', label: '커뮤니티' },
@@ -53,9 +52,14 @@ const COL_TEMPLATE = '10% 8% 10% 1fr 12%';
 
 interface RiskTableProps {
   riskItems: RiskItem[];
+  workspaceId: string;
+  reportId: string;
+  reportedSourceIds: Set<string>;
+  riskReportBySourceId: Map<string, string>;
+  onCancelReport: (riskReportId: string) => void;
 }
 
-export function RiskTable({ riskItems }: RiskTableProps) {
+export function RiskTable({ riskItems, workspaceId, reportId, reportedSourceIds, riskReportBySourceId, onCancelReport }: RiskTableProps) {
   const [tab, setTab] = useState<string>('all');
   const [reportTarget, setReportTarget] = useState<RiskItem | null>(null);
   const parentRef = useRef<HTMLDivElement>(null);
@@ -127,7 +131,7 @@ export function RiskTable({ riskItems }: RiskTableProps) {
             className="grid border-b border-border-light py-3 px-3 text-xs font-semibold text-text-muted text-center"
             style={{ gridTemplateColumns: COL_TEMPLATE }}
           >
-            <div>탐지일</div>
+            <div>수집일</div>
             <div>채널명</div>
             <div>탐지 분류</div>
             <div>세부내용</div>
@@ -163,10 +167,10 @@ export function RiskTable({ riskItems }: RiskTableProps) {
                     }}
                   >
                     <div
-                      className="grid items-start py-4 px-3 border-b border-border-light hover:bg-slate-50/50 transition-colors"
+                      className="grid items-center py-4 px-3 border-b border-border-light hover:bg-slate-50/50 transition-colors"
                       style={{ gridTemplateColumns: COL_TEMPLATE }}
                     >
-                      {/* 탐지일 */}
+                      {/* 수집일 */}
                       <div className="text-center text-xs text-text-muted">
                         {item.published_at ? item.published_at.slice(0, 10).replace(/-/g, '.') : ''}
                       </div>
@@ -205,18 +209,36 @@ export function RiskTable({ riskItems }: RiskTableProps) {
                       </div>
                       {/* 액션 */}
                       <div className="text-right pr-2">
-                        <button
-                          type="button"
-                          onClick={() => setReportTarget(item)}
-                          className="cursor-pointer"
-                        >
-                          <Badge
-                            variant="blue"
-                            className="px-3 py-1.5 hover:bg-bg-accent hover:text-white transition-colors"
+                        {reportedSourceIds.has(item.id) ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const rrId = riskReportBySourceId.get(item.id);
+                              if (rrId) onCancelReport(rrId);
+                            }}
+                            className="cursor-pointer"
                           >
-                            신고 대행 요청
-                          </Badge>
-                        </button>
+                            <Badge
+                              variant="slate"
+                              className="px-3 py-1.5 hover:bg-red-100 hover:text-red-600 transition-colors"
+                            >
+                              신고 취소
+                            </Badge>
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setReportTarget(item)}
+                            className="cursor-pointer"
+                          >
+                            <Badge
+                              variant="blue"
+                              className="px-3 py-1.5 hover:bg-bg-accent hover:text-white transition-colors"
+                            >
+                              신고 대행 요청
+                            </Badge>
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -224,14 +246,16 @@ export function RiskTable({ riskItems }: RiskTableProps) {
               })}
             </div>
           </div>
-          <p className="text-xs text-text-muted text-center py-2">총 {filtered.length}건</p>
         </>
       )}
+      <p className="text-xs text-text-muted text-center py-2">총 {filtered.length}건</p>
 
       <RiskReportRequestModal
         open={!!reportTarget}
         onClose={() => setReportTarget(null)}
-        title={reportTarget?.title ?? ''}
+        item={reportTarget}
+        workspaceId={workspaceId}
+        reportId={reportId}
       />
     </div>
   );

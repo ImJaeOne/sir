@@ -10,6 +10,7 @@ import {
   getStrategies,
   getSearchTrend,
   getPrevReport,
+  getRiskReports,
 } from '@/lib/api/reportApi';
 import type { ChannelStat, ChannelItem, RiskItem } from '@/lib/api/reportApi';
 import { workspaceKeys } from '@/hooks/workspace/useWorkspaceQuery';
@@ -29,6 +30,7 @@ export const reportKeys = {
   strategies: (id: string) => ['report', id, 'strategies'] as const,
   searchTrend: (id: string, reportId?: string) => ['report', id, 'searchTrend', reportId] as const,
   prevReport: (id: string, reportId: string) => ['report', id, 'prevReport', reportId] as const,
+  riskReports: (id: string, reportId?: string) => ['report', id, 'riskReports', reportId] as const,
 };
 
 // 리포트 데이터는 주간 보고서 — 페이지 내 refetch 불필요, 캐시 공유 극대화
@@ -158,5 +160,15 @@ export function useSearchTrend(workspaceId: string, reportId?: string) {
     queryFn: () => getSearchTrend(workspaceId, reportId),
     enabled: !!workspaceId && !!reportId,
     ...REPORT_OPTS,
+  });
+}
+
+export function useRiskReports(workspaceId: string, reportId?: string) {
+  return useQuery({
+    queryKey: reportKeys.riskReports(workspaceId, reportId),
+    queryFn: () => getRiskReports(workspaceId, reportId),
+    enabled: !!workspaceId,
+    staleTime: 30 * 1000,
+    gcTime: 5 * 60 * 1000,
   });
 }

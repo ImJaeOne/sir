@@ -64,18 +64,33 @@ export function ReportCalendarModal({
     return map;
   }, [reports]);
 
-  // 현재 보고 있는 보고서 기간
+  // 현재 보고 있는 보고서 기간 (currentReportId 없으면 전체 보고서 기간 표시)
   const {
     dates: currentDates,
-    start: currentStart,
-    end: currentEnd,
+    starts: currentStarts,
+    ends: currentEnds,
   } = useMemo(() => {
-    const target = reports.find((r) => r.id === currentReportId);
-    if (!target) return { dates: [], start: null, end: null };
-    const s = parseDate(target.period_start);
-    const e = parseDate(target.period_end);
-    if (!s || !e) return { dates: [], start: null, end: null };
-    return { dates: getDatesInRange(s, e), start: s, end: e };
+    if (currentReportId) {
+      const target = reports.find((r) => r.id === currentReportId);
+      if (!target) return { dates: [], starts: [], ends: [] };
+      const s = parseDate(target.period_start);
+      const e = parseDate(target.period_end);
+      if (!s || !e) return { dates: [], starts: [], ends: [] };
+      return { dates: getDatesInRange(s, e), starts: [s], ends: [e] };
+    }
+    // 전체: 모든 보고서 기간 표시
+    const allDates: Date[] = [];
+    const allStarts: Date[] = [];
+    const allEnds: Date[] = [];
+    for (const r of reports) {
+      const s = parseDate(r.period_start);
+      const e = parseDate(r.period_end);
+      if (!s || !e) continue;
+      allDates.push(...getDatesInRange(s, e));
+      allStarts.push(s);
+      allEnds.push(e);
+    }
+    return { dates: allDates, starts: allStarts, ends: allEnds };
   }, [reports, currentReportId]);
 
   // 선택된 보고서 기간 (현재 보고서와 다른 것)
@@ -237,8 +252,8 @@ export function ReportCalendarModal({
             disabled={latestEnd ? { after: latestEnd } : undefined}
             modifiers={{
               current: currentDates,
-              currentStart: currentStart ? [currentStart] : [],
-              currentEnd: currentEnd ? [currentEnd] : [],
+              currentStart: currentStarts,
+              currentEnd: currentEnds,
               selected: selectedDates,
               selectedStart: selectedStart ? [selectedStart] : [],
               selectedEnd: selectedEnd ? [selectedEnd] : [],

@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   Activity,
   Settings,
+  ShieldAlert,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -21,6 +22,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { label: '홈', href: '/', icon: Home },
   { label: '워크스페이스', href: '/workspace', icon: LayoutDashboard },
+  { label: '리스크 관리', href: '/risk-reports', icon: ShieldAlert },
   { label: '모니터링', href: '#', icon: Activity, disabled: true },
   { label: '설정', href: '#', icon: Settings, disabled: true },
 ];

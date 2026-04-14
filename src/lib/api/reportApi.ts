@@ -451,10 +451,7 @@ export async function getRiskItems(workspaceId: string, reportId?: string): Prom
   if (reportId) {
     const meta = await getReportMeta(reportId);
     if (meta.sessionIds.length === 0) return [];
-    const [newsRes, communityRes, snsRes] = await Promise.all([
-      supabase.from('news_items')
-        .select('id, platform_id, title, link, critical_type, critical_reason, published_at')
-        .eq('workspace_id', workspaceId).not('critical_type', 'is', null).in('session_id', meta.sessionIds),
+    const [communityRes, snsRes] = await Promise.all([
       supabase.from('community_items')
         .select('id, platform_id, title, link, critical_type, critical_reason, published_at')
         .eq('workspace_id', workspaceId).not('critical_type', 'is', null).in('session_id', meta.sessionIds),
@@ -462,7 +459,7 @@ export async function getRiskItems(workspaceId: string, reportId?: string): Prom
         .select('id, platform_id, title, link, critical_type, critical_reason, published_at')
         .eq('workspace_id', workspaceId).not('critical_type', 'is', null).in('session_id', meta.sessionIds),
     ]);
-    return [...(newsRes.data ?? []), ...(communityRes.data ?? []), ...(snsRes.data ?? [])]
+    return [...(communityRes.data ?? []), ...(snsRes.data ?? [])]
       .map(r => ({
         id: r.id, platform_id: r.platform_id, title: r.title ?? '', link: r.link ?? '#',
         critical_type: r.critical_type, critical_reason: r.critical_reason ?? null, published_at: r.published_at ?? null,
@@ -470,10 +467,7 @@ export async function getRiskItems(workspaceId: string, reportId?: string): Prom
       .sort((a, b) => (b.published_at ?? '').localeCompare(a.published_at ?? ''));
   }
 
-  const [newsRes, communityRes, snsRes] = await Promise.all([
-    supabase.from('news_items')
-      .select('id, platform_id, title, link, critical_type, critical_reason, published_at')
-      .eq('workspace_id', workspaceId).not('critical_type', 'is', null),
+  const [communityRes, snsRes] = await Promise.all([
     supabase.from('community_items')
       .select('id, platform_id, title, link, critical_type, critical_reason, published_at')
       .eq('workspace_id', workspaceId).not('critical_type', 'is', null),
@@ -482,7 +476,7 @@ export async function getRiskItems(workspaceId: string, reportId?: string): Prom
       .eq('workspace_id', workspaceId).not('critical_type', 'is', null),
   ]);
 
-  return [...(newsRes.data ?? []), ...(communityRes.data ?? []), ...(snsRes.data ?? [])]
+  return [...(communityRes.data ?? []), ...(snsRes.data ?? [])]
     .map(r => ({
       id: r.id,
       platform_id: r.platform_id,
@@ -558,6 +552,7 @@ export async function getStrategies(workspaceId: string, reportId?: string): Pro
 // ── 이전 리포트 비교 ──
 
 export interface PrevReport {
+  id: string;
   type: string;
   sirScore: number;
   createdAt: string;
@@ -618,7 +613,7 @@ export async function getPrevReport(workspaceId: string, currentReportId: string
     channelSirMap[ch] = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
   }
 
-  return { type: prev.type as string, sirScore: prev.sir_score ?? 0, createdAt: prev.created_at, totalItems, riskCount, channelSirMap };
+  return { id: prev.id, type: prev.type as string, sirScore: prev.sir_score ?? 0, createdAt: prev.created_at, totalItems, riskCount, channelSirMap };
 }
 
 // ── 검색 트렌드 ──
@@ -647,4 +642,66 @@ export async function getSearchTrend(workspaceId: string, reportId?: string): Pr
     if (row.provider === 'google') result.google = row.trend_data ?? [];
   }
   return result;
+}
+
+// ── 신고 대행 요청 ──
+
+export interface RiskReport {
+  id: string;
+  workspace_id: string;
+  report_id: string;
+  source_table: string;
+  source_id: string;
+  platform_id: string;
+  title: string;
+  link: string;
+  critical_type: string;
+  reason: string;
+  evidence: string;
+  file_urls: string[];
+  status: string;
+  admin_note: string | null;
+  requested_at: string;
+  resolved_at: string | null;
+}
+
+export async function getRiskReports(workspaceId: string, reportId?: string): Promise<RiskReport[]> {
+  let query = supabase.from('risk_reports').select('*').order('requested_at', { ascending: false });
+  if (workspaceId && workspaceId !== '_all') query = query.eq('workspace_id', workspaceId);
+  if (reportId) query = query.eq('report_id', reportId);
+  const { data } = await query;
+  return data ?? [];
+}
+
+export async function createRiskReport(formData: FormData): Promise<RiskReport> {
+  const { data: { session } } = await supabase.auth.getSession();
+  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/risk-report`, {
+    method: 'POST',
+    headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
+    body: formData,
+  });
+  if (!res.ok) throw new Error('신고 요청 실패');
+  return res.json();
+}
+
+export async function deleteRiskReport(id: string): Promise<void> {
+  const { data: { session } } = await supabase.auth.getSession();
+  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/risk-report/${id}`, {
+    method: 'DELETE',
+    headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
+  });
+  if (!res.ok) throw new Error('신고 취소 실패');
+}
+
+export async function updateRiskReport(id: string, body: { status?: string; admin_note?: string }): Promise<void> {
+  const { data: { session } } = await supabase.auth.getSession();
+  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/risk-report/${id}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+    },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error('상태 업데이트 실패');
 }

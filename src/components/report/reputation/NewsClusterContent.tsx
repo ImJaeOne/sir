@@ -5,6 +5,7 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { SentimentIcon } from '@/components/report/reputation/SentimentIcon';
 import { SentimentFilter } from '@/components/report/reputation/SentimentFilter';
+import { EmptyState } from '@/components/ui/EmptyState';
 import type { ChannelItem, NewsCluster } from '@/lib/api/reportApi';
 
 type Row =
@@ -163,9 +164,7 @@ export function NewsClusterContent({ clusters, unclustered }: NewsClusterContent
     <>
       <SentimentFilter value={filter} onChange={setFilter} counts={counts} />
       {rows.length === 0 ? (
-        <div className="flex items-center justify-center py-16 text-xs text-text-muted">
-          {{ all: '수집된', positive: '긍정', neutral: '중립', negative: '부정' }[filter] ?? '수집된'} 데이터가 없습니다.
-        </div>
+        <EmptyState message={`${{ all: '수집된', positive: '긍정', neutral: '중립', negative: '부정' }[filter] ?? '수집된'} 데이터가 없습니다.`} />
       ) : (
       <div ref={parentRef} className="max-h-[600px] overflow-y-auto">
         <div
