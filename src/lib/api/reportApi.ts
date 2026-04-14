@@ -673,24 +673,15 @@ export async function getRiskReports(workspaceId: string, reportId?: string): Pr
   return data ?? [];
 }
 
-export async function createRiskReport(formData: FormData): Promise<RiskReport> {
-  const { data: { session } } = await supabase.auth.getSession();
-  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/risk-report`, {
-    method: 'POST',
-    headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
-    body: formData,
-  });
-  if (!res.ok) throw new Error('신고 요청 실패');
-  return res.json();
-}
-
 export async function deleteRiskReport(id: string): Promise<void> {
-  const { data: { session } } = await supabase.auth.getSession();
-  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/risk-report/${id}`, {
-    method: 'DELETE',
-    headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
-  });
-  if (!res.ok) throw new Error('신고 취소 실패');
+  // Storage 파일 삭제 후 DB row 삭제
+  const { data } = await supabase.from('risk_reports').select('file_urls').eq('id', id).single();
+  const fileUrls = data?.file_urls ?? [];
+  if (fileUrls.length > 0) {
+    await supabase.storage.from('risk-attachments').remove(fileUrls);
+  }
+  const { error } = await supabase.from('risk_reports').delete().eq('id', id);
+  if (error) throw error;
 }
 
 export async function updateRiskReport(id: string, body: { status?: string; admin_note?: string }): Promise<void> {

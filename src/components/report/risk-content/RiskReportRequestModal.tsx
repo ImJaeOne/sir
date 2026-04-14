@@ -7,7 +7,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
-import { createRiskReport } from '@/lib/api/reportApi';
+import { createClient } from '@/lib/supabase/client';
 import { reportKeys } from '@/hooks/report/useReportQuery';
 import type { RiskItem } from '@/lib/api/reportApi';
 
@@ -19,17 +19,8 @@ const REPORT_REASONS = [
 ] as const;
 
 const ACCEPTED_FILE_EXTENSIONS = [
-  '.pdf',
-  '.doc',
-  '.docx',
-  '.png',
-  '.jpeg',
-  '.jpg',
-  '.ppt',
-  '.pptx',
-  '.xlsx',
-  '.xls',
-  '.zip',
+  '.pdf', '.doc', '.docx', '.png', '.jpeg', '.jpg',
+  '.ppt', '.pptx', '.xlsx', '.xls', '.zip',
 ];
 
 const TERMS_OF_SERVICE = `개인정보의 수집 및 이용 목적
@@ -55,6 +46,15 @@ const SOURCE_TABLE_MAP: Record<string, string> = {
   naver_stock: 'community_items',
   dcinside: 'community_items',
 };
+
+function RequiredLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <label className="text-sm font-semibold text-text-dark">
+      {children}
+      <span className="text-red-500 ml-0.5">*</span>
+    </label>
+  );
+}
 
 interface RiskReportRequestModalProps {
   open: boolean;
@@ -90,9 +90,15 @@ export function RiskReportRequestModal({ open, onClose, item, workspaceId, repor
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      setFiles((prev) => [...prev, ...Array.from(e.target.files!)]);
-      e.target.value = '';
+      const newFiles = Array.from(e.target.files);
+      console.log('new files:', newFiles.map(f => f.name));
+      setFiles((prev) => {
+        const merged = [...prev, ...newFiles];
+        console.log('total files:', merged.map(f => f.name));
+        return merged;
+      });
     }
+    e.target.value = '';
   };
 
   const removeFile = (idx: number) => {
@@ -108,22 +114,36 @@ export function RiskReportRequestModal({ open, onClose, item, workspaceId, repor
     if (!item) return;
     setSubmitting(true);
     try {
-      const formData = new FormData();
-      formData.append('workspace_id', workspaceId);
-      formData.append('report_id', reportId);
-      formData.append('source_table', SOURCE_TABLE_MAP[item.platform_id] ?? 'community_items');
-      formData.append('source_id', item.id);
-      formData.append('platform_id', item.platform_id);
-      formData.append('title', item.title);
-      formData.append('link', item.link);
-      formData.append('critical_type', item.critical_type);
-      formData.append('reason', reason!);
-      formData.append('evidence', evidence);
+      const supabase = createClient();
+
+      // 1. 파일 업로드 (Storage 직접)
+      const fileUrls: string[] = [];
       for (const f of files) {
-        formData.append('files', f);
+        const ext = f.name.rsplit?.('.').pop() ?? f.name.split('.').pop() ?? '';
+        const path = `${workspaceId}/${crypto.randomUUID()}.${ext}`;
+        const { error } = await supabase.storage.from('risk-attachments').upload(path, f);
+        if (error) throw error;
+        fileUrls.push(path);
       }
 
-      await createRiskReport(formData);
+      // 2. DB INSERT (Supabase 직접)
+      const insertData = {
+        workspace_id: workspaceId,
+        report_id: reportId,
+        source_table: SOURCE_TABLE_MAP[item.platform_id] ?? 'community_items',
+        source_id: item.id,
+        platform_id: item.platform_id,
+        title: item.title,
+        link: item.link,
+        critical_type: item.critical_type,
+        reason: reason!,
+        evidence,
+        file_urls: fileUrls,
+        status: 'requested',
+      };
+      const { error } = await supabase.from('risk_reports').insert(insertData);
+      if (error) throw error;
+
       queryClient.invalidateQueries({ queryKey: reportKeys.riskReports(workspaceId, reportId) });
       toast.success('신고 대행 요청이 접수되었습니다.');
       setShowConfirm(false);
@@ -150,7 +170,7 @@ export function RiskReportRequestModal({ open, onClose, item, workspaceId, repor
       >
         {/* 신고 요청 콘텐츠 */}
         <div className="flex flex-col gap-2">
-          <label className="text-sm font-semibold text-text-dark">신고 요청 콘텐츠</label>
+          <RequiredLabel>신고 요청 콘텐츠</RequiredLabel>
           <div className="bg-bg-blue rounded-lg px-4 py-3">
             <p className="text-sm font-light text-text-accent">{item?.title ?? ''}</p>
           </div>
@@ -158,7 +178,7 @@ export function RiskReportRequestModal({ open, onClose, item, workspaceId, repor
 
         {/* 신고 사유 선택 */}
         <div className="flex flex-col gap-2">
-          <label className="text-sm font-semibold text-text-dark">신고 사유 선택</label>
+          <RequiredLabel>신고 사유 선택</RequiredLabel>
           <div className="flex flex-col gap-1">
             {REPORT_REASONS.map((r, i) => {
               const selected = reason === r;
@@ -189,7 +209,7 @@ export function RiskReportRequestModal({ open, onClose, item, workspaceId, repor
 
         {/* 신고 근거 */}
         <div className="flex flex-col gap-2">
-          <label className="text-sm font-semibold text-text-dark">신고 근거</label>
+          <RequiredLabel>신고 근거</RequiredLabel>
           <textarea
             value={evidence}
             onChange={(e) => setEvidence(e.target.value)}
@@ -219,30 +239,39 @@ export function RiskReportRequestModal({ open, onClose, item, workspaceId, repor
             파일 첨부
           </button>
           {files.length > 0 && (
-            <ul className="flex flex-col gap-1">
-              {files.map((file, i) => (
-                <li
-                  key={i}
-                  className="flex items-center justify-between px-3 py-1.5 bg-bg-light rounded-lg text-xs"
-                >
-                  <span className="text-text-dark truncate">{file.name}</span>
-                  <button
-                    type="button"
-                    onClick={() => removeFile(i)}
-                    className="text-text-muted hover:text-red-400 transition-colors cursor-pointer shrink-0 ml-2"
-                    aria-label="파일 삭제"
+            <ul className="flex flex-col gap-1.5">
+              {files.map((file, i) => {
+                const ext = file.name.split('.').pop()?.toUpperCase() ?? '';
+                const size = file.size < 1024 * 1024
+                  ? `${(file.size / 1024).toFixed(0)}KB`
+                  : `${(file.size / 1024 / 1024).toFixed(1)}MB`;
+                return (
+                  <li
+                    key={i}
+                    className="flex items-center gap-3 px-3 py-2 bg-bg-light rounded-lg"
                   >
-                    <X size={14} />
-                  </button>
-                </li>
-              ))}
+                    <Paperclip size={14} className="text-slate-400 shrink-0" />
+                    <span className="text-xs text-text-dark truncate flex-1">{file.name}</span>
+                    <span className="text-[10px] text-text-muted shrink-0">{size}</span>
+                    <span className="text-[10px] text-text-muted bg-white px-1.5 py-0.5 rounded shrink-0">{ext}</span>
+                    <button
+                      type="button"
+                      onClick={() => removeFile(i)}
+                      className="text-text-muted hover:text-red-400 transition-colors cursor-pointer shrink-0"
+                      aria-label="파일 삭제"
+                    >
+                      <X size={14} />
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>
 
         {/* 서비스 이용 약관 */}
         <div className="flex flex-col gap-2">
-          <label className="text-sm font-semibold text-text-dark">서비스 이용 약관</label>
+          <RequiredLabel>서비스 이용 약관</RequiredLabel>
           <div className="bg-bg-light rounded-lg p-3 max-h-40 overflow-y-auto">
             <p className="text-xs text-text-muted leading-relaxed whitespace-pre-line">
               {TERMS_OF_SERVICE}

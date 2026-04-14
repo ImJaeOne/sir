@@ -222,7 +222,7 @@ export function RiskTable({ riskItems, workspaceId, reportId, reportedSourceIds,
                               variant="slate"
                               className="px-3 py-1.5 hover:bg-red-100 hover:text-red-600 transition-colors"
                             >
-                              신고 취소
+                              신고 대행 취소
                             </Badge>
                           </button>
                         ) : (

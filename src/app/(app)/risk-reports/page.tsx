@@ -6,12 +6,11 @@ import { toast } from 'sonner';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import { Combobox, ComboboxButton, ComboboxInput, ComboboxOption, ComboboxOptions } from '@headlessui/react';
-import { ChevronDown, Check, CalendarDays } from 'lucide-react';
+import { ChevronDown, Check, CalendarDays, Paperclip, Download } from 'lucide-react';
 import { useWorkspaces } from '@/hooks/workspace/useWorkspaceQuery';
 import { useReports } from '@/hooks/workspace/useWorkspaceQuery';
 import { useRiskReports, reportKeys } from '@/hooks/report/useReportQuery';
 import { updateRiskReport } from '@/lib/api/reportApi';
-import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import type { RiskReport } from '@/lib/api/reportApi';
@@ -23,17 +22,17 @@ const ReportCalendarModal = dynamic(
 );
 
 const STATUS_OPTIONS = [
-  { value: 'requested', label: '요청' },
-  { value: 'pending', label: '처리 대기' },
+  { value: 'requested', label: '요청 완료' },
+  { value: 'pending', label: '결과 대기' },
   { value: 'resolved', label: '삭제 완료' },
-  { value: 'rejected', label: '신고 반려' },
+  { value: 'rejected', label: '삭제 반려' },
 ] as const;
 
-const STATUS_CONFIG: Record<string, { label: string; variant: 'blue' | 'amber' | 'red' | 'slate' }> = {
-  requested: { label: '요청', variant: 'blue' },
-  pending: { label: '처리 대기', variant: 'amber' },
-  resolved: { label: '삭제 완료', variant: 'slate' },
-  rejected: { label: '신고 반려', variant: 'red' },
+const STATUS_STYLES: Record<string, { label: string; className: string }> = {
+  requested: { label: '요청 완료', className: 'bg-slate-100 text-slate-600' },
+  pending: { label: '결과 대기', className: 'bg-amber-50 text-amber-600' },
+  resolved: { label: '삭제 완료', className: 'bg-blue-50 text-blue-600' },
+  rejected: { label: '삭제 반려', className: 'bg-red-50 text-red-600' },
 };
 
 const PLATFORM_LABELS: Record<string, string> = {
@@ -242,18 +241,43 @@ function DetailModal({ report, onClose, onUpdate }: { report: RiskReport; onClos
         </div>
       </div>
 
-      {report.file_urls.length > 0 && (
-        <div className="flex flex-col gap-1">
-          <span className="text-xs font-semibold text-text-muted">첨부 파일</span>
-          <ul className="flex flex-col gap-1">
-            {report.file_urls.map((url, i) => (
-              <li key={i} className="text-xs text-text-accent truncate">
-                {url.split('/').pop() ?? url}
-              </li>
-            ))}
+      <div className="flex flex-col gap-2">
+        <span className="text-xs font-semibold text-text-muted">
+          첨부 파일 {report.file_urls.length > 0 ? `(${report.file_urls.length})` : ''}
+        </span>
+        {report.file_urls.length > 0 ? (
+          <ul className="flex flex-col gap-1.5">
+            {report.file_urls.map((url, i) => {
+              const filename = url.split('/').pop() ?? url;
+              const ext = filename.split('.').pop()?.toUpperCase() ?? '';
+              const handleDownload = async () => {
+                const supabase = createClient();
+                const { data } = await supabase.storage.from('risk-attachments').download(url);
+                if (data) {
+                  const blobUrl = URL.createObjectURL(data);
+                  const a = document.createElement('a');
+                  a.href = blobUrl;
+                  a.download = filename;
+                  a.click();
+                  URL.revokeObjectURL(blobUrl);
+                }
+              };
+              return (
+                <li key={i} className="flex items-center gap-3 px-3 py-2 bg-bg-light rounded-lg">
+                  <Paperclip size={14} className="text-slate-400 shrink-0" />
+                  <span className="text-xs text-text-dark truncate flex-1">{filename}</span>
+                  <span className="text-[10px] text-text-muted bg-white px-1.5 py-0.5 rounded shrink-0">{ext}</span>
+                  <button onClick={handleDownload} className="text-slate-600 hover:text-slate-900 transition-colors cursor-pointer shrink-0">
+                    <Download size={14} />
+                  </button>
+                </li>
+              );
+            })}
           </ul>
-        </div>
-      )}
+        ) : (
+          <p className="text-xs text-text-muted">없음</p>
+        )}
+      </div>
 
       <div className="flex flex-col gap-2">
         <label className="text-sm font-semibold text-text-dark">처리 상태</label>
@@ -368,14 +392,13 @@ export default function RiskReportsPage() {
             })}
           </div>
           {/* 헤더 */}
-          <div className="grid grid-cols-[8%_10%_8%_8%_1fr_10%_8%] border-b border-slate-100 py-3 px-4 text-xs font-semibold text-slate-500 text-center shrink-0">
+          <div className="grid grid-cols-[8%_10%_8%_8%_1fr_12%] border-b border-slate-100 py-3 px-4 text-xs font-semibold text-slate-500 text-center shrink-0">
             <div>신고일</div>
             <div>회사명</div>
             <div>채널명</div>
             <div>신고 사유</div>
             <div className="text-left pl-2">세부 내용</div>
             <div>상태</div>
-            <div></div>
           </div>
 
           {/* 바디 */}
@@ -390,11 +413,12 @@ export default function RiskReportsPage() {
           ) : (
             <div className="flex-1 overflow-y-auto">
               {filtered.map((rr) => {
-                const statusCfg = STATUS_CONFIG[rr.status] ?? { label: rr.status, variant: 'slate' as const };
+                const statusCfg = STATUS_STYLES[rr.status] ?? { label: rr.status, className: 'bg-slate-100 text-slate-600' };
                 return (
                   <div
                     key={rr.id}
-                    className="grid grid-cols-[8%_10%_8%_8%_1fr_10%_8%] items-center py-3 px-4 border-b border-slate-50 hover:bg-slate-50/50 transition-colors"
+                    onClick={() => setSelected(rr)}
+                    className="grid grid-cols-[8%_10%_8%_8%_1fr_12%] items-center py-3 px-4 border-b border-slate-50 hover:bg-slate-50/50 transition-colors cursor-pointer"
                   >
                     <div className="text-center text-xs text-slate-500">
                       {rr.requested_at?.slice(5, 10).replace(/-/g, '.') ?? ''}
@@ -408,26 +432,21 @@ export default function RiskReportsPage() {
                     <div className="text-center text-xs text-slate-500">
                       {rr.reason}
                     </div>
-                    <div className="pl-2 truncate">
-                      <a
-                        href={rr.link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm text-slate-800 font-semibold hover:text-blue-600 hover:underline transition-colors"
-                      >
+                    <div className="pl-2 flex items-center gap-2 min-w-0">
+                      <span className="text-sm text-slate-800 font-semibold truncate">
                         {rr.title}
-                      </a>
+                      </span>
+                      {rr.file_urls.length > 0 && (
+                        <span className="flex items-center gap-0.5 text-slate-400 shrink-0">
+                          <Paperclip size={12} />
+                          <span className="text-[10px]">{rr.file_urls.length}</span>
+                        </span>
+                      )}
                     </div>
                     <div className="text-center">
-                      <Badge variant={statusCfg.variant} bordered>{statusCfg.label}</Badge>
-                    </div>
-                    <div className="text-center">
-                      <button
-                        onClick={() => setSelected(rr)}
-                        className="text-xs text-text-accent hover:underline cursor-pointer"
-                      >
-                        상세보기
-                      </button>
+                      <span className={`inline-block text-xs font-semibold px-3 py-1.5 rounded-lg ${statusCfg.className}`}>
+                        {statusCfg.label}
+                      </span>
                     </div>
                   </div>
                 );

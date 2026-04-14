@@ -3,14 +3,13 @@
 import { useRiskReports } from '@/hooks/report/useReportQuery';
 import { ReportSubSection } from '@/components/report/ReportSection';
 import { ReportCard } from '@/components/report/ReportCard';
-import { Badge } from '@/components/ui/Badge';
 import { EmptyState } from '@/components/ui/EmptyState';
 
-const STATUS_CONFIG: Record<string, { label: string; variant: 'blue' | 'amber' | 'red' | 'slate' }> = {
-  requested: { label: '요청', variant: 'blue' },
-  pending: { label: '처리 대기', variant: 'amber' },
-  resolved: { label: '삭제 완료', variant: 'slate' },
-  rejected: { label: '신고 반려', variant: 'red' },
+const STATUS_STYLES: Record<string, { label: string; className: string }> = {
+  requested: { label: '요청 완료', className: 'bg-slate-100 text-slate-600' },
+  pending: { label: '결과 대기', className: 'bg-amber-50 text-amber-600' },
+  resolved: { label: '삭제 완료', className: 'bg-blue-50 text-blue-600' },
+  rejected: { label: '삭제 반려', className: 'bg-red-50 text-red-600' },
 };
 
 const PLATFORM_LABELS: Record<string, string> = {
@@ -34,7 +33,8 @@ export function RiskResultTable({ workspaceId, prevReportId }: RiskResultTablePr
   return (
     <ReportSubSection
       title="리스크 콘텐츠 처리 결과"
-      description="이전 보고서에서 요청한 신고 대행의 처리 경과입니다."
+      description="지난 주 SIR 팀에 신고 접수된 콘텐츠의 접수 채널과 처리 상태를 한눈에 확인할 수 있습니다."
+      tooltip="신고된 게시물은 해당 채널 운영자의 판단에 의해 삭제되지 않을 수 있으며, 신고 후 2주가 지나도 삭제되지 않을 경우 자동으로 반려된 것으로 간주합니다."
     >
       <ReportCard px={20} py={10}>
         {reports.length === 0 ? (
@@ -57,7 +57,10 @@ export function RiskResultTable({ workspaceId, prevReportId }: RiskResultTablePr
 
             <div className="max-h-[400px] overflow-y-auto">
               {reports.map((rr) => {
-                const statusCfg = STATUS_CONFIG[rr.status] ?? { label: rr.status, variant: 'slate' as const };
+                const statusCfg = STATUS_STYLES[rr.status] ?? {
+                  label: rr.status,
+                  className: 'bg-slate-100 text-slate-600',
+                };
                 return (
                   <div
                     key={rr.id}
@@ -70,9 +73,7 @@ export function RiskResultTable({ workspaceId, prevReportId }: RiskResultTablePr
                     <div className="text-center text-xs text-text-muted">
                       {PLATFORM_LABELS[rr.platform_id] ?? rr.platform_id}
                     </div>
-                    <div className="text-center text-xs text-text-muted">
-                      {rr.reason}
-                    </div>
+                    <div className="text-center text-xs text-text-muted">{rr.reason}</div>
                     <div className="px-3">
                       <a
                         href={rr.link}
@@ -84,9 +85,11 @@ export function RiskResultTable({ workspaceId, prevReportId }: RiskResultTablePr
                       </a>
                     </div>
                     <div className="text-center">
-                      <Badge variant={statusCfg.variant} bordered>
+                      <span
+                        className={`inline-block text-xs font-semibold px-3 py-1.5 rounded-lg ${statusCfg.className}`}
+                      >
                         {statusCfg.label}
-                      </Badge>
+                      </span>
                     </div>
                   </div>
                 );
