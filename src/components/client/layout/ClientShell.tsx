@@ -10,7 +10,7 @@ interface ClientShellProps {
 
 export function ClientShell({ children, user = null }: ClientShellProps) {
   return (
-    <div className="h-screen bg-slate-50 flex overflow-hidden">
+    <div className="h-screen w-full bg-slate-50 flex overflow-hidden">
       <ClientSidebar user={user} />
       <main id="client-main" className="flex-1 overflow-y-auto">
         {children}
