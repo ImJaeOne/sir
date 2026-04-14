@@ -222,7 +222,7 @@ const CHANNEL_CONFIG: { id: string; label: string; color: string }[] = [
 export async function getChannelStats(workspaceId: string, channelItems: ChannelItem[], reportId?: string): Promise<ChannelStat[]> {
   // channelItems가 이미 report-scoped이므로 비어있으면 빈 stats 반환
   if (channelItems.length === 0 && reportId) return [];
-  // 채널별 감성 집계
+  // 채널별 감정 집계
   const byChannel = new Map<string, { positive: number; negative: number; neutral: number }>();
   for (const item of channelItems) {
     const channel = PLATFORM_TO_CHANNEL[item.platform_id] ?? item.platform_id;
@@ -339,7 +339,7 @@ export async function getNewsClusters(workspaceId: string, reportId?: string): P
   }));
 }
 
-// ── 채널별 아이템 (감성 상세 + 상위 콘텐츠 공유) ──
+// ── 채널별 아이템 (감정 상세 + 상위 콘텐츠 공유) ──
 
 export interface ChannelItem {
   id: string;

@@ -45,7 +45,7 @@ function SentimentDonut({ data }: { data: PlatformAnalysis[] }) {
 
   return (
     <div className="flex flex-col items-center gap-2">
-      <span className="text-xs font-semibold text-slate-500">종합 감성 분포</span>
+      <span className="text-xs font-semibold text-slate-500">종합 감정 분포</span>
       <ResponsiveContainer width="100%" height={180}>
         <PieChart>
           <Pie
@@ -159,7 +159,7 @@ function PlatformSentimentStack({ data }: { data: PlatformAnalysis[] }) {
 
   return (
     <div className="flex flex-col gap-2">
-      <span className="text-xs font-semibold text-slate-500">플랫폼별 감성 분포</span>
+      <span className="text-xs font-semibold text-slate-500">플랫폼별 감정 분포</span>
       <ResponsiveContainer width="100%" height={260}>
         <BarChart data={stackData} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />

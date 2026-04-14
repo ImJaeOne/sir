@@ -91,7 +91,7 @@ export function ReportResult() {
 
           {/* Section 2 */}
           <div className="flex flex-col gap-2">
-            <h4 className="font-bold text-slate-800">2. 감성 분석</h4>
+            <h4 className="font-bold text-slate-800">2. 감정 분석</h4>
             <p className="text-slate-600">
               종합 SIR 지수는{' '}
               <span className={`font-bold ${totalScore >= 70 ? 'text-green-600' : totalScore >= 50 ? 'text-yellow-600' : 'text-red-600'}`}>

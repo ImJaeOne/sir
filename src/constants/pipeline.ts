@@ -20,7 +20,7 @@ export const PIPELINE_STAGES: PipelineStage[] = [
     label: '분석',
     buttonText: '분석 시작',
     result: {
-      summary: '감성 분석 완료 — SIR 지수 72점',
+      summary: '감정 분석 완료 — SIR 지수 72점',
       items: [
         '긍정 65% — 실적 호조, 신제품 출시 반응',
         '중립 20% — 단순 언급, 정보 공유',
@@ -48,7 +48,7 @@ export const PIPELINE_STAGES: PipelineStage[] = [
     result: {
       summary: '주간 감사 리포트 생성 완료',
       items: [
-        '총 214건 수집 / 감성 분석 완료',
+        '총 214건 수집 / 감정 분석 완료',
         'SIR 지수: 72점 (전주 대비 +4점)',
         '주요 이슈: 리콜 관련 부정 여론 모니터링 필요',
         'PDF 리포트 첨부 준비 완료',

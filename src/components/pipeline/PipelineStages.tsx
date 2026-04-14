@@ -37,7 +37,7 @@ export function PipelineStages() {
   // status 기반 판단: analyzing 완료 후 아이템이 DB에 존재
   const totalItems = (crawlData?.newsItems?.length ?? 0) + (crawlData?.communityItems?.length ?? 0) + (crawlData?.snsItems?.length ?? 0);
   const hasCrawlData = sessionStatus !== 'crawling' && totalItems > 0;
-  // clustering 이후 감성 분석 + 클러스터 데이터 존재
+  // clustering 이후 감정 분석 + 클러스터 데이터 존재
   const hasAnalysisData = (sessionStatus === 'clustering' || sessionStatus === 'done') && hasCrawlData;
   const hasStrategy = (crawlData?.strategies?.length ?? 0) > 0;
 
