@@ -323,7 +323,7 @@ export default function RiskReportsPage() {
   const wsMap = useMemo(() => new Map(workspaces.map((ws) => [ws.id, ws.company_name])), [workspaces]);
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 h-full bg-white">
+    <div className="p-6 lg:p-8 h-full bg-slate-50">
       <div className="max-w-5xl mx-auto flex flex-col gap-6 h-full">
         <h1 className="text-xl font-bold text-slate-800 pb-2 border-b border-slate-100">
           리스크 관리
