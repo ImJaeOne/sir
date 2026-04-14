@@ -31,7 +31,7 @@ export function ChannelDonutChart({ channelStats, total, pdfMode }: ChannelDonut
         <ChartLegend items={LEGEND_ITEMS} />
       </div>
       <div className={`my-5 outline-none **:outline-none ${pdfMode ? 'h-48' : 'h-60'}`}>
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
           <PieChart>
             <Pie
               data={channelStats}

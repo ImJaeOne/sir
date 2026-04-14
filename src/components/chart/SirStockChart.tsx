@@ -79,7 +79,7 @@ export function SirStockChart({
   return (
     <div className="outline-none **:outline-none">
       <div className={pdfMode ? 'h-60' : 'h-80'}>
-        <ResponsiveContainer width="105%" height="100%">
+        <ResponsiveContainer width="105%" height="100%" minWidth={0}>
           <ComposedChart data={displayData} margin={{ top: 10, right: 55, bottom: 0, left: 10 }}>
             <CartesianGrid
               yAxisId="sir"
