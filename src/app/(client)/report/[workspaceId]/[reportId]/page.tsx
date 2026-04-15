@@ -68,9 +68,11 @@ export default function ClientReportPage() {
 
   return (
     <div className="relative">
-      <div className="absolute inset-0 z-50 bg-bg-light min-h-screen">
-        <Loading />
-      </div>
+      {!ready && (
+        <div className="absolute inset-0 z-50 bg-bg-light min-h-screen">
+          <Loading />
+        </div>
+      )}
       <div className={`lg:min-w-fit ${ready ? '' : 'invisible'}`}>
         <SectionBg color="bg-light">
           <section id="section-highlight" className="flex flex-col lg:gap-10">
