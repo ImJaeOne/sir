@@ -30,7 +30,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="ko" className={pretendard.variable}>
       <head>
-        <link rel="apple-touch-icon" href="/icons/sir-icon.png" />
+        <link rel="apple-touch-icon" href="/icons/sir-icon-192.png" />
       </head>
       <body className={pretendard.className}>
         <QueryProvider>{children}</QueryProvider>
