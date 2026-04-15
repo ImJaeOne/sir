@@ -44,50 +44,81 @@ export function RiskResultTable({ workspaceId, prevReportId }: RiskResultTablePr
           </>
         ) : (
           <>
-            <div
-              className="grid border-b border-border-light py-3 px-3 text-xs font-semibold text-text-muted text-center"
-              style={{ gridTemplateColumns: COL_TEMPLATE }}
-            >
-              <div>신고일</div>
-              <div>채널명</div>
-              <div>유형</div>
-              <div>신고 게시물</div>
-              <div>처리 결과</div>
+            {/* 데스크톱: grid 테이블 */}
+            <div className="hidden lg:block">
+              <div
+                className="grid border-b border-border-light py-3 px-3 text-xs font-semibold text-text-muted text-center"
+                style={{ gridTemplateColumns: COL_TEMPLATE }}
+              >
+                <div>신고일</div>
+                <div>채널명</div>
+                <div>유형</div>
+                <div>신고 게시물</div>
+                <div>처리 결과</div>
+              </div>
+              <div className="max-h-[400px] overflow-y-auto">
+                {reports.map((rr) => {
+                  const statusCfg = STATUS_STYLES[rr.status] ?? { label: rr.status, className: 'bg-slate-100 text-slate-600' };
+                  return (
+                    <div
+                      key={rr.id}
+                      className="grid items-center py-4 px-3 border-b border-border-light"
+                      style={{ gridTemplateColumns: COL_TEMPLATE }}
+                    >
+                      <div className="text-center text-xs text-text-muted">
+                        {rr.requested_at?.slice(0, 10).replace(/-/g, '.') ?? ''}
+                      </div>
+                      <div className="text-center text-xs text-text-muted">
+                        {PLATFORM_LABELS[rr.platform_id] ?? rr.platform_id}
+                      </div>
+                      <div className="text-center text-xs text-text-muted">{rr.reason}</div>
+                      <div className="px-3">
+                        <a href={rr.link} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-text-dark hover:text-blue-600 hover:underline transition-colors">
+                          {rr.title}
+                        </a>
+                      </div>
+                      <div className="text-center">
+                        <span className={`inline-block text-xs font-semibold px-3 py-1.5 rounded-lg ${statusCfg.className}`}>
+                          {statusCfg.label}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
 
-            <div className="max-h-[400px] overflow-y-auto">
+            {/* 모바일: 카드 리스트 */}
+            <div className="lg:hidden flex flex-col gap-3 py-3 max-h-[400px] overflow-y-auto">
               {reports.map((rr) => {
-                const statusCfg = STATUS_STYLES[rr.status] ?? {
-                  label: rr.status,
-                  className: 'bg-slate-100 text-slate-600',
-                };
+                const statusCfg = STATUS_STYLES[rr.status] ?? { label: rr.status, className: 'bg-slate-100 text-slate-600' };
                 return (
-                  <div
-                    key={rr.id}
-                    className="grid items-center py-4 px-3 border-b border-border-light"
-                    style={{ gridTemplateColumns: COL_TEMPLATE }}
-                  >
-                    <div className="text-center text-xs text-text-muted">
-                      {rr.requested_at?.slice(0, 10).replace(/-/g, '.') ?? ''}
+                  <div key={rr.id} className="border border-border-light rounded-xl p-4 flex flex-col gap-2.5">
+                    <div className="flex gap-2">
+                      <span className="w-14 shrink-0 text-[10px] text-text-muted pt-0.5">신고일</span>
+                      <span className="text-xs text-text-dark">
+                        {rr.requested_at?.slice(0, 10).replace(/-/g, '.') ?? '-'}
+                      </span>
                     </div>
-                    <div className="text-center text-xs text-text-muted">
-                      {PLATFORM_LABELS[rr.platform_id] ?? rr.platform_id}
+                    <div className="flex gap-2">
+                      <span className="w-14 shrink-0 text-[10px] text-text-muted pt-0.5">채널명</span>
+                      <span className="text-xs text-text-dark">
+                        {PLATFORM_LABELS[rr.platform_id] ?? rr.platform_id}
+                      </span>
                     </div>
-                    <div className="text-center text-xs text-text-muted">{rr.reason}</div>
-                    <div className="px-3">
-                      <a
-                        href={rr.link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm font-semibold text-text-dark hover:text-blue-600 hover:underline transition-colors"
-                      >
+                    <div className="flex gap-2">
+                      <span className="w-14 shrink-0 text-[10px] text-text-muted pt-0.5">유형</span>
+                      <span className="text-xs text-text-dark">{rr.reason}</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <span className="w-14 shrink-0 text-[10px] text-text-muted pt-0.5">게시물</span>
+                      <a href={rr.link} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold text-text-dark hover:text-blue-600 hover:underline transition-colors flex-1 min-w-0">
                         {rr.title}
                       </a>
                     </div>
-                    <div className="text-center">
-                      <span
-                        className={`inline-block text-xs font-semibold px-3 py-1.5 rounded-lg ${statusCfg.className}`}
-                      >
+                    <div className="flex gap-2">
+                      <span className="w-14 shrink-0 text-[10px] text-text-muted pt-0.5">처리 결과</span>
+                      <span className={`inline-block text-[10px] font-semibold px-2.5 py-1 rounded-lg ${statusCfg.className}`}>
                         {statusCfg.label}
                       </span>
                     </div>

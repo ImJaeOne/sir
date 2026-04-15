@@ -35,7 +35,7 @@ export function StrategyCard({ category, strategy }: StrategyCardProps) {
         onClick={() => setIsOpen((v) => !v)}
         className="w-full flex items-center gap-8 text-left cursor-pointer hover:opacity-80 transition-opacity"
       >
-        <div className="w-[160px] shrink-0 flex items-center gap-3">
+        <div className="lg:w-[160px] shrink-0 flex items-center gap-3">
           <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${config.bg}`}>
             <Icon size={20} />
           </div>
@@ -53,7 +53,7 @@ export function StrategyCard({ category, strategy }: StrategyCardProps) {
         )}
       </button>
       {isOpen && (
-        <div className="mt-6 pl-[192px]">
+        <div className="mt-6 lg:pl-[192px]">
           <StrategySections strategy={strategy} />
         </div>
       )}
