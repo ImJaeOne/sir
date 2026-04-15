@@ -31,7 +31,7 @@ export function SentimentStackedBar({ data, pdfMode }: SentimentStackedBarProps)
         <ChartLegend items={LEGEND_ITEMS} />
       </div>
       <div className={`outline-none **:outline-none ${pdfMode ? 'h-48' : 'h-80'}`}>
-        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
           <BarChart data={data} margin={{ top: 10, right: 10, bottom: 0, left: 0 }}>
             <CartesianGrid
               strokeDasharray="3 3"

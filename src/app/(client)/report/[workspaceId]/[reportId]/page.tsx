@@ -29,19 +29,22 @@ function SectionBg({
   children: React.ReactNode;
 }) {
   const bg = BG_COLORS[color];
-  const gradientFrom = gradient === 'from-light' ? BG_COLORS['bg-light'] : gradient === 'from-blue' ? BG_COLORS.blue : null;
+  const gradientFrom =
+    gradient === 'from-light'
+      ? BG_COLORS['bg-light']
+      : gradient === 'from-blue'
+        ? BG_COLORS.blue
+        : null;
 
   return (
     <div style={{ backgroundColor: bg }}>
       {gradientFrom && (
         <div
-          className="h-20"
+          className="h-6 lg:h-20"
           style={{ background: `linear-gradient(to bottom, ${gradientFrom}, ${bg})` }}
         />
       )}
-      <div className="mx-auto w-[1200px] px-10 py-5">
-        {children}
-      </div>
+      <div className="mx-auto w-full lg:w-[1200px] px-4 lg:px-10 py-5">{children}</div>
     </div>
   );
 }
@@ -70,9 +73,9 @@ export default function ClientReportPage() {
           <Loading />
         </div>
       )}
-      <div className={`min-w-fit ${ready ? '' : 'invisible'}`}>
+      <div className={`lg:min-w-fit ${ready ? '' : 'invisible'}`}>
         <SectionBg color="bg-light">
-          <section id="section-highlight" className="flex flex-col gap-10">
+          <section id="section-highlight" className="flex flex-col lg:gap-10">
             <ReportHeader workspaceId={workspaceId} reportId={reportId} showPdfButton={false} />
             <Highlight workspaceId={workspaceId} reportId={reportId} />
           </section>

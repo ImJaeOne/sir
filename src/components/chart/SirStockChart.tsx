@@ -16,6 +16,17 @@ import type { SirStockPoint } from '@/lib/api/reportApi';
 
 type TimeFrame = 'daily' | 'weekly';
 
+const DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토'];
+
+function formatDateTick(date: string, fullDate?: string): string {
+  if (!fullDate) return date;
+  const d = new Date(fullDate);
+  const m = d.getMonth() + 1;
+  const dd = d.getDate();
+  const day = DAY_NAMES[d.getDay()];
+  return `${m}/${dd}(${day})`;
+}
+
 function getWeekKey(fullDate: string): string {
   // YYYY-MM-DD → 해당 주 월요일 기준 키
   const date = new Date(fullDate);
@@ -67,10 +78,14 @@ export function SirStockChart({
     const source = timeFrame === 'weekly'
       ? aggregateWeekly(chartInput)
       : chartInput.slice(-30);
-    return source.map((d) => ({ ...d, _candle: d.high_price }));
+    return source.map((d) => ({
+      ...d,
+      date: formatDateTick(d.date, d.fullDate),
+      _candle: d.high_price,
+    }));
   }, [timeFrame, chartInput]);
 
-  const allPrices = displayData
+  const allPrices = chartInput.slice(-30)
     .flatMap((d) => [d.low_price, d.high_price])
     .filter((v): v is number => v != null);
   const minPrice = allPrices.length ? Math.floor(Math.min(...allPrices) * 0.95) : 0;

@@ -18,7 +18,7 @@ interface SearchTrendChartProps {
 export function SearchTrendChart({ data, pdfMode }: SearchTrendChartProps) {
   return (
     <div className={`outline-none **:outline-none ${pdfMode ? 'h-48' : 'h-64'}`}>
-      <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+      <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
         <LineChart data={data} margin={{ top: 10, right: 20, bottom: 0, left: -10 }}>
           <CartesianGrid
             strokeDasharray="3 3"

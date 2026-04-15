@@ -26,7 +26,7 @@ export function SummaryAccordion({ sections }: { sections: SummarySection[] }) {
       {sections.map((section, i) => (
         <div key={i}>
           <div className="overflow-hidden">
-            <div className="flex items-start gap-8 py-5">
+            <div className="flex flex-col lg:flex-row lg:items-start gap-3 lg:gap-8 py-5">
               <div className="flex gap-3 shrink-0 items-center">
                 {SUMMARY_SECTIONS[i]?.icon &&
                   (() => {
@@ -37,7 +37,7 @@ export function SummaryAccordion({ sections }: { sections: SummarySection[] }) {
                       </div>
                     );
                   })()}
-                <div className="w-[130px] whitespace-pre-line text-sm text-text-muted font-semibold">
+                <div className="lg:w-[130px] whitespace-pre-line text-sm text-text-muted font-semibold">
                   {SUMMARY_SECTIONS[i]?.label ?? `섹션 ${i + 1}`}
                 </div>
               </div>

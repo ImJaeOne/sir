@@ -28,6 +28,7 @@ export function Snapshot({
   const cards = [
     {
       title: '주간 SIR 지수',
+      mobileTitle: '주간 SIR 지수',
       description: '1,000점 만점 기준',
       value: `${Math.round(score)}점`,
       change: snapshotDiff
@@ -36,6 +37,7 @@ export function Snapshot({
     },
     {
       title: '주간 수집된 평판 데이터 수',
+      mobileTitle: '주간 수집된\n평판 데이터 수',
       description: '6개 채널 통합 수집',
       value: `${totalItems.toLocaleString()}개`,
       change: snapshotDiff
@@ -44,6 +46,7 @@ export function Snapshot({
     },
     {
       title: '주간 리스크 높은 콘텐츠 수',
+      mobileTitle: '주간 리스크\n높은 콘텐츠 수',
       description: '즉시 검토 권장',
       value: `${riskCount.toLocaleString()}개`,
       change: snapshotDiff
@@ -52,6 +55,7 @@ export function Snapshot({
     },
     {
       title: '주간 SIR 순위',
+      mobileTitle: '주간 SIR 순위',
       description: `총 참여 기업 ${sirRanking.total}개`,
       value: getSirTier(score),
       change: snapshotDiff
@@ -62,7 +66,7 @@ export function Snapshot({
 
   return (
     <ReportSubSection title="Snapshot">
-      <div className="flex gap-7">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-7">
         {cards.map((card) => (
           <StatCard key={card.title} {...card} />
         ))}

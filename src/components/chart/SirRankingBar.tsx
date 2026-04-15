@@ -29,7 +29,7 @@ export function SirRankingBar({ tiers, pdfMode }: SirRankingBarProps) {
       <ReportCard className="flex-1" px={20} py={10}>
         <div className="flex flex-col gap-2">
           <div className={pdfMode ? 'h-56' : 'h-72'}>
-            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
               <BarChart
                 data={tiers}
                 layout="vertical"
