@@ -53,7 +53,12 @@ export function Tooltip({
         {config.icon}
       </svg>
       <span
-        className={`absolute ${positionStyles[position]} px-3 py-2 text-xs text-white ${config.bgClass} rounded-lg shadow-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 whitespace-pre-line w-max max-w-xs`}
+        className={`absolute ${positionStyles['bottom']} lg:hidden px-3 py-2 text-xs text-white ${config.bgClass} rounded-lg shadow-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 w-max max-w-[200px]`}
+      >
+        {text}
+      </span>
+      <span
+        className={`absolute ${positionStyles[position]} hidden lg:block px-3 py-2 text-xs text-white ${config.bgClass} rounded-lg shadow-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 whitespace-pre-line w-max max-w-xs`}
       >
         {text}
       </span>

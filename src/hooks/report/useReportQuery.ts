@@ -10,6 +10,7 @@ import {
   getStrategies,
   getSearchTrend,
   getPrevReport,
+  getRiskReports,
 } from '@/lib/api/reportApi';
 import type { ChannelStat, ChannelItem, RiskItem } from '@/lib/api/reportApi';
 import { workspaceKeys } from '@/hooks/workspace/useWorkspaceQuery';
@@ -29,6 +30,7 @@ export const reportKeys = {
   strategies: (id: string) => ['report', id, 'strategies'] as const,
   searchTrend: (id: string, reportId?: string) => ['report', id, 'searchTrend', reportId] as const,
   prevReport: (id: string, reportId: string) => ['report', id, 'prevReport', reportId] as const,
+  riskReports: (id: string, reportId?: string) => ['report', id, 'riskReports', reportId] as const,
 };
 
 // 리포트 데이터는 주간 보고서 — 페이지 내 refetch 불필요, 캐시 공유 극대화
@@ -46,7 +48,7 @@ export function useReportInfo(reportId: string) {
       const supabase = createClient();
       const { data } = await supabase
         .from('reports')
-        .select('type, period_start, period_end, created_at')
+        .select('type, period_start, period_end, created_at, sir_score')
         .eq('id', reportId)
         .maybeSingle();
       return data;
@@ -78,57 +80,57 @@ export function useWeeklySummary(workspaceId: string, reportId?: string) {
   });
 }
 
-export function useSirStockData(workspaceId: string) {
+export function useSirStockData(workspaceId: string, reportId?: string) {
   return useQuery({
-    queryKey: reportKeys.sirStock(workspaceId),
-    queryFn: () => getSirStockData(workspaceId),
+    queryKey: [...reportKeys.sirStock(workspaceId), reportId],
+    queryFn: () => getSirStockData(workspaceId, reportId),
     enabled: !!workspaceId,
     ...REPORT_OPTS,
   });
 }
 
-export function useSirRanking(workspaceId: string) {
+export function useSirRanking(workspaceId: string, reportId?: string) {
   return useQuery({
-    queryKey: reportKeys.sirRanking(workspaceId),
-    queryFn: () => getSirRanking(workspaceId),
+    queryKey: [...reportKeys.sirRanking(workspaceId), reportId],
+    queryFn: () => getSirRanking(workspaceId, reportId),
     enabled: !!workspaceId,
     ...REPORT_OPTS,
   });
 }
 
 /** 모든 관련 아이템 — channelStats, sentimentDetail, topContent에서 공유 */
-export function useChannelItems(workspaceId: string) {
+export function useChannelItems(workspaceId: string, reportId?: string) {
   return useQuery({
-    queryKey: reportKeys.channelItems(workspaceId),
-    queryFn: () => getChannelItems(workspaceId),
+    queryKey: [...reportKeys.channelItems(workspaceId), reportId],
+    queryFn: () => getChannelItems(workspaceId, reportId),
     enabled: !!workspaceId,
     ...REPORT_OPTS,
   });
 }
 
-export function useNewsClusters(workspaceId: string) {
+export function useNewsClusters(workspaceId: string, reportId?: string) {
   return useQuery({
-    queryKey: reportKeys.newsClusters(workspaceId),
-    queryFn: () => getNewsClusters(workspaceId),
+    queryKey: [...reportKeys.newsClusters(workspaceId), reportId],
+    queryFn: () => getNewsClusters(workspaceId, reportId),
     enabled: !!workspaceId,
     ...REPORT_OPTS,
   });
 }
 
 /** channelItems에서 파생 — channelItems 캐시 필요 */
-export function useChannelStats(workspaceId: string, channelItems?: ChannelItem[]) {
+export function useChannelStats(workspaceId: string, channelItems?: ChannelItem[], reportId?: string) {
   return useQuery({
-    queryKey: reportKeys.channelStats(workspaceId),
-    queryFn: () => getChannelStats(workspaceId, channelItems!),
+    queryKey: [...reportKeys.channelStats(workspaceId), reportId],
+    queryFn: () => getChannelStats(workspaceId, channelItems!, reportId),
     enabled: !!workspaceId && !!channelItems,
     ...REPORT_OPTS,
   });
 }
 
-export function useRiskItems(workspaceId: string) {
+export function useRiskItems(workspaceId: string, reportId?: string) {
   return useQuery({
-    queryKey: reportKeys.riskItems(workspaceId),
-    queryFn: () => getRiskItems(workspaceId),
+    queryKey: [...reportKeys.riskItems(workspaceId), reportId],
+    queryFn: () => getRiskItems(workspaceId, reportId),
     enabled: !!workspaceId,
     ...REPORT_OPTS,
   });
@@ -158,5 +160,15 @@ export function useSearchTrend(workspaceId: string, reportId?: string) {
     queryFn: () => getSearchTrend(workspaceId, reportId),
     enabled: !!workspaceId && !!reportId,
     ...REPORT_OPTS,
+  });
+}
+
+export function useRiskReports(workspaceId: string, reportId?: string) {
+  return useQuery({
+    queryKey: reportKeys.riskReports(workspaceId, reportId),
+    queryFn: () => getRiskReports(workspaceId, reportId),
+    enabled: !!workspaceId,
+    staleTime: 30 * 1000,
+    gcTime: 5 * 60 * 1000,
   });
 }

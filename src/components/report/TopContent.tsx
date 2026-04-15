@@ -37,11 +37,12 @@ const CHANNEL_ORDER = [
 
 interface TopContentProps {
   workspaceId: string;
+  reportId?: string;
 }
 
-export function TopContent({ workspaceId }: TopContentProps) {
-  const { data: channelItems } = useChannelItems(workspaceId);
-  const { data: newsClusters } = useNewsClusters(workspaceId);
+export function TopContent({ workspaceId, reportId }: TopContentProps) {
+  const { data: channelItems } = useChannelItems(workspaceId, reportId);
+  const { data: newsClusters } = useNewsClusters(workspaceId, reportId);
 
   const byChannel = new Map<string, typeof channelItems extends (infer T)[] | undefined ? T[] : never>();
   for (const item of channelItems ?? []) {
@@ -63,7 +64,7 @@ export function TopContent({ workspaceId }: TopContentProps) {
   return (
     <div className="print-break">
       <ReportSection id="section-top-content" icon={<TopContentsIcon size={36} />} title="채널별 상위 콘텐츠">
-        <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
           <TopContentCard
             channelId="news"
             title="뉴스 TOP 3"

@@ -12,12 +12,16 @@ function getSentimentType(sir: number): SentimentType {
   return 'negative';
 }
 
-function getSentimentLabel(sir: number): string {
-  if (sir >= 801) return '매우 우호적인 여론 환경이에요';
-  if (sir >= 601) return '우호적 여론이 우세한 상태예요';
-  if (sir >= 401) return '여론이 혼재된 중립 구간이에요';
-  if (sir >= 201) return '비우호적 여론이 우세한 상태예요';
-  return '여론 위기 관리가 시급한 상태예요';
+function getSentimentLabel(sir: number, mobile = false): string {
+  if (sir >= 801)
+    return mobile ? '매우 우호적인\n여론 환경이에요' : '매우 우호적인 여론 환경이에요';
+  if (sir >= 601)
+    return mobile ? '우호적 여론이\n우세한 상태예요' : '우호적 여론이 우세한 상태예요';
+  if (sir >= 401)
+    return mobile ? '여론이 혼재된\n중립 구간이에요' : '여론이 혼재된 중립 구간이에요';
+  if (sir >= 201)
+    return mobile ? '비우호적 여론이\n우세한 상태예요' : '비우호적 여론이 우세한 상태예요';
+  return mobile ? '여론 위기 관리가\n시급한 상태예요' : '여론 위기 관리가 시급한 상태예요';
 }
 
 const SENTIMENT_CONFIG: Record<
@@ -53,33 +57,53 @@ const SENTIMENT_CONFIG: Record<
   },
 };
 
-export function SirCard({ stat, isInitial }: { stat: ChannelStat; isInitial: boolean }) {
-  const change = isInitial ? stat.sir - 500 : 0;
-  const changeLabel = isInitial ? '기준점 대비' : '전주 대비';
+export function SirCard({
+  stat,
+  isInitial,
+  prevIsInitial,
+  prevSir,
+}: {
+  stat: ChannelStat;
+  isInitial: boolean;
+  prevIsInitial: boolean;
+  prevSir?: number;
+}) {
+  const prevScore = prevSir ?? 500;
+  const change = stat.sir - prevScore;
+  const changeLabel = isInitial ? '기준점 대비' : prevIsInitial ? '전월 대비' : '전주 대비';
   const isUp = change >= 0;
 
   const type = getSentimentType(stat.sir);
   const config = SENTIMENT_CONFIG[type];
   const label = getSentimentLabel(stat.sir);
+  const mobileLabel = getSentimentLabel(stat.sir, true);
 
   return (
     <ReportCard px={20} py={20}>
       <div className="flex flex-col gap-5">
         <span className="text-sm font-semibold text-text-muted">{stat.label}</span>
-        <div className="flex flex-col items-center gap-4 mb-4">
+        <div className="flex flex-col items-center gap-2 lg:gap-4 lg:mb-4">
           <div
-            className={`w-12 h-12 rounded-full flex items-center justify-center ${config.bgClass}`}
+            className={`w-9 h-9 lg:w-12 lg:h-12 rounded-full flex items-center justify-center ${config.bgClass}`}
             style={{ boxShadow: config.shadow }}
           >
-            <config.Icon size={20} color="white" />
+            <span className="block lg:hidden">
+              <config.Icon size={14} color="white" />
+            </span>
+            <span className="hidden lg:block">
+              <config.Icon size={20} color="white" />
+            </span>
           </div>
           <div className="flex flex-col justify-center items-center gap-2">
             <span className={`text-2xl font-bold ${config.textClass}`}>{stat.sir}점</span>
-            <span className="text-xs text-text-muted font-base">{label}</span>
+            <span className="text-xs text-text-muted font-base whitespace-pre-line text-center lg:hidden">
+              {mobileLabel}
+            </span>
+            <span className="text-xs text-text-muted font-base hidden lg:block">{label}</span>
           </div>
         </div>
         <div
-          className={`flex items-center justify-center text-xs font-semibold w-full rounded-md py-2 ${
+          className={`flex flex-wrap items-center justify-center gap-x-1 text-[10px] lg:text-xs font-semibold w-full rounded-md py-2 ${
             change === 0
               ? 'bg-bg-light text-text-muted'
               : isUp
@@ -87,9 +111,14 @@ export function SirCard({ stat, isInitial }: { stat: ChannelStat; isInitial: boo
                 : 'bg-bg-danger text-text-danger'
           }`}
         >
-          {change === 0
-            ? `${changeLabel} — 유지`
-            : `${changeLabel} ${isUp ? '▲' : '▼'} ${Math.abs(change)}점 ${isUp ? '상승' : '하락'}`}
+          {change === 0 ? (
+            <span>{changeLabel} — 유지</span>
+          ) : (
+            <>
+              <span>{changeLabel}</span>
+              <span>{isUp ? '▲' : '▼'} {Math.abs(change)}점 {isUp ? '상승' : '하락'}</span>
+            </>
+          )}
         </div>
       </div>
     </ReportCard>

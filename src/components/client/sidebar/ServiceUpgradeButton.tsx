@@ -23,7 +23,7 @@ export function ServiceUpgradeButton() {
         </button>
       </div>
 
-      {showModal && <ServiceUpgradeModal onClose={() => setShowModal(false)} />}
+      <ServiceUpgradeModal open={showModal} onClose={() => setShowModal(false)} />
     </>
   );
 }

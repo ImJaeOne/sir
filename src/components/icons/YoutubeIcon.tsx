@@ -1,4 +1,4 @@
-export function YoutubeIcon({ size = 30, color = '#66B6FF' }: { size?: number; color?: string }) {
+export function YoutubeIcon({ size = 30, color = '#FF0000' }: { size?: number; color?: string }) {
   const height = Math.round((size / 34) * 22);
   return (
     <svg xmlns="http://www.w3.org/2000/svg" width={size} height={height} viewBox="0 0 34 22" fill="none">

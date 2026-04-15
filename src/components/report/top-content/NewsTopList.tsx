@@ -41,17 +41,19 @@ export function NewsTopList({ clusters }: NewsTopListProps) {
           >
             <button
               onClick={() => setExpandedIdx(isActive ? null : i)}
-              className="group w-full flex items-center gap-4 px-2 py-4 text-left cursor-pointer hover:bg-slate-50/50 transition-colors"
+              className="group w-full flex items-center gap-1 lg:gap-4 px-2 py-3 lg:py-4 text-left cursor-pointer hover:bg-slate-50/50 transition-colors"
             >
+              {/* 데스크톱: 숫자 별도 */}
               <span
-                className={`shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-3xl font-bold transition-colors ${
+                className={`hidden lg:flex shrink-0 w-7 h-7 rounded-lg items-center justify-center text-3xl font-bold transition-colors ${
                   isActive ? 'text-text-accent' : 'text-text-muted group-hover:text-text-accent'
                 }`}
               >
                 {i + 1}
               </span>
               <div className="flex-1 min-w-0">
-                <div className="flex gap-2">
+                {/* 데스크톱 */}
+                <div className="hidden lg:flex gap-2">
                   <p className="text-sm text-text-dark font-semibold">
                     {cluster.representative_title}
                   </p>
@@ -59,8 +61,22 @@ export function NewsTopList({ clusters }: NewsTopListProps) {
                     {cluster.items.length}건
                   </span>
                 </div>
+                {/* 모바일: 숫자+제목 인라인 */}
+                <p className="lg:hidden text-sm text-text-dark font-semibold leading-relaxed">
+                  <span
+                    className={`text-xl font-bold mr-2 ${isActive ? 'text-text-accent' : 'text-text-muted'}`}
+                  >
+                    {i + 1}
+                  </span>
+                  {cluster.representative_title}
+                  <span className="inline-flex ml-2 align-middle text-[10px] text-text-mobile-muted bg-bg-light px-1.5 py-0.5 rounded-sm font-normal">
+                    {cluster.items.length}건
+                  </span>
+                </p>
                 {cluster.summary && (
-                  <p className="text-xs text-text-muted mt-0.5 truncate">{cluster.summary}</p>
+                  <p className="text-[14px] lg:text-xs text-text-mobile-muted lg:text-text-muted mt-0.5 lg:truncate">
+                    {cluster.summary}
+                  </p>
                 )}
               </div>
               <div className="flex items-center gap-2 shrink-0">
@@ -72,20 +88,22 @@ export function NewsTopList({ clusters }: NewsTopListProps) {
               </div>
             </button>
             {isActive && (
-              <div className="absolute left-0 right-0 mt-[0.5px] mr-2 z-10 bg-white border border-slate-200 rounded-lg shadow-lg p-2 flex flex-col gap-1 max-h-[140px] overflow-y-auto">
+              <div className="absolute left-0 right-0 mt-[0.5px] mr-0 lg:mr-2 z-10 bg-white border border-slate-200 rounded-lg shadow-lg p-1.5 lg:p-2 flex flex-col gap-0.5 lg:gap-1 max-h-[140px] overflow-y-auto">
                 {cluster.items.map((article, j) => (
                   <a
                     key={j}
                     href={article.link}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="group flex items-baseline gap-2 hover:bg-slate-50 rounded px-2 py-1.5 transition-colors"
+                    className="group flex items-baseline gap-2 hover:bg-slate-50 rounded px-1.5 py-1 lg:px-2 lg:py-1.5 transition-colors"
                   >
-                    <p className="text-sm text-text-dark group-hover:text-blue-600 transition-colors flex-1 min-w-0">
+                    <p className="text-xs lg:text-sm text-text-dark group-hover:text-blue-600 transition-colors flex-1 min-w-0">
                       {article.title}
                     </p>
                     {article.source && (
-                      <span className="text-[10px] text-text-muted shrink-0">{article.source}</span>
+                      <span className="text-[10px] text-text-muted shrink-0 hidden lg:block">
+                        {article.source}
+                      </span>
                     )}
                   </a>
                 ))}

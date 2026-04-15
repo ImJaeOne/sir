@@ -1,7 +1,12 @@
+import { LoadingIcon } from '@/components/icons/LoadingIcon';
+
 interface LoadingProps {
-  text?: string;
-  overlay?: boolean;
+  title?: string;
+  subtitle?: string;
 }
+
+const DEFAULT_TITLE = '정보를 업데이트 하고 있어요';
+const DEFAULT_SUBTITLE = '잠시만 기다려주세요';
 
 function BouncingDots() {
   return (
@@ -13,7 +18,7 @@ function BouncingDots() {
         }
       `}</style>
       <div className="flex items-center gap-1.5">
-        {[0, 1, 2, 3, 4].map((i) => (
+        {[0, 1, 2].map((i) => (
           <div
             key={i}
             className="w-2.5 h-2.5 rounded-full bg-bg-accent"
@@ -28,22 +33,36 @@ function BouncingDots() {
   );
 }
 
-/** 전체 화면 로딩 (Suspense fallback 등) */
-export function Loading({ text = '로딩 중' }: LoadingProps) {
+function LoadingContent({ title, subtitle }: { title: string; subtitle: string }) {
   return (
-    <div className="flex flex-col items-center justify-center h-[calc(100vh-49px)] gap-4">
+    <div className="flex flex-col items-center gap-4">
+      <LoadingIcon width={60} height={50} />
+      <div className="flex flex-col items-center gap-1 mb-2">
+        <p className="text-base font-semibold text-text-dark">{title}</p>
+        <p className="text-sm text-text-muted">{subtitle}</p>
+      </div>
       <BouncingDots />
-      <p className="text-sm text-text-dark">{text}</p>
+    </div>
+  );
+}
+
+/** 전체 화면 로딩 (Suspense fallback 등) */
+export function Loading({ title = DEFAULT_TITLE, subtitle = DEFAULT_SUBTITLE }: LoadingProps) {
+  return (
+    <div className="flex flex-col items-center justify-center h-[calc(100vh-49px)]">
+      <LoadingContent title={title} subtitle={subtitle} />
     </div>
   );
 }
 
 /** 오버레이 로딩 (다운로드 등 블로킹 작업) */
-export function LoadingOverlay({ text = '로딩 중' }: LoadingProps) {
+export function LoadingOverlay({
+  title = DEFAULT_TITLE,
+  subtitle = DEFAULT_SUBTITLE,
+}: LoadingProps) {
   return (
-    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-white/60 backdrop-blur-[2px]">
-      <BouncingDots />
-      <p className="text-sm text-text-dark">{text}</p>
+    <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-white/60 backdrop-blur-[2px]">
+      <LoadingContent title={title} subtitle={subtitle} />
     </div>
   );
 }

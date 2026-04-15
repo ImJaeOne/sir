@@ -15,15 +15,15 @@ export default function ReportPdfPage() {
   const reportId = params?.reportId as string;
   const isFetching = useIsFetching();
 
-  if (isFetching > 0) return <Loading text="보고서 준비 중" />;
+  if (isFetching > 0) return <Loading />;
 
   return (
     <div className="p-8 bg-white min-h-screen">
       <div className="max-w-6xl mx-auto flex flex-col gap-8">
         <Highlight workspaceId={workspaceId} reportId={reportId} pdfMode />
         <OnlineReputation workspaceId={workspaceId} reportId={reportId} pdfMode />
-        <TopContent workspaceId={workspaceId} />
-        <RiskContent workspaceId={workspaceId} />
+        <TopContent workspaceId={workspaceId} reportId={reportId} />
+        <RiskContent workspaceId={workspaceId} reportId={reportId} />
         <Strategy workspaceId={workspaceId} reportId={reportId} />
       </div>
     </div>

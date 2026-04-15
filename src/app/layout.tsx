@@ -14,11 +14,24 @@ const pretendard = localFont({
 export const metadata: Metadata = {
   title: 'InnoPlan SIR',
   description: 'AI 기반 디지털 평판 관리 플랫폼',
+  manifest: '/manifest.json',
+  themeColor: '#362CFF',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'SIR',
+  },
+  other: {
+    'mobile-web-app-capable': 'yes',
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ko" className={pretendard.variable}>
+      <head>
+        <link rel="apple-touch-icon" href="/icons/sir-icon.png" />
+      </head>
       <body className={pretendard.className}>
         <QueryProvider>{children}</QueryProvider>
         <Toaster position="top-right" richColors toastOptions={{ style: { width: 'fit-content', whiteSpace: 'nowrap' } }} />

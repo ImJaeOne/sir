@@ -14,15 +14,15 @@ const ReportCalendarModal = dynamic(
 
 function useReportList(workspaceId?: string, enabled = false) {
   return useQuery({
-    queryKey: ['reports', workspaceId],
+    queryKey: ['reports', 'published', workspaceId],
     queryFn: async () => {
       const supabase = createClient();
       const { data } = await supabase
         .from('reports')
         .select('id, type, status, period_start, period_end')
         .eq('workspace_id', workspaceId!)
-        .eq('status', 'draft')
-        .order('created_at', { ascending: false });
+        .eq('status', 'published')
+        .order('period_end', { ascending: false });
       return data ?? [];
     },
     enabled: !!workspaceId && enabled,

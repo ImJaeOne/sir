@@ -26,7 +26,7 @@ export function EmailResult() {
   const [recipients, setRecipients] = useState(DEFAULT_RECIPIENTS);
   const [newEmail, setNewEmail] = useState('');
   const [subject, setSubject] = useState(
-    `[SIR Report] ${company} 감성 분석 리포트 (${startDate} ~ ${endDate})`
+    `[SIR Report] ${company} 감정 분석 리포트 (${startDate} ~ ${endDate})`
   );
   const [attachPdf, setAttachPdf] = useState(true);
   const [attachDocx, setAttachDocx] = useState(true);
@@ -150,7 +150,7 @@ export function EmailResult() {
         <div className="border border-slate-100 rounded-xl bg-white px-4 py-4 text-sm text-slate-700 flex flex-col gap-3">
           <p>안녕하세요,</p>
           <p>
-            <span className="font-semibold">{company}</span>의 SIR 감성 분석 리포트를 전달드립니다.
+            <span className="font-semibold">{company}</span>의 SIR 감정 분석 리포트를 전달드립니다.
           </p>
           <div className="bg-slate-50 rounded-lg px-4 py-3 flex flex-col gap-1.5">
             <div className="flex items-center justify-between">

@@ -4,6 +4,17 @@ import { ReportCard } from '@/components/report/ReportCard';
 import { ReportSubSection } from '@/components/report/ReportSection';
 import { ChartLegend } from '@/components/ui/ChartLegend';
 import { SearchTrendChart } from '@/components/chart/SearchTrendChart';
+import { MobileSearchTrendChart } from '@/components/chart/MobileSearchTrendChart';
+
+const DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토'];
+
+function formatLabel(date: string): string {
+  const d = new Date(date);
+  const m = d.getMonth() + 1;
+  const dd = d.getDate();
+  const day = DAY_NAMES[d.getDay()];
+  return `${m}/${dd}(${day})`;
+}
 
 interface TrendPoint {
   date: string;
@@ -25,7 +36,7 @@ export function SearchTrendPanel({ naverTrend, googleTrend, pdfMode }: SearchTre
   const googleMap = new Map(googleTrend.map((t) => [t.date, t.ratio]));
   const chartData = naverTrend.map((t) => ({
     date: t.date,
-    label: t.date.slice(5),
+    label: formatLabel(t.date),
     네이버: t.ratio,
     구글: googleMap.get(t.date) ?? null,
   }));
@@ -39,10 +50,15 @@ export function SearchTrendPanel({ naverTrend, googleTrend, pdfMode }: SearchTre
       }
     >
       <ReportCard px={20} py={20}>
-        <div className="flex justify-end mb-4">
+        <div className="flex justify-end mb-1 lg:mb-4">
           <ChartLegend items={LEGEND_ITEMS} />
         </div>
-        <SearchTrendChart data={chartData} pdfMode={pdfMode} />
+        <div className="hidden lg:block">
+          <SearchTrendChart data={chartData} pdfMode={pdfMode} />
+        </div>
+        <div className="lg:hidden">
+          <MobileSearchTrendChart data={chartData} />
+        </div>
       </ReportCard>
     </ReportSubSection>
   );

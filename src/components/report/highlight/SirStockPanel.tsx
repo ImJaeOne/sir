@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { SirStockChart } from '@/components/chart/SirStockChart';
+import { MobileSirStockChart } from '@/components/chart/MobileSirStockChart';
 import { ReportCard } from '@/components/report/ReportCard';
 import { ReportSubSection } from '@/components/report/ReportSection';
 import { ChartLegend } from '@/components/ui/ChartLegend';
@@ -43,7 +44,7 @@ export function SirStockPanel({ pdfMode, sirStockData }: SirStockPanelProps) {
                 <button
                   key={key}
                   onClick={() => setTimeFrame(key)}
-                  className={`text-xs w-8 h-8 rounded-lg font-semibold transition-colors cursor-pointer ${
+                  className={`text-[10px] lg:text-xs w-6 h-6 lg:w-8 lg:h-8 rounded-md lg:rounded-lg font-semibold transition-colors cursor-pointer ${
                     timeFrame === key
                       ? 'bg-bg-accent text-white'
                       : 'bg-bg-light text-text-muted hover:bg-slate-200'
@@ -55,7 +56,14 @@ export function SirStockPanel({ pdfMode, sirStockData }: SirStockPanelProps) {
             </div>
             <ChartLegend items={LEGEND_ITEMS} />
           </div>
-          <SirStockChart timeFrame={timeFrame} pdfMode={pdfMode} data={sirStockData} />
+          {/* 데스크톱 */}
+          <div className="hidden lg:block">
+            <SirStockChart timeFrame={timeFrame} pdfMode={pdfMode} data={sirStockData} />
+          </div>
+          {/* 모바일 */}
+          <div className="lg:hidden">
+            <MobileSirStockChart timeFrame={timeFrame} data={sirStockData} />
+          </div>
         </div>
       </ReportCard>
     </ReportSubSection>

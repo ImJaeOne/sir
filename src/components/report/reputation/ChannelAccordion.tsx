@@ -12,7 +12,7 @@ const CHANNEL_CONFIG: Record<string, { icon: React.ComponentType<{ size?: number
   {
     뉴스: { icon: NewsIcon, bg: 'bg-bg-blue' },
     블로그: { icon: BlogIcon, bg: 'bg-bg-pupple-15' },
-    유튜브: { icon: YoutubeIcon, bg: 'bg-bg-skyblue-15' },
+    유튜브: { icon: YoutubeIcon, bg: 'bg-bg-youtube-15' },
     커뮤니티: { icon: CommunityIcon, bg: 'bg-bg-green-15' },
   };
 
@@ -35,30 +35,45 @@ export function ChannelAccordion({ name, total, trend, children }: ChannelAccord
   const isEmpty = total === 0;
 
   return (
-    <div className="border rounded-xl overflow-hidden transition-colors border-slate-100">
+    <div className="border-b lg:border pb-2 lg:pb-0 lg:rounded-xl overflow-hidden transition-colors border-slate-100">
       <button
         onClick={() => !isEmpty && setOpen(!open)}
-        className={`w-full flex items-center justify-between px-4 py-4 transition-colors text-left hover:cursor-pointer`}
+        className={`w-full flex items-center justify-between lg:px-4 lg:py-4 transition-colors text-left hover:cursor-pointer`}
       >
         <div className="flex items-center justify-between flex-1">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 lg:gap-4">
             {CHANNEL_CONFIG[name] &&
               (() => {
                 const { icon: Icon, bg } = CHANNEL_CONFIG[name];
                 return (
                   <div
-                    className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${bg}`}
+                    className={`w-9 h-9 lg:w-10 lg:h-10 rounded-lg flex items-center justify-center shrink-0 ${bg}`}
                   >
-                    <Icon size={20} />
+                    <span className="lg:hidden">
+                      <Icon size={18} />
+                    </span>
+                    <span className="hidden lg:block">
+                      <Icon size={20} />
+                    </span>
                   </div>
                 );
               })()}
-            <div className="flex flex-col gap-1">
-              <span className="text-sm text-text-dark font-semibold">{name}</span>
-              <span className="text-xs text-text-muted">{channelDescriptions[name] ?? ''}</span>
+            <div className="flex flex-col gap-0.5 lg:gap-1">
+              <div className="flex items-center gap-2">
+                <span className="text-base lg:text-sm text-text-dark font-semibold">{name}</span>
+                <div className="flex items-center gap-1.5 lg:hidden">
+                  <CountBadge count={total} label="수집" />
+                  {!isEmpty && (
+                    <Badge variant={trend.includes('긍정') ? 'blue' : 'red'}>{trend}</Badge>
+                  )}
+                </div>
+              </div>
+              <span className="text-xs lg:text-xs text-text-muted">
+                {channelDescriptions[name] ?? ''}
+              </span>
             </div>
           </div>
-          <div className="flex items-center gap-2 mr-4">
+          <div className="hidden lg:flex items-center gap-2 mr-4">
             <CountBadge count={total} label="수집" />
             {!isEmpty && <Badge variant={trend.includes('긍정') ? 'blue' : 'red'}>{trend}</Badge>}
           </div>
@@ -70,7 +85,11 @@ export function ChannelAccordion({ name, total, trend, children }: ChannelAccord
             <ChevronDown size={16} className="text-slate-400" />
           ))}
       </button>
-      {open && <div className="border-t border-slate-50 pl-[72px] pr-10 py-2">{children}</div>}
+      {open && (
+        <div className="border-t border-slate-50 pl-0 pr-0 lg:pl-[72px] lg:pr-10 py-2">
+          {children}
+        </div>
+      )}
     </div>
   );
 }

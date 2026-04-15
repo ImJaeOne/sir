@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { useQuery } from '@tanstack/react-query';
@@ -69,7 +70,11 @@ export function PdfDownloadButton() {
 
   return (
     <>
-      {downloading && <LoadingOverlay text="보고서 다운로드 중" />}
+      {downloading && typeof document !== 'undefined' && document.getElementById('client-main') &&
+        createPortal(
+          <LoadingOverlay title="보고서를 다운로드 하고 있어요" />,
+          document.getElementById('client-main')!,
+        )}
       <div className="px-3 w-full">
         <button
           onClick={handleDownload}

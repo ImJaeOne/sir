@@ -7,14 +7,14 @@ import type { ChannelStat } from '@/lib/api/reportApi';
 const CHANNEL_COLORS: Record<string, string> = {
   news: 'var(--color-bg-accent)',
   blog: 'var(--color-bg-pupple)',
-  youtube: 'var(--color-bg-skyblue)',
+  youtube: 'var(--color-bg-youtube)',
   community: 'var(--color-bg-green)',
 };
 
 const LEGEND_ITEMS = [
   { color: 'bg-bg-accent', label: '뉴스' },
   { color: 'bg-bg-pupple', label: '블로그' },
-  { color: 'bg-bg-skyblue', label: '유튜브' },
+  { color: 'bg-bg-youtube', label: '유튜브' },
   { color: 'bg-bg-green', label: '커뮤니티' },
 ];
 
@@ -31,7 +31,7 @@ export function ChannelDonutChart({ channelStats, total, pdfMode }: ChannelDonut
         <ChartLegend items={LEGEND_ITEMS} />
       </div>
       <div className={`my-5 outline-none **:outline-none ${pdfMode ? 'h-48' : 'h-60'}`}>
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
           <PieChart>
             <Pie
               data={channelStats}

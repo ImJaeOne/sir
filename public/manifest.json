@@ -1,0 +1,17 @@
+{
+  "name": "SIR - Stock Intelligence Report",
+  "short_name": "SIR",
+  "description": "기업 평판 모니터링 및 SIR 지수 리포트",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#362CFF",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/icons/sir-icon.png",
+      "sizes": "80x80",
+      "type": "image/png"
+    }
+  ]
+}

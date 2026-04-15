@@ -4,27 +4,24 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { Badge } from '@/components/ui/Badge';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { RiskReportRequestModal } from '@/components/report/risk-content/RiskReportRequestModal';
 import type { RiskItem } from '@/lib/api/reportApi';
 
 const criticalTypeConfig: Record<
   string,
   { label: string; variant: 'red' | 'amber' | 'blue' | 'slate' }
 > = {
-  stock_manipulation: { label: '시세조종', variant: 'red' },
-  false_info: { label: '허위정보', variant: 'amber' },
   defamation: { label: '명예훼손', variant: 'red' },
-  threat: { label: '위협', variant: 'red' },
-  ad: { label: '광고', variant: 'blue' },
+  insult: { label: '욕설/비방', variant: 'amber' },
+  rumor: { label: '루머', variant: 'blue' },
   spam: { label: '스팸', variant: 'slate' },
 };
 
 const criticalTypeDescriptions: Record<string, string> = {
-  stock_manipulation: '시세 조종이 의심되는 게시물',
-  false_info: '허위 정보가 사실처럼 확산되는 게시물',
-  defamation: '기업/인물에 대한 명예훼손성 게시물',
-  threat: '특정인을 대상으로 한 위협/협박 게시물',
-  ad: '기업 관련 광고/홍보성 게시물',
-  spam: '스팸/도배/무관 광고 게시물',
+  defamation: '구체적 사실 또는 허위사실로 평판을 떨어뜨리는 게시물',
+  insult: '사실 주장 없이 상대를 깎아내리거나 조롱하는 게시물',
+  rumor: '확인되지 않은 내용을 추정형으로 퍼뜨리는 게시물',
+  spam: '리딩방 홍보/반복성 도배/상업성 링크 유도 게시물',
 };
 
 const PLATFORM_TO_CHANNEL: Record<string, string> = {
@@ -37,7 +34,6 @@ const PLATFORM_TO_CHANNEL: Record<string, string> = {
 
 const CHANNEL_TABS = [
   { key: 'all', label: '전체' },
-  { key: 'news', label: '뉴스' },
   { key: 'blog', label: '블로그' },
   { key: 'youtube', label: '유튜브' },
   { key: 'community', label: '커뮤니티' },
@@ -56,10 +52,23 @@ const COL_TEMPLATE = '10% 8% 10% 1fr 12%';
 
 interface RiskTableProps {
   riskItems: RiskItem[];
+  workspaceId: string;
+  reportId: string;
+  reportedSourceIds: Set<string>;
+  riskReportBySourceId: Map<string, string>;
+  onCancelReport: (riskReportId: string) => void;
 }
 
-export function RiskTable({ riskItems }: RiskTableProps) {
+export function RiskTable({
+  riskItems,
+  workspaceId,
+  reportId,
+  reportedSourceIds,
+  riskReportBySourceId,
+  onCancelReport,
+}: RiskTableProps) {
   const [tab, setTab] = useState<string>('all');
+  const [reportTarget, setReportTarget] = useState<RiskItem | null>(null);
   const parentRef = useRef<HTMLDivElement>(null);
 
   const filtered = useMemo(() => {
@@ -85,7 +94,7 @@ export function RiskTable({ riskItems }: RiskTableProps) {
     for (const tabItem of CHANNEL_TABS) {
       if (tabItem.key === 'all') continue;
       counts[tabItem.key] = riskItems.filter(
-        (i) => PLATFORM_TO_CHANNEL[i.platform_id] === tabItem.key,
+        (i) => PLATFORM_TO_CHANNEL[i.platform_id] === tabItem.key
       ).length;
     }
     return counts;
@@ -94,17 +103,17 @@ export function RiskTable({ riskItems }: RiskTableProps) {
   return (
     <div>
       {/* 채널 탭 */}
-      <div className="flex gap-4 mt-1 mb-2 border-b border-border-light">
+      <div className="flex gap-4 mt-1 border-b border-border-light">
         {CHANNEL_TABS.map((t) => {
           const active = tab === t.key;
           return (
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
-              className="flex flex-col items-center gap-1 cursor-pointer"
+              className="flex flex-col items-center gap-1 cursor-pointer flex-1 lg:flex-none"
             >
               <div
-                className={`text-xs transition-colors px-2 ${
+                className={`text-xs transition-colors ${
                   active ? 'text-text-dark font-semibold' : 'text-text-muted font-normal'
                 }`}
               >
@@ -124,107 +133,218 @@ export function RiskTable({ riskItems }: RiskTableProps) {
         <EmptyState message="탐지된 리스크 콘텐츠가 없습니다." />
       ) : (
         <>
-          {/* 헤더 */}
-          <div
-            className="grid border-y border-border-light py-3 px-3 text-xs font-semibold text-text-muted text-center"
-            style={{ gridTemplateColumns: COL_TEMPLATE }}
-          >
-            <div>탐지일</div>
-            <div>채널명</div>
-            <div>탐지 분류</div>
-            <div>세부내용</div>
-            <div></div>
-          </div>
-
-          {/* 가상 스크롤 바디 */}
-          <div ref={parentRef} className="max-h-[600px] overflow-y-auto">
+          {/* 데스크톱: grid 테이블 */}
+          <div className="hidden lg:block">
             <div
-              style={{
-                height: `${rowVirtualizer.getTotalSize()}px`,
-                width: '100%',
-                position: 'relative',
-              }}
+              className="grid border-b border-border-light py-3 px-3 text-xs font-semibold text-text-muted text-center"
+              style={{ gridTemplateColumns: COL_TEMPLATE }}
             >
-              {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-                const item = filtered[virtualRow.index];
-                const config = criticalTypeConfig[item.critical_type] ?? {
-                  label: item.critical_type,
-                  variant: 'slate' as const,
-                };
-                return (
-                  <div
-                    key={virtualRow.key}
-                    data-index={virtualRow.index}
-                    ref={rowVirtualizer.measureElement}
-                    style={{
-                      position: 'absolute',
-                      top: 0,
-                      left: 0,
-                      width: '100%',
-                      transform: `translateY(${virtualRow.start}px)`,
-                    }}
-                  >
+              <div>수집일</div>
+              <div>채널명</div>
+              <div>탐지 분류</div>
+              <div>세부내용</div>
+              <div></div>
+            </div>
+            <div ref={parentRef} className="max-h-[600px] overflow-y-auto">
+              <div
+                style={{
+                  height: `${rowVirtualizer.getTotalSize()}px`,
+                  width: '100%',
+                  position: 'relative',
+                }}
+              >
+                {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                  const item = filtered[virtualRow.index];
+                  const config = criticalTypeConfig[item.critical_type] ?? {
+                    label: item.critical_type,
+                    variant: 'slate' as const,
+                  };
+                  return (
                     <div
-                      className="grid items-start py-4 px-3 border-b border-border-light hover:bg-slate-50/50 transition-colors"
-                      style={{ gridTemplateColumns: COL_TEMPLATE }}
+                      key={virtualRow.key}
+                      data-index={virtualRow.index}
+                      ref={rowVirtualizer.measureElement}
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        transform: `translateY(${virtualRow.start}px)`,
+                      }}
                     >
-                      {/* 탐지일 */}
-                      <div className="text-center text-xs text-text-muted">
-                        {item.published_at
-                          ? item.published_at.slice(0, 10).replace(/-/g, '.')
-                          : ''}
-                      </div>
-                      {/* 채널명 */}
-                      <div className="text-center text-xs text-text-muted">
-                        {PLATFORM_LABELS[item.platform_id] ?? item.platform_id}
-                      </div>
-                      {/* 탐지 분류 */}
-                      <div className="text-center">
-                        <Badge variant={config.variant} bordered>
-                          {config.label}
-                        </Badge>
-                      </div>
-                      {/* 세부내용 */}
-                      <div className="px-3">
-                        <div className="flex flex-col gap-2">
-                          <span className="text-xs bg-bg-light text-text-muted w-fit px-2 py-0.5 rounded-[10px]">
-                            {criticalTypeDescriptions[item.critical_type] ?? item.critical_type}
-                          </span>
-                          <div className="flex flex-col gap-1">
-                            <a
-                              href={item.link}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-sm font-semibold text-text-dark hover:text-blue-600 hover:underline transition-colors"
-                            >
-                              {item.title}
-                            </a>
-                            {item.critical_reason && (
-                              <p className="text-xs text-text-muted leading-relaxed">
-                                {item.critical_reason}
-                              </p>
-                            )}
+                      <div
+                        className="grid items-center py-4 px-3 border-b border-border-light hover:bg-slate-50/50 transition-colors"
+                        style={{ gridTemplateColumns: COL_TEMPLATE }}
+                      >
+                        <div className="text-center text-xs text-text-muted">
+                          {item.published_at
+                            ? item.published_at.slice(0, 10).replace(/-/g, '.')
+                            : ''}
+                        </div>
+                        <div className="text-center text-xs text-text-muted">
+                          {PLATFORM_LABELS[item.platform_id] ?? item.platform_id}
+                        </div>
+                        <div className="text-center">
+                          <Badge variant={config.variant} bordered>
+                            {config.label}
+                          </Badge>
+                        </div>
+                        <div className="px-3">
+                          <div className="flex flex-col gap-2">
+                            <span className="text-xs bg-bg-light text-text-muted w-fit px-2 py-0.5 rounded-[10px]">
+                              {criticalTypeDescriptions[item.critical_type] ?? item.critical_type}
+                            </span>
+                            <div className="flex flex-col gap-1">
+                              <a
+                                href={item.link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-sm font-semibold text-text-dark hover:text-blue-600 hover:underline transition-colors"
+                              >
+                                {item.title}
+                              </a>
+                              {item.critical_reason && (
+                                <p className="text-xs text-text-muted leading-relaxed">
+                                  {item.critical_reason}
+                                </p>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                      {/* 액션 */}
-                      <div className="text-right pr-2">
-                        <Badge
-                          variant="blue"
-                          className="px-3 py-1.5 cursor-pointer hover:bg-bg-accent hover:text-white transition-colors"
-                        >
-                          신고 대행 요청
-                        </Badge>
+                        <div className="text-right pr-2">
+                          {reportedSourceIds.has(item.id) ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const rrId = riskReportBySourceId.get(item.id);
+                                if (rrId) onCancelReport(rrId);
+                              }}
+                              className="cursor-pointer"
+                            >
+                              <Badge
+                                variant="slate"
+                                className="px-3 py-1.5 hover:bg-red-100 hover:text-red-600 transition-colors"
+                              >
+                                신고 대행 취소
+                              </Badge>
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setReportTarget(item)}
+                              className="cursor-pointer"
+                            >
+                              <Badge
+                                variant="blue"
+                                className="px-3 py-1.5 hover:bg-bg-accent hover:text-white transition-colors"
+                              >
+                                신고 대행 요청
+                              </Badge>
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
           </div>
-          <p className="text-xs text-text-muted text-center py-2">총 {filtered.length}건</p>
+
+          {/* 모바일: 카드 리스트 */}
+          <div className="lg:hidden flex flex-col gap-3 py-3 max-h-[400px] overflow-y-auto">
+            {filtered.map((item) => {
+              const config = criticalTypeConfig[item.critical_type] ?? {
+                label: item.critical_type,
+                variant: 'slate' as const,
+              };
+              return (
+                <div
+                  key={item.id}
+                  className="border border-border-light rounded-xl p-4 flex flex-col gap-2.5"
+                >
+                  <div className="flex gap-2">
+                    <span className="w-14 shrink-0 text-sm text-text-mobile-muted pt-0.5">
+                      수집일
+                    </span>
+                    <span className="text-sm text-text-dark">
+                      {item.published_at ? item.published_at.slice(0, 10).replace(/-/g, '.') : '-'}
+                    </span>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="w-14 shrink-0 text-sm text-text-mobile-muted pt-0.5">
+                      채널명
+                    </span>
+                    <span className="text-sm text-text-dark">
+                      {PLATFORM_LABELS[item.platform_id] ?? item.platform_id}
+                    </span>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="w-14 shrink-0 text-sm text-text-mobile-muted pt-0.5">
+                      탐지 분류
+                    </span>
+                    <Badge variant={config.variant} bordered>
+                      {config.label}
+                    </Badge>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="w-14 shrink-0 text-sm text-text-mobile-muted pt-0.5">
+                      세부 내용
+                    </span>
+                    <div className="flex-1 flex flex-col gap-1.5 min-w-0">
+                      <span className="text-xs bg-bg-light text-text-mobile-muted w-fit px-2 py-0.5 rounded-[10px]">
+                        {criticalTypeDescriptions[item.critical_type] ?? item.critical_type}
+                      </span>
+                      <a
+                        href={item.link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm font-semibold text-text-dark hover:text-blue-600 hover:underline transition-colors"
+                      >
+                        {item.title}
+                      </a>
+                      {item.critical_reason && (
+                        <p className="text-[14px] text-text-mobile-muted leading-relaxed">
+                          {item.critical_reason}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  {reportedSourceIds.has(item.id) ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const rrId = riskReportBySourceId.get(item.id);
+                        if (rrId) onCancelReport(rrId);
+                      }}
+                      className="w-full py-2.5 rounded-xl text-xs font-semibold bg-slate-100 text-slate-500 hover:bg-red-100 hover:text-red-600 transition-colors cursor-pointer"
+                    >
+                      신고 대행 취소
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setReportTarget(item)}
+                      className="w-full py-2.5 rounded-xl text-xs font-semibold bg-bg-accent text-white hover:bg-blue-700 transition-colors cursor-pointer"
+                    >
+                      신고 대행 요청
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </>
       )}
+      <p className="text-xs text-text-muted text-center py-2">총 {filtered.length}건</p>
+
+      <RiskReportRequestModal
+        open={!!reportTarget}
+        onClose={() => setReportTarget(null)}
+        item={reportTarget}
+        workspaceId={workspaceId}
+        reportId={reportId}
+      />
     </div>
   );
 }

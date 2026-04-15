@@ -10,7 +10,44 @@ import { OnlineReputation } from '@/components/report/OnlineReputation';
 import { TopContent } from '@/components/report/TopContent';
 import { RiskContent } from '@/components/report/RiskContent';
 import { Strategy } from '@/components/report/Strategy';
+import { ServiceCTA } from '@/components/report/ServiceCTA';
+import { ReportDisclaimer } from '@/components/report/ReportDisclaimer';
 import { Loading } from '@/components/ui/Loading';
+
+const BG_COLORS = {
+  'bg-light': 'var(--color-bg-light)',
+  blue: '#f5faff',
+} as const;
+
+function SectionBg({
+  color,
+  gradient,
+  children,
+}: {
+  color: keyof typeof BG_COLORS;
+  gradient?: 'from-light' | 'from-blue';
+  children: React.ReactNode;
+}) {
+  const bg = BG_COLORS[color];
+  const gradientFrom =
+    gradient === 'from-light'
+      ? BG_COLORS['bg-light']
+      : gradient === 'from-blue'
+        ? BG_COLORS.blue
+        : null;
+
+  return (
+    <div style={{ backgroundColor: bg }}>
+      {gradientFrom && (
+        <div
+          className="h-6 lg:h-20"
+          style={{ background: `linear-gradient(to bottom, ${gradientFrom}, ${bg})` }}
+        />
+      )}
+      <div className="mx-auto w-full lg:w-[1200px] px-4 lg:px-10 py-5">{children}</div>
+    </div>
+  );
+}
 
 export default function ClientReportPage() {
   const params = useParams();
@@ -33,20 +70,32 @@ export default function ClientReportPage() {
     <div className="relative">
       {!ready && (
         <div className="absolute inset-0 z-50 bg-bg-light min-h-screen">
-          <Loading text="보고서 준비 중" />
+          <Loading />
         </div>
       )}
-      <div className={`px-10 py-10 bg-bg-light ${ready ? '' : 'invisible'}`}>
-        <div className="mx-auto w-[1200px] flex flex-col gap-10">
-          <section id="section-highlight" className="flex flex-col gap-10">
+      <div className={`lg:min-w-fit ${ready ? '' : 'invisible'}`}>
+        <SectionBg color="bg-light">
+          <section id="section-highlight" className="flex flex-col lg:gap-10">
             <ReportHeader workspaceId={workspaceId} reportId={reportId} showPdfButton={false} />
             <Highlight workspaceId={workspaceId} reportId={reportId} />
           </section>
+        </SectionBg>
+        <SectionBg color="blue" gradient="from-light">
           <OnlineReputation workspaceId={workspaceId} reportId={reportId} />
-          <TopContent workspaceId={workspaceId} />
-          <RiskContent workspaceId={workspaceId} />
+        </SectionBg>
+        <SectionBg color="bg-light" gradient="from-blue">
+          <TopContent workspaceId={workspaceId} reportId={reportId} />
+        </SectionBg>
+        <SectionBg color="blue" gradient="from-light">
+          <RiskContent workspaceId={workspaceId} reportId={reportId} />
+        </SectionBg>
+        <SectionBg color="bg-light" gradient="from-blue">
           <Strategy workspaceId={workspaceId} reportId={reportId} />
-        </div>
+        </SectionBg>
+        <SectionBg color="blue" gradient="from-light">
+          <ServiceCTA />
+          <ReportDisclaimer />
+        </SectionBg>
       </div>
     </div>
   );

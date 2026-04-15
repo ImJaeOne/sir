@@ -3,6 +3,7 @@
 import { ReportCard } from '@/components/report/ReportCard';
 import { ReportSubSection } from '@/components/report/ReportSection';
 import { SentimentStackedBar } from '@/components/chart/SentimentStackedBar';
+import { MobileSentimentStackedBar } from '@/components/chart/MobileSentimentStackedBar';
 import { SentimentSummaryCard } from '@/components/report/reputation/SentimentSummaryCard';
 import { LikeIcon } from '@/components/icons/LikeIcon';
 import { NeutralIcon } from '@/components/icons/NeutralIcon';
@@ -59,16 +60,21 @@ export function SentimentPanel({ channelStats, pdfMode }: SentimentPanelProps) {
   return (
     <ReportSubSection
       title="채널별 긍정·중립·부정 여론 비중"
-      description="채널별 감정 분포를 100% 누적 막대로 비교하여 여론 구조를 직관적으로 보여줍니다."
+      description="채널별 감정 분포를 100% 누적 그래프로 비교하여 여론 구조를 직관적으로 보여줍니다."
     >
-      <div className="flex gap-4">
-        <div className="shrink-0 w-[270px] flex flex-col gap-3">
+      <div className="flex flex-col lg:flex-row gap-4">
+        <div className="shrink-0 lg:w-[270px] grid grid-cols-3 lg:grid-cols-1 gap-3">
           {CARD_ITEMS.map((card) => (
             <SentimentSummaryCard key={card.label} {...card} />
           ))}
         </div>
         <ReportCard className="flex-1" px={20} py={20}>
-          <SentimentStackedBar data={sentimentData} pdfMode={pdfMode} />
+          <div className="hidden lg:block">
+            <SentimentStackedBar data={sentimentData} pdfMode={pdfMode} />
+          </div>
+          <div className="lg:hidden">
+            <MobileSentimentStackedBar data={sentimentData} />
+          </div>
         </ReportCard>
       </div>
     </ReportSubSection>

@@ -153,7 +153,7 @@ export function AnalysisResult({ clusters, standaloneItems, crawlItems, communit
     <div className="flex flex-col gap-4">
       {/* Total SIR */}
       <div className="flex items-center justify-between">
-        <p className="text-sm font-semibold text-slate-700">감성 분석 완료</p>
+        <p className="text-sm font-semibold text-slate-700">감정 분석 완료</p>
         <div className="flex items-center gap-2">
           <span className="text-xs text-slate-400">종합 SIR 지수</span>
           <span
@@ -224,7 +224,7 @@ export function AnalysisResult({ clusters, standaloneItems, crawlItems, communit
 
                         return (
                         <div className="px-4 pl-6 pb-3 flex flex-col gap-2">
-                          {/* 감성 필터 */}
+                          {/* 감정 필터 */}
                           <div className="flex items-center gap-1.5 py-1">
                             {([
                               { key: null, label: '전체' },
