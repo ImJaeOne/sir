@@ -44,8 +44,8 @@ export function MobileFab() {
   // 초기 위치: 우하단
   useEffect(() => {
     if (!initialized) {
-      setPos({ x: window.innerWidth - FAB_SIZE - 20, y: window.innerHeight - FAB_SIZE - 24 });
-      setInitialized(true);
+      setPos({ x: window.innerWidth - FAB_SIZE - 20, y: window.innerHeight - FAB_SIZE - 24 }); // eslint-disable-line react-hooks/set-state-in-effect
+      setInitialized(true); // eslint-disable-line react-hooks/set-state-in-effect
     }
   }, [initialized]);
 
