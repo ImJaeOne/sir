@@ -24,7 +24,7 @@ export function ChannelCard({ id, label, value, ratio }: ChannelCardProps) {
   return (
     <ReportCard px={20} py={20}>
       <div className="flex flex-col items-start justify-between h-full">
-        <div className="flex gap-2 items-center">
+        <div className="flex gap-2 items-center mb-4 lg:mb-0">
           {Icon && <Icon size={20} />}
           <span className="text-sm text-text-muted font-semibold">{label}</span>
         </div>

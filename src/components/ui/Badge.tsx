@@ -21,14 +21,19 @@ interface BadgeProps {
   className?: string;
 }
 
-export function Badge({ children, variant = 'slate', bordered = false, className = '' }: BadgeProps) {
+export function Badge({
+  children,
+  variant = 'slate',
+  bordered = false,
+  className = '',
+}: BadgeProps) {
   return (
     <span
       className={cn(
-        'text-xs font-medium px-5 py-2 rounded-[10px]',
+        'text-[8px] lg:text-xs font-medium px-2 py-0.5 lg:px-5 lg:py-2 rounded-sm lg:rounded-[10px]',
         VARIANT_STYLES[variant],
         bordered && 'border border-current',
-        className,
+        className
       )}
     >
       {children}

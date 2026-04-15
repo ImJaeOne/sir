@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { SentimentIcon } from '@/components/report/reputation/SentimentIcon';
+import { SentimentIcon, SentimentBadge } from '@/components/report/reputation/SentimentIcon';
 import { SentimentFilter } from '@/components/report/reputation/SentimentFilter';
 import { EmptyState } from '@/components/ui/EmptyState';
 import type { ChannelItem } from '@/lib/api/reportApi';
@@ -79,12 +79,15 @@ export function ChannelItemContent({ name, items }: ChannelItemContentProps) {
                     width: '100%',
                     transform: `translateY(${virtualRow.start}px)`,
                   }}
-                  className="border-b border-border-light pr-4"
+                  className="border-b border-border-light pr-1 lg:pr-4"
                 >
                   <div className={`flex gap-2 py-4 ${showBody ? '' : 'items-center'}`}>
-                    <SentimentIcon sentiment={item.sentiment} />
-                    <div className="flex-1 min-w-0 pl-4">
-                      <div className="flex items-center gap-2">
+                    <div className="hidden lg:block">
+                      <SentimentIcon sentiment={item.sentiment} />
+                    </div>
+                    <div className="flex-1 min-w-0 lg:pl-4">
+                      {/* 데스크톱 */}
+                      <div className="hidden lg:flex items-center gap-2">
                         <a
                           href={item.link}
                           target="_blank"
@@ -99,8 +102,22 @@ export function ChannelItemContent({ name, items }: ChannelItemContentProps) {
                           </span>
                         )}
                       </div>
+                      {/* 모바일 */}
+                      <p className="lg:hidden text-xs text-text-dark font-semibold leading-relaxed">
+                        <span className="inline-flex items-center mr-1 align-middle">
+                          <SentimentBadge sentiment={item.sentiment} />
+                        </span>
+                        <a
+                          href={item.link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="hover:text-blue-600 hover:underline transition-colors"
+                        >
+                          {item.title}
+                        </a>
+                      </p>
                       {showBody && (item.summary || item.content) && (
-                        <p className="text-sm text-text-muted mt-0.5">
+                        <p className="text-xs lg:text-sm text-text-muted mt-0.5">
                           {(item.summary || item.content || '').length > 200
                             ? (item.summary || item.content || '').slice(0, 200) + '…'
                             : item.summary || item.content}

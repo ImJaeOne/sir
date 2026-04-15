@@ -20,10 +20,10 @@ export function SentimentFilter({ value, onChange, counts }: SentimentFilterProp
         <button
           key={f.key}
           onClick={() => onChange(f.key)}
-          className="flex flex-col items-center gap-1 cursor-pointer"
+          className="flex flex-col items-center gap-1 cursor-pointer flex-1 lg:flex-none"
         >
           <div
-            className={`text-xs transition-colors px-2 ${
+            className={`text-xs transition-colors ${
               value === f.key ? 'text-text-dark font-semibold' : 'text-text-muted font-normal'
             }`}
           >
