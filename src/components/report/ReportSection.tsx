@@ -28,7 +28,7 @@ export function ReportSection({
     <section id={id} className="flex flex-col gap-2 lg:gap-6">
       <div ref={sentinelRef} className="h-0 -mt-2 lg:hidden" />
       <div
-        className={`sticky top-0 lg:static z-10 py-3 -mx-4 px-4 lg:mx-0 lg:px-0 lg:py-0 flex items-center gap-2.5 transition-colors duration-200 ${
+        className={`sticky top-0 lg:static z-10 py-3 -mx-4 px-4 lg:mx-0 lg:px-0 lg:py-0 flex items-center gap-2.5 ${
           stuck ? 'bg-white/70 backdrop-blur-md' : 'bg-transparent'
         } lg:bg-transparent lg:backdrop-blur-none`}
       >
@@ -61,10 +61,12 @@ export function ReportSubSection({
     <div className="flex flex-col gap-3">
       <div className="flex flex-col gap-1">
         <div className="flex items-center gap-1.5">
-          <h3 className="text-sm lg:text-base font-bold text-text-accent">{title}</h3>
+          <h3 className="text-base font-bold text-text-accent">{title}</h3>
           {tooltip && <Tooltip text={tooltip} variant={tooltipVariant} />}
         </div>
-        {description && <p className="text-xs lg:text-sm font-normal text-text-muted">{description}</p>}
+        {description && (
+          <p className="text-xs lg:text-sm font-normal text-text-muted">{description}</p>
+        )}
       </div>
       <div className={`${className}`}>{children}</div>
     </div>

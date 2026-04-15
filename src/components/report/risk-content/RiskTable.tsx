@@ -59,7 +59,14 @@ interface RiskTableProps {
   onCancelReport: (riskReportId: string) => void;
 }
 
-export function RiskTable({ riskItems, workspaceId, reportId, reportedSourceIds, riskReportBySourceId, onCancelReport }: RiskTableProps) {
+export function RiskTable({
+  riskItems,
+  workspaceId,
+  reportId,
+  reportedSourceIds,
+  riskReportBySourceId,
+  onCancelReport,
+}: RiskTableProps) {
   const [tab, setTab] = useState<string>('all');
   const [reportTarget, setReportTarget] = useState<RiskItem | null>(null);
   const parentRef = useRef<HTMLDivElement>(null);
@@ -170,13 +177,17 @@ export function RiskTable({ riskItems, workspaceId, reportId, reportedSourceIds,
                         style={{ gridTemplateColumns: COL_TEMPLATE }}
                       >
                         <div className="text-center text-xs text-text-muted">
-                          {item.published_at ? item.published_at.slice(0, 10).replace(/-/g, '.') : ''}
+                          {item.published_at
+                            ? item.published_at.slice(0, 10).replace(/-/g, '.')
+                            : ''}
                         </div>
                         <div className="text-center text-xs text-text-muted">
                           {PLATFORM_LABELS[item.platform_id] ?? item.platform_id}
                         </div>
                         <div className="text-center">
-                          <Badge variant={config.variant} bordered>{config.label}</Badge>
+                          <Badge variant={config.variant} bordered>
+                            {config.label}
+                          </Badge>
                         </div>
                         <div className="px-3">
                           <div className="flex flex-col gap-2">
@@ -184,23 +195,51 @@ export function RiskTable({ riskItems, workspaceId, reportId, reportedSourceIds,
                               {criticalTypeDescriptions[item.critical_type] ?? item.critical_type}
                             </span>
                             <div className="flex flex-col gap-1">
-                              <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-text-dark hover:text-blue-600 hover:underline transition-colors">
+                              <a
+                                href={item.link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-sm font-semibold text-text-dark hover:text-blue-600 hover:underline transition-colors"
+                              >
                                 {item.title}
                               </a>
                               {item.critical_reason && (
-                                <p className="text-xs text-text-muted leading-relaxed">{item.critical_reason}</p>
+                                <p className="text-xs text-text-muted leading-relaxed">
+                                  {item.critical_reason}
+                                </p>
                               )}
                             </div>
                           </div>
                         </div>
                         <div className="text-right pr-2">
                           {reportedSourceIds.has(item.id) ? (
-                            <button type="button" onClick={() => { const rrId = riskReportBySourceId.get(item.id); if (rrId) onCancelReport(rrId); }} className="cursor-pointer">
-                              <Badge variant="slate" className="px-3 py-1.5 hover:bg-red-100 hover:text-red-600 transition-colors">신고 대행 취소</Badge>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const rrId = riskReportBySourceId.get(item.id);
+                                if (rrId) onCancelReport(rrId);
+                              }}
+                              className="cursor-pointer"
+                            >
+                              <Badge
+                                variant="slate"
+                                className="px-3 py-1.5 hover:bg-red-100 hover:text-red-600 transition-colors"
+                              >
+                                신고 대행 취소
+                              </Badge>
                             </button>
                           ) : (
-                            <button type="button" onClick={() => setReportTarget(item)} className="cursor-pointer">
-                              <Badge variant="blue" className="px-3 py-1.5 hover:bg-bg-accent hover:text-white transition-colors">신고 대행 요청</Badge>
+                            <button
+                              type="button"
+                              onClick={() => setReportTarget(item)}
+                              className="cursor-pointer"
+                            >
+                              <Badge
+                                variant="blue"
+                                className="px-3 py-1.5 hover:bg-bg-accent hover:text-white transition-colors"
+                              >
+                                신고 대행 요청
+                              </Badge>
                             </button>
                           )}
                         </div>
@@ -213,45 +252,71 @@ export function RiskTable({ riskItems, workspaceId, reportId, reportedSourceIds,
           </div>
 
           {/* 모바일: 카드 리스트 */}
-          <div className="lg:hidden flex flex-col gap-3 py-3 max-h-[600px] overflow-y-auto">
+          <div className="lg:hidden flex flex-col gap-3 py-3 max-h-[400px] overflow-y-auto">
             {filtered.map((item) => {
-              const config = criticalTypeConfig[item.critical_type] ?? { label: item.critical_type, variant: 'slate' as const };
+              const config = criticalTypeConfig[item.critical_type] ?? {
+                label: item.critical_type,
+                variant: 'slate' as const,
+              };
               return (
-                <div key={item.id} className="border border-border-light rounded-xl p-4 flex flex-col gap-2.5">
+                <div
+                  key={item.id}
+                  className="border border-border-light rounded-xl p-4 flex flex-col gap-2.5"
+                >
                   <div className="flex gap-2">
-                    <span className="w-14 shrink-0 text-[10px] text-text-muted pt-0.5">수집일</span>
-                    <span className="text-xs text-text-dark">
+                    <span className="w-14 shrink-0 text-sm text-text-mobile-muted pt-0.5">
+                      수집일
+                    </span>
+                    <span className="text-sm text-text-dark">
                       {item.published_at ? item.published_at.slice(0, 10).replace(/-/g, '.') : '-'}
                     </span>
                   </div>
                   <div className="flex gap-2">
-                    <span className="w-14 shrink-0 text-[10px] text-text-muted pt-0.5">채널명</span>
-                    <span className="text-xs text-text-dark">
+                    <span className="w-14 shrink-0 text-sm text-text-mobile-muted pt-0.5">
+                      채널명
+                    </span>
+                    <span className="text-sm text-text-dark">
                       {PLATFORM_LABELS[item.platform_id] ?? item.platform_id}
                     </span>
                   </div>
                   <div className="flex gap-2">
-                    <span className="w-14 shrink-0 text-[10px] text-text-muted pt-0.5">탐지 분류</span>
-                    <Badge variant={config.variant} bordered>{config.label}</Badge>
+                    <span className="w-14 shrink-0 text-sm text-text-mobile-muted pt-0.5">
+                      탐지 분류
+                    </span>
+                    <Badge variant={config.variant} bordered>
+                      {config.label}
+                    </Badge>
                   </div>
                   <div className="flex gap-2">
-                    <span className="w-14 shrink-0 text-[10px] text-text-muted pt-0.5">세부 내용</span>
+                    <span className="w-14 shrink-0 text-sm text-text-mobile-muted pt-0.5">
+                      세부 내용
+                    </span>
                     <div className="flex-1 flex flex-col gap-1.5 min-w-0">
-                      <span className="text-[10px] bg-bg-light text-text-muted w-fit px-2 py-0.5 rounded-[10px]">
+                      <span className="text-xs bg-bg-light text-text-mobile-muted w-fit px-2 py-0.5 rounded-[10px]">
                         {criticalTypeDescriptions[item.critical_type] ?? item.critical_type}
                       </span>
-                      <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold text-text-dark hover:text-blue-600 hover:underline transition-colors">
+                      <a
+                        href={item.link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm font-semibold text-text-dark hover:text-blue-600 hover:underline transition-colors"
+                      >
                         {item.title}
                       </a>
                       {item.critical_reason && (
-                        <p className="text-[10px] text-text-muted leading-relaxed">{item.critical_reason}</p>
+                        <p className="text-[14px] text-text-mobile-muted leading-relaxed">
+                          {item.critical_reason}
+                        </p>
                       )}
                     </div>
                   </div>
                   {reportedSourceIds.has(item.id) ? (
                     <button
                       type="button"
-                      onClick={() => { const rrId = riskReportBySourceId.get(item.id); if (rrId) onCancelReport(rrId); }}
+                      onClick={() => {
+                        const rrId = riskReportBySourceId.get(item.id);
+                        if (rrId) onCancelReport(rrId);
+                      }}
                       className="w-full py-2.5 rounded-xl text-xs font-semibold bg-slate-100 text-slate-500 hover:bg-red-100 hover:text-red-600 transition-colors cursor-pointer"
                     >
                       신고 대행 취소

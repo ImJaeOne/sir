@@ -47,10 +47,10 @@ export function ChannelAccordion({ name, total, trend, children }: ChannelAccord
                 const { icon: Icon, bg } = CHANNEL_CONFIG[name];
                 return (
                   <div
-                    className={`w-8 h-8 lg:w-10 lg:h-10 rounded-lg flex items-center justify-center shrink-0 ${bg}`}
+                    className={`w-9 h-9 lg:w-10 lg:h-10 rounded-lg flex items-center justify-center shrink-0 ${bg}`}
                   >
                     <span className="lg:hidden">
-                      <Icon size={16} />
+                      <Icon size={18} />
                     </span>
                     <span className="hidden lg:block">
                       <Icon size={20} />
@@ -60,7 +60,7 @@ export function ChannelAccordion({ name, total, trend, children }: ChannelAccord
               })()}
             <div className="flex flex-col gap-0.5 lg:gap-1">
               <div className="flex items-center gap-2">
-                <span className="text-sm text-text-dark font-semibold">{name}</span>
+                <span className="text-base lg:text-sm text-text-dark font-semibold">{name}</span>
                 <div className="flex items-center gap-1.5 lg:hidden">
                   <CountBadge count={total} label="수집" />
                   {!isEmpty && (
@@ -68,7 +68,7 @@ export function ChannelAccordion({ name, total, trend, children }: ChannelAccord
                   )}
                 </div>
               </div>
-              <span className="text-[10px] lg:text-xs text-text-muted">
+              <span className="text-xs lg:text-xs text-text-muted">
                 {channelDescriptions[name] ?? ''}
               </span>
             </div>
@@ -85,7 +85,11 @@ export function ChannelAccordion({ name, total, trend, children }: ChannelAccord
             <ChevronDown size={16} className="text-slate-400" />
           ))}
       </button>
-      {open && <div className="border-t border-slate-50 pl-0 pr-0 lg:pl-[72px] lg:pr-10 py-2">{children}</div>}
+      {open && (
+        <div className="border-t border-slate-50 pl-0 pr-0 lg:pl-[72px] lg:pr-10 py-2">
+          {children}
+        </div>
+      )}
     </div>
   );
 }

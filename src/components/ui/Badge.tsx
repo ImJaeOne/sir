@@ -30,7 +30,7 @@ export function Badge({
   return (
     <span
       className={cn(
-        'text-[8px] lg:text-xs font-medium px-2 py-0.5 lg:px-5 lg:py-2 rounded-sm lg:rounded-[10px]',
+        'text-[10px] lg:text-xs font-medium px-2 py-0.5 lg:px-5 lg:py-2 rounded-sm lg:rounded-[10px]',
         VARIANT_STYLES[variant],
         bordered && 'border border-current',
         className

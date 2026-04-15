@@ -29,15 +29,15 @@ export function ChannelTopList({ items, sortBy }: ChannelTopListProps) {
             {/* 데스크톱 */}
             <p className="hidden lg:block text-sm text-text-dark font-semibold group-hover:text-blue-600 transition-colors">{item.title}</p>
             {/* 모바일: 숫자+제목 인라인 */}
-            <p className="lg:hidden text-xs text-text-dark font-semibold leading-relaxed group-hover:text-blue-600 transition-colors">
+            <p className="lg:hidden text-sm text-text-dark font-semibold leading-relaxed group-hover:text-blue-600 transition-colors">
               <span className="text-base font-bold mr-1 text-text-muted group-hover:text-text-accent">{i + 1}</span>
               {item.title}
             </p>
             {sortBy === 'views' && item.views != null ? (
-              <p className="text-xs text-text-muted mt-0.5">조회수 {item.views.toLocaleString()}회</p>
+              <p className="text-[14px] lg:text-xs text-text-mobile-muted lg:text-text-muted mt-0.5">조회수 {item.views.toLocaleString()}회</p>
             ) : (
               (item.summary || item.content) && (
-                <p className="text-xs text-text-muted mt-0.5 lg:truncate">
+                <p className="text-[14px] lg:text-xs text-text-mobile-muted lg:text-text-muted mt-0.5 lg:truncate">
                   {item.summary || item.content}
                 </p>
               )

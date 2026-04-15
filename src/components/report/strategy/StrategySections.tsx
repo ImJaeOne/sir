@@ -22,9 +22,9 @@ function SectionBlock({
 }) {
   return (
     <div className="flex flex-col gap-2">
-      <h4 className="text-sm font-bold text-text-accent">{title}</h4>
-      <div className={`rounded-xl px-5 py-4 ${bg} ${border ?? ''}`}>
-        <div className={`text-sm leading-relaxed ${textColor}`}>{children}</div>
+      <h4 className="text-sm lg:text-sm font-bold text-text-accent">{title}</h4>
+      <div className={`rounded-xl px-4 py-3 lg:px-5 lg:py-4 ${bg} ${border ?? ''}`}>
+        <div className={`text-[14px] lg:text-sm leading-relaxed ${textColor}`}>{children}</div>
       </div>
     </div>
   );
@@ -37,12 +37,14 @@ export function StrategySections({ strategy }: StrategySectionsProps) {
     <div className="flex-1 flex flex-col gap-4">
       {/* 전략 도출 배경 */}
       <SectionBlock title="전략 도출 배경" bg="bg-bg-light" textColor="text-text-dark">
-        <p className="font-medium mb-2">{background.summary}</p>
+        <p className="font-medium mb-2 text-text-mobile-muted lg:text-text-dark">
+          {background.summary}
+        </p>
         <ul className="flex flex-col gap-1">
           {background.points.map((point, i) => (
-            <li key={i} className="flex items-center gap-2">
-              <CheckListIcon size={16} />
-              <span className="text-text-sub">{point}</span>
+            <li key={i} className="flex gap-2">
+              <CheckListIcon size={16} className="shrink-0 mt-0.5" />
+              <span className="text-text-mobile-muted lg:text-text-sub">{point}</span>
             </li>
           ))}
         </ul>
@@ -52,21 +54,21 @@ export function StrategySections({ strategy }: StrategySectionsProps) {
       <SectionBlock
         title="핵심 전략 제안"
         bg="bg-bg-blue"
-        textColor="text-white"
+        textColor="text-text-dark"
         border="border border-bg-accent"
       >
         <p className="text-text-accent font-medium mb-3">{proposal.summary}</p>
         <div className="flex flex-col gap-3">
           {proposal.actions.map((action, i) => (
             <div key={i}>
-              <p className="font-bold text-text-accent mb-1">
+              <p className="font-bold text-text-accent mb-1 text-[14px] lg:text-sm">
                 [{action.platform}] {action.topic}
               </p>
               <ul className="flex flex-col gap-1">
                 {action.contents.map((content, j) => (
-                  <li key={j} className="flex items-center gap-2">
-                    <CheckListIcon size={16} color="#362cff" />
-                    <span className="text-text-dark">{content}</span>
+                  <li key={j} className="flex gap-2">
+                    <CheckListIcon size={16} color="#362cff" className="shrink-0 mt-0.5" />
+                    <span className="text-text-mobile-muted lg:text-text-dark">{content}</span>
                   </li>
                 ))}
               </ul>
@@ -77,12 +79,14 @@ export function StrategySections({ strategy }: StrategySectionsProps) {
 
       {/* 기대 효과 */}
       <SectionBlock title="기대 효과" bg="bg-bg-light" textColor="text-text-dark">
-        <p className="font-medium mb-2">{effect.summary}</p>
+        <p className="font-medium mb-2 text-text-mobile-muted lg:text-text-dark">
+          {effect.summary}
+        </p>
         <ul className="flex flex-col gap-1">
           {effect.points.map((point, i) => (
-            <li key={i} className="flex items-center gap-2">
-              <CheckListIcon size={16} />
-              <span className="text-text-sub">{point}</span>
+            <li key={i} className="flex gap-2">
+              <CheckListIcon size={16} className="shrink-0 mt-0.5" />
+              <span className="text-text-mobile-muted lg:text-text-sub">{point}</span>
             </li>
           ))}
         </ul>

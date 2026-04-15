@@ -21,7 +21,7 @@ export function SentimentBadge({ sentiment }: { sentiment: string }) {
   const config = BADGE_CONFIG[sentiment] ?? BADGE_CONFIG.neutral;
   return (
     <span
-      className={`text-[8px] lg:text-[10px] font-semibold  px-2 py-0.5 lg:px-1.5 lg:py-0.5 rounded-sm lg:rounded ${config.className} shrink-0`}
+      className={`text-xs lg:text-[10px] font-semibold  px-2 py-0.5 lg:px-1.5 lg:py-0.5 rounded-sm lg:rounded ${config.className} shrink-0`}
     >
       {config.label}
     </span>

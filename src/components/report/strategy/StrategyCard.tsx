@@ -31,11 +31,12 @@ export function StrategyCard({ category, strategy }: StrategyCardProps) {
 
   return (
     <ReportCard px={20} py={20}>
+      {/* 데스크톱 */}
       <button
         onClick={() => setIsOpen((v) => !v)}
-        className="w-full flex items-center gap-8 text-left cursor-pointer hover:opacity-80 transition-opacity"
+        className="hidden lg:flex w-full items-center gap-8 text-left cursor-pointer hover:opacity-80 transition-opacity"
       >
-        <div className="lg:w-[160px] shrink-0 flex items-center gap-3">
+        <div className="w-[160px] shrink-0 flex items-center gap-3">
           <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${config.bg}`}>
             <Icon size={20} />
           </div>
@@ -52,8 +53,34 @@ export function StrategyCard({ category, strategy }: StrategyCardProps) {
           <ChevronDown size={18} className="text-slate-400 shrink-0" />
         )}
       </button>
+
+      {/* 모바일 */}
+      <button
+        onClick={() => setIsOpen((v) => !v)}
+        className="lg:hidden w-full flex flex-col gap-2 text-left cursor-pointer hover:opacity-80 transition-opacity"
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${config.bg}`}>
+              <Icon size={16} />
+            </div>
+            <span className="text-base font-semibold text-text-mobile-muted">{config.label}</span>
+          </div>
+          {isOpen ? (
+            <ChevronUp size={16} className="text-slate-400 shrink-0" />
+          ) : (
+            <ChevronDown size={16} className="text-slate-400 shrink-0" />
+          )}
+        </div>
+        {!isOpen && (
+          <p className="text-sm font-semibold text-text-dark leading-relaxed">
+            {strategy.proposal.summary}
+          </p>
+        )}
+      </button>
+
       {isOpen && (
-        <div className="mt-6 lg:pl-[192px]">
+        <div className="mt-4 lg:mt-6 lg:pl-[192px]">
           <StrategySections strategy={strategy} />
         </div>
       )}

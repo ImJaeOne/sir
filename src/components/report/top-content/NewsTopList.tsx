@@ -62,19 +62,21 @@ export function NewsTopList({ clusters }: NewsTopListProps) {
                   </span>
                 </div>
                 {/* 모바일: 숫자+제목 인라인 */}
-                <p className="lg:hidden text-xs text-text-dark font-semibold leading-relaxed">
+                <p className="lg:hidden text-sm text-text-dark font-semibold leading-relaxed">
                   <span
-                    className={`text-base font-bold mr-1 ${isActive ? 'text-text-accent' : 'text-text-muted'}`}
+                    className={`text-xl font-bold mr-2 ${isActive ? 'text-text-accent' : 'text-text-muted'}`}
                   >
                     {i + 1}
                   </span>
                   {cluster.representative_title}
-                  <span className="inline-flex ml-0.5 align-middle text-[8px] text-text-muted bg-bg-light px-1.5 py-0.5 rounded-sm font-normal">
+                  <span className="inline-flex ml-2 align-middle text-[10px] text-text-mobile-muted bg-bg-light px-1.5 py-0.5 rounded-sm font-normal">
                     {cluster.items.length}건
                   </span>
                 </p>
                 {cluster.summary && (
-                  <p className="text-xs text-text-muted mt-0.5 lg:truncate">{cluster.summary}</p>
+                  <p className="text-[14px] lg:text-xs text-text-mobile-muted lg:text-text-muted mt-0.5 lg:truncate">
+                    {cluster.summary}
+                  </p>
                 )}
               </div>
               <div className="flex items-center gap-2 shrink-0">
@@ -99,7 +101,9 @@ export function NewsTopList({ clusters }: NewsTopListProps) {
                       {article.title}
                     </p>
                     {article.source && (
-                      <span className="text-[10px] text-text-muted shrink-0 hidden lg:block">{article.source}</span>
+                      <span className="text-[10px] text-text-muted shrink-0 hidden lg:block">
+                        {article.source}
+                      </span>
                     )}
                   </a>
                 ))}

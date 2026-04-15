@@ -32,12 +32,22 @@ export function SummaryAccordion({ sections }: { sections: SummarySection[] }) {
                   (() => {
                     const Icon = SUMMARY_SECTIONS[i].icon;
                     return (
-                      <div className={cn('p-2.5 rounded-lg', SUMMARY_SECTIONS[i].bg)}>
-                        <Icon size={20} />
-                      </div>
+                      <>
+                        <div className={cn('p-1.5 rounded-md lg:hidden', SUMMARY_SECTIONS[i].bg)}>
+                          <Icon size={14} />
+                        </div>
+                        <div
+                          className={cn(
+                            'p-2.5 rounded-lg hidden lg:flex items-center justify-center',
+                            SUMMARY_SECTIONS[i].bg
+                          )}
+                        >
+                          <Icon size={20} />
+                        </div>
+                      </>
                     );
                   })()}
-                <div className="lg:w-[130px] whitespace-pre-line text-sm text-text-muted font-semibold">
+                <div className="lg:w-[130px] whitespace-pre-line text-sm text-text-mobile-muted lg:text-text-muted font-semibold">
                   {SUMMARY_SECTIONS[i]?.label ?? `섹션 ${i + 1}`}
                 </div>
               </div>
@@ -65,7 +75,7 @@ export function SummaryAccordion({ sections }: { sections: SummarySection[] }) {
                           {sub.points.map((point, k) => (
                             <li key={k} className="flex gap-2">
                               <CheckListIcon size={16} className="shrink-0 mt-0.5" />
-                              <span className="text-sm text-text-muted leading-relaxed">
+                              <span className="text-sm text-text-mobile-muted lg:text-text-muted leading-relaxed">
                                 {point}
                               </span>
                             </li>

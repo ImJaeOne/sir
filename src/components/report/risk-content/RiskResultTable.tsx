@@ -95,30 +95,30 @@ export function RiskResultTable({ workspaceId, prevReportId }: RiskResultTablePr
                 return (
                   <div key={rr.id} className="border border-border-light rounded-xl p-4 flex flex-col gap-2.5">
                     <div className="flex gap-2">
-                      <span className="w-14 shrink-0 text-[10px] text-text-muted pt-0.5">신고일</span>
-                      <span className="text-xs text-text-dark">
+                      <span className="w-14 shrink-0 text-sm text-text-mobile-muted pt-0.5">신고일</span>
+                      <span className="text-sm text-text-dark">
                         {rr.requested_at?.slice(0, 10).replace(/-/g, '.') ?? '-'}
                       </span>
                     </div>
                     <div className="flex gap-2">
-                      <span className="w-14 shrink-0 text-[10px] text-text-muted pt-0.5">채널명</span>
-                      <span className="text-xs text-text-dark">
+                      <span className="w-14 shrink-0 text-sm text-text-mobile-muted pt-0.5">채널명</span>
+                      <span className="text-sm text-text-dark">
                         {PLATFORM_LABELS[rr.platform_id] ?? rr.platform_id}
                       </span>
                     </div>
                     <div className="flex gap-2">
-                      <span className="w-14 shrink-0 text-[10px] text-text-muted pt-0.5">유형</span>
-                      <span className="text-xs text-text-dark">{rr.reason}</span>
+                      <span className="w-14 shrink-0 text-sm text-text-mobile-muted pt-0.5">유형</span>
+                      <span className="text-sm text-text-dark">{rr.reason}</span>
                     </div>
                     <div className="flex gap-2">
-                      <span className="w-14 shrink-0 text-[10px] text-text-muted pt-0.5">게시물</span>
-                      <a href={rr.link} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold text-text-dark hover:text-blue-600 hover:underline transition-colors flex-1 min-w-0">
+                      <span className="w-14 shrink-0 text-sm text-text-mobile-muted pt-0.5">게시물</span>
+                      <a href={rr.link} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-text-dark hover:text-blue-600 hover:underline transition-colors flex-1 min-w-0">
                         {rr.title}
                       </a>
                     </div>
                     <div className="flex gap-2">
-                      <span className="w-14 shrink-0 text-[10px] text-text-muted pt-0.5">처리 결과</span>
-                      <span className={`inline-block text-[10px] font-semibold px-2.5 py-1 rounded-lg ${statusCfg.className}`}>
+                      <span className="w-14 shrink-0 text-sm text-text-mobile-muted pt-0.5">처리 결과</span>
+                      <span className={`inline-block text-xs font-semibold px-2.5 py-1 rounded-lg ${statusCfg.className}`}>
                         {statusCfg.label}
                       </span>
                     </div>

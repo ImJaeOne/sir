@@ -46,19 +46,20 @@ function ClusterRow({
               {cluster.items.length}건
             </span>
           </div>
-          {/* 모바일: inline 배치 */}
-          <p className="lg:hidden text-xs text-text-dark font-semibold leading-relaxed">
-            <span className="inline-flex items-center gap-0.5 mr-1 align-middle">
-              <SentimentBadge sentiment={cluster.sentiment ?? 'neutral'} />
-              <span className="text-[8px] text-text-muted bg-bg-light px-2 py-0.5 rounded-sm font-normal">
-                {cluster.items.length}건
-              </span>
+          <span className="inline-flex items-center gap-2 mr-1 align-middle">
+            <SentimentBadge sentiment={cluster.sentiment ?? 'neutral'} />
+            <span className="text-xs text-text-muted bg-bg-light px-2 py-0.5 rounded-sm font-normal">
+              {cluster.items.length}건
             </span>
+          </span>
+          <p className="lg:hidden text-sm text-text-dark font-semibold leading-relaxed">
             {cluster.representative_title}
           </p>
           {cluster.summary && (
             <div className="flex items-center gap-2 mt-0.5">
-              <p className="text-xs lg:text-sm text-text-muted">{cluster.summary}</p>
+              <p className="text-[14px] lg:text-sm text-text-mobile-muted lg:text-text-muted">
+                {cluster.summary}
+              </p>
               <span className="lg:hidden shrink-0">
                 {isOpen ? (
                   <ChevronUp size={12} className="text-text-muted" />
@@ -91,7 +92,9 @@ function ClusterRow({
                 {item.title}
               </p>
               {item.source && (
-                <span className="text-[10px] text-slate-400 shrink-0 hidden lg:block">{item.source}</span>
+                <span className="text-[10px] text-slate-400 shrink-0 hidden lg:block">
+                  {item.source}
+                </span>
               )}
             </a>
           ))}
@@ -103,7 +106,7 @@ function ClusterRow({
 
 function ItemRow({ item }: { item: ChannelItem }) {
   return (
-    <div className="border-b border-slate-50 pr-4">
+    <div className="border-b border-slate-50 pr-1 lg:pr-4">
       <div className="flex gap-2 py-4">
         <div className="hidden lg:block">
           <SentimentIcon sentiment={item.sentiment} />
@@ -124,10 +127,10 @@ function ItemRow({ item }: { item: ChannelItem }) {
             )}
           </div>
           {/* 모바일 */}
-          <p className="lg:hidden text-xs text-text-dark font-semibold leading-relaxed">
-            <span className="inline-flex items-center mr-1 align-middle">
-              <SentimentBadge sentiment={item.sentiment} />
-            </span>
+          <span className="lg:hidden inline-flex items-center gap-2 mr-1 align-middle">
+            <SentimentBadge sentiment={item.sentiment} />
+          </span>
+          <p className="lg:hidden text-sm text-text-dark font-semibold leading-relaxed">
             <a
               href={item.link}
               target="_blank"
@@ -137,7 +140,9 @@ function ItemRow({ item }: { item: ChannelItem }) {
               {item.title}
             </a>
           </p>
-          {item.summary && <p className="text-xs lg:text-sm text-text-muted mt-0.5">{item.summary}</p>}
+          {item.summary && (
+            <p className="text-[14px] lg:text-sm text-text-mobile-muted lg:text-text-muted mt-0.5">{item.summary}</p>
+          )}
         </div>
       </div>
     </div>

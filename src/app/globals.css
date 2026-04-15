@@ -17,6 +17,7 @@ body {
 @theme {
   /* text */
   --color-text-muted: #828ea6;
+  --color-text-mobile-muted: ##636e82;
   --color-text-dark: #1f2838;
   --color-text-accent: #362cff;
   --color-text-danger: #ff4d3d;

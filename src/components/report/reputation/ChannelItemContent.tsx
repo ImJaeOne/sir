@@ -23,7 +23,7 @@ export function ChannelItemContent({ name, items }: ChannelItemContentProps) {
   const parentRef = useRef<HTMLDivElement>(null);
 
   const showSource = name !== '블로그' && name !== '유튜브';
-  const showBody = name !== '커뮤니티';
+  const showBody = true;
   const sortFn = CHANNEL_SORT[name];
   const sorted = sortFn ? [...items].sort(sortFn) : items;
   const filtered = filter === 'all' ? sorted : sorted.filter((i) => i.sentiment === filter);
@@ -103,10 +103,10 @@ export function ChannelItemContent({ name, items }: ChannelItemContentProps) {
                         )}
                       </div>
                       {/* 모바일 */}
-                      <p className="lg:hidden text-xs text-text-dark font-semibold leading-relaxed">
-                        <span className="inline-flex items-center mr-1 align-middle">
-                          <SentimentBadge sentiment={item.sentiment} />
-                        </span>
+                      <span className="lg:hidden inline-flex items-center gap-2 mr-1 align-middle">
+                        <SentimentBadge sentiment={item.sentiment} />
+                      </span>
+                      <p className="lg:hidden text-sm text-text-dark font-semibold leading-relaxed">
                         <a
                           href={item.link}
                           target="_blank"
@@ -117,7 +117,7 @@ export function ChannelItemContent({ name, items }: ChannelItemContentProps) {
                         </a>
                       </p>
                       {showBody && (item.summary || item.content) && (
-                        <p className="text-xs lg:text-sm text-text-muted mt-0.5">
+                        <p className="text-[14px] lg:text-sm text-text-mobile-muted lg:text-text-muted mt-0.5">
                           {(item.summary || item.content || '').length > 200
                             ? (item.summary || item.content || '').slice(0, 200) + '…'
                             : item.summary || item.content}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { ServiceIcon } from '@/components/icons/ServiceIcon';
 import { Button } from '@/components/ui/Button';
@@ -13,16 +13,24 @@ const ServiceUpgradeModal = dynamic(
 
 export function ServiceCTA() {
   const [showModal, setShowModal] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mql = window.matchMedia('(max-width: 1023px)');
+    setIsMobile(mql.matches); // eslint-disable-line react-hooks/set-state-in-effect
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mql.addEventListener('change', handler);
+    return () => mql.removeEventListener('change', handler);
+  }, []);
 
   return (
     <>
-      <section className="flex flex-col items-center justify-center gap-4 pt-4">
-        <ServiceIcon width={89} height={57} />
-        <div className="flex flex-col gap-2">
-          <h3 className="text-xl font-bold text-text-dark">
+      <section className="flex flex-col items-center justify-center gap-3 lg:gap-4 pt-4">
+        <ServiceIcon width={isMobile ? 60 : 89} height={isMobile ? 38 : 57} />
+        <div className="flex flex-col gap-1 lg:gap-2 text-center">
+          <h3 className="text-sm lg:text-xl font-bold text-text-dark">
             전략 실행이 어렵다면, SIR 팀이 함께 대응합니다.
           </h3>
-          <p className="text-sm text-text-muted">
+          <p className="text-xs lg:text-sm text-text-muted">
             위 제안을 기반으로 전문 컨설턴트가 실행 계획을 수립하고 모니터링합니다.
           </p>
         </div>
@@ -30,7 +38,7 @@ export function ServiceCTA() {
           variant="outlineAccent"
           size="lg"
           onClick={() => setShowModal(true)}
-          className="mt-2"
+          className="mt-1 lg:mt-2 text-xs lg:text-sm"
         >
           서비스 신청하기
         </Button>

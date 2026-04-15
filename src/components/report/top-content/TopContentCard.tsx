@@ -27,8 +27,8 @@ export function TopContentCard({ channelId, title, description, children }: TopC
     <ReportCard className="flex flex-col gap-2 p-4">
       <div className="bg-bg-accent rounded-xl px-4 py-3 lg:px-10 lg:py-8 flex items-center justify-between">
         <div className="flex flex-col gap-0.5 lg:gap-1 pr-2 lg:pr-0">
-          <span className="text-xs lg:text-sm font-semibold text-white">{title}</span>
-          <span className="text-[10px] lg:text-xs font-light text-white">{description}</span>
+          <span className="text-base lg:text-sm font-semibold text-white">{title}</span>
+          <span className="text-sm lg:text-xs font-light text-white">{description}</span>
         </div>
         <span className="hidden lg:block">{Icon && <Icon size={28} color="white" />}</span>
         <span className="lg:hidden">{Icon && <Icon size={20} color="white" />}</span>
