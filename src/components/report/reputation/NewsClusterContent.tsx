@@ -1,4 +1,5 @@
 'use client';
+'use no memo';
 
 import { useState, useRef, useEffect } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
