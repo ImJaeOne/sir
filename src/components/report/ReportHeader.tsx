@@ -26,10 +26,10 @@ export function ReportHeader({ workspaceId, reportId, showPdfButton = true }: Re
           <Link
             href={`/report/${workspaceId}/${reportId}`}
             target="_blank"
-            className="flex items-center gap-1.5 text-sm font-semibold text-text-accent hover:text-blue-700 transition-colors"
+            className="group flex items-center gap-2 text-xs lg:text-sm font-semibold text-text-accent border border-text-accent/20 hover:border-text-accent hover:bg-bg-blue px-3 py-1.5 lg:px-4 lg:py-2 rounded-lg transition-all"
           >
             보고서 보기
-            <ExternalLink size={14} />
+            <ExternalLink size={13} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
           </Link>
         )}
       </div>

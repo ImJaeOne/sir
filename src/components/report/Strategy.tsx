@@ -3,16 +3,28 @@
 import { useStrategies } from '@/hooks/report/useReportQuery';
 import { ReportSection, ReportSubSection } from '@/components/report/ReportSection';
 import { StrategyCard } from '@/components/report/strategy/StrategyCard';
+import { EditableStrategy } from '@/components/report/strategy/EditableStrategy';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { StrategyIcon } from '@/components/icons/StrategyIcon';
 
 interface StrategyProps {
   workspaceId: string;
   reportId: string;
+  editable?: boolean;
 }
 
-export function Strategy({ workspaceId, reportId }: StrategyProps) {
+export function Strategy({ workspaceId, reportId, editable = false }: StrategyProps) {
   const { data: strategies } = useStrategies(workspaceId, reportId);
+
+  if (editable) {
+    return (
+      <div className="print-break">
+        <ReportSection id="section-strategy" icon={<StrategyIcon size={36} />} title="대응 전략 제안">
+          <EditableStrategy strategies={strategies ?? []} workspaceId={workspaceId} reportId={reportId} />
+        </ReportSection>
+      </div>
+    );
+  }
 
   return (
     <div className="print-break">

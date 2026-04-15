@@ -65,6 +65,35 @@ export async function getWeeklySummary(workspaceId: string, reportId?: string): 
   return data?.[0]?.all_strategy ?? [];
 }
 
+export async function upsertWeeklySummary(workspaceId: string, reportId: string, sections: SummarySection[]): Promise<void> {
+  // 기존 row 확인
+  const { data: existing } = await supabase
+    .from('session_strategies')
+    .select('id')
+    .eq('workspace_id', workspaceId)
+    .eq('report_id', reportId)
+    .is('category', null)
+    .limit(1);
+
+  if (existing && existing.length > 0) {
+    const { error } = await supabase
+      .from('session_strategies')
+      .update({ all_strategy: sections })
+      .eq('id', existing[0].id);
+    if (error) throw error;
+  } else {
+    const { error } = await supabase
+      .from('session_strategies')
+      .insert({
+        workspace_id: workspaceId,
+        report_id: reportId,
+        category: null,
+        all_strategy: sections,
+      });
+    if (error) throw error;
+  }
+}
+
 // ── SIR & 주가 차트 ──
 
 export interface SirStockPoint {
