@@ -119,7 +119,7 @@ export function RiskReportRequestModal({ open, onClose, item, workspaceId, repor
       // 1. 파일 업로드 (Storage 직접)
       const fileUrls: string[] = [];
       for (const f of files) {
-        const ext = f.name.rsplit?.('.').pop() ?? f.name.split('.').pop() ?? '';
+        const ext = f.name.split('.').pop() ?? '';
         const path = `${workspaceId}/${crypto.randomUUID()}.${ext}`;
         const { error } = await supabase.storage.from('risk-attachments').upload(path, f);
         if (error) throw error;

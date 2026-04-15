@@ -26,8 +26,12 @@ const FAB_SIZE = 56;
 
 export function MobileFab() {
   const [isOpen, setIsOpen] = useState(false);
-  const [pos, setPos] = useState({ x: 0, y: 0 });
-  const [initialized, setInitialized] = useState(false);
+  const [pos, setPos] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return { x: window.innerWidth - FAB_SIZE - 20, y: window.innerHeight - FAB_SIZE - 24 };
+    }
+    return { x: 0, y: 0 };
+  });
   const dragRef = useRef<{ startX: number; startY: number; startPosX: number; startPosY: number; moved: boolean } | null>(null);
   const fabRef = useRef<HTMLButtonElement>(null);
   const activeId = useActiveSection(SECTION_IDS, 'client-main');
@@ -41,13 +45,6 @@ export function MobileFab() {
     if (isFetching === 0 && startedRef.current) setReady(true);
   }, [isFetching]);
 
-  // 초기 위치: 우하단
-  useEffect(() => {
-    if (!initialized) {
-      setPos({ x: window.innerWidth - FAB_SIZE - 20, y: window.innerHeight - FAB_SIZE - 24 });
-      setInitialized(true);
-    }
-  }, [initialized]);
 
   const clamp = useCallback((x: number, y: number) => ({
     x: Math.max(8, Math.min(x, window.innerWidth - FAB_SIZE - 8)),
@@ -82,7 +79,7 @@ export function MobileFab() {
     setIsOpen(false);
   };
 
-  if (!ready || !initialized) return null;
+  if (!ready) return null;
 
   const activeIdx = SECTIONS.findIndex((s) => s.id === activeId);
 
