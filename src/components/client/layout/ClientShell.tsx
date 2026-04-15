@@ -22,7 +22,7 @@ export function ClientShell({ children, user = null }: ClientShellProps) {
         {/* 모바일: 상단 헤더 */}
         <MobileHeader />
 
-        <main id="client-main" className="flex-1 overflow-y-auto pt-[49px] lg:pt-0">
+        <main id="client-main" className="relative flex-1 overflow-y-auto pt-[49px] lg:pt-0">
           {children}
         </main>
       </div>

@@ -18,7 +18,7 @@ function BouncingDots() {
         }
       `}</style>
       <div className="flex items-center gap-1.5">
-        {[0, 1, 2, 3, 4].map((i) => (
+        {[0, 1, 2].map((i) => (
           <div
             key={i}
             className="w-2.5 h-2.5 rounded-full bg-bg-accent"
@@ -36,8 +36,8 @@ function BouncingDots() {
 function LoadingContent({ title, subtitle }: { title: string; subtitle: string }) {
   return (
     <div className="flex flex-col items-center gap-4">
-      <LoadingIcon width={93} height={81} />
-      <div className="flex flex-col items-center gap-1">
+      <LoadingIcon width={60} height={50} />
+      <div className="flex flex-col items-center gap-1 mb-2">
         <p className="text-base font-semibold text-text-dark">{title}</p>
         <p className="text-sm text-text-muted">{subtitle}</p>
       </div>
@@ -61,7 +61,7 @@ export function LoadingOverlay({
   subtitle = DEFAULT_SUBTITLE,
 }: LoadingProps) {
   return (
-    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white/60 backdrop-blur-[2px]">
+    <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-white/60 backdrop-blur-[2px]">
       <LoadingContent title={title} subtitle={subtitle} />
     </div>
   );
