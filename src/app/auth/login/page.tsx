@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
 import { login } from '@/app/auth/actions';
 
 export default function LoginPage() {
@@ -81,11 +80,8 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <p className="text-center text-sm text-slate-400 mt-4">
-          계정이 없으신가요?{' '}
-          <Link href="/auth/signup" className="text-blue-600 hover:underline font-medium">
-            회원가입
-          </Link>
+        <p className="text-center text-xs text-slate-400 mt-4">
+          계정이 필요하시면 관리자에게 문의해주세요.
         </p>
       </div>
     </div>

@@ -29,23 +29,58 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const isAuthPage =
-    request.nextUrl.pathname.startsWith('/auth/login') ||
-    request.nextUrl.pathname.startsWith('/auth/signup');
+  const pathname = request.nextUrl.pathname;
+  const isAuthPage = pathname.startsWith('/auth/login') || pathname.startsWith('/auth/signup');
+  const isCallback = pathname.startsWith('/auth/callback');
 
   // 미인증 사용자 → 로그인 페이지로 리다이렉트
-  if (!user && !isAuthPage && !request.nextUrl.pathname.startsWith('/auth/callback')) {
+  if (!user && !isAuthPage && !isCallback) {
     const url = request.nextUrl.clone();
     url.pathname = '/auth/login';
     return NextResponse.redirect(url);
   }
 
-  // 인증된 사용자가 auth 페이지 접근 → 홈으로 리다이렉트
-  if (user && isAuthPage) {
-    const url = request.nextUrl.clone();
-    url.pathname = '/';
-    return NextResponse.redirect(url);
+  // 인증된 사용자 → 역할 기반 라우팅
+  if (user) {
+    // auth 페이지 접근 → 역할에 따라 리다이렉트
+    if (isAuthPage) {
+      const role = await getUserRole(supabase, user.id);
+      const url = request.nextUrl.clone();
+      url.pathname = role === 'user' ? '/' : '/workspace';
+      return NextResponse.redirect(url);
+    }
+
+    // user 역할은 관리자 페이지 접근 차단 (/workspace, /risk-reports, /users)
+    const isAdminRoute = pathname.startsWith('/workspace') || pathname.startsWith('/risk-reports') || pathname.startsWith('/users');
+    if (isAdminRoute) {
+      const role = await getUserRole(supabase, user.id);
+      if (role === 'user') {
+        const url = request.nextUrl.clone();
+        url.pathname = '/';
+        return NextResponse.redirect(url);
+      }
+    }
+
+    // admin/super_admin이 / (홈) 접근 → /workspace로 리다이렉트
+    if (pathname === '/') {
+      const role = await getUserRole(supabase, user.id);
+      if (role !== 'user') {
+        const url = request.nextUrl.clone();
+        url.pathname = '/workspace';
+        return NextResponse.redirect(url);
+      }
+    }
   }
 
   return supabaseResponse;
+}
+
+// 역할 조회 (캐시 없이 매번 조회 — middleware는 서버에서 실행)
+async function getUserRole(supabase: any, userId: string): Promise<string> {
+  const { data } = await supabase
+    .from('user_profiles')
+    .select('role')
+    .eq('id', userId)
+    .single();
+  return data?.role ?? 'user';
 }

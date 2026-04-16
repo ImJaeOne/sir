@@ -15,7 +15,7 @@ export function SidebarUserInfo({ isOpen, user = null }: SidebarUserInfoProps) {
       {isOpen && (
         <div className="flex flex-col flex-1 min-w-0">
           <p className="text-sm font-medium text-text-dark truncate">
-            {user?.displayName ?? '사용자'}
+            {user?.companyName ?? '사용자'}
           </p>
           <p className="text-xs text-text-muted truncate">{user?.email}</p>
         </div>

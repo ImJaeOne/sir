@@ -48,6 +48,7 @@ export function ReportSubSection({
   tooltip,
   tooltipVariant = 'default',
   className,
+  action,
   children,
 }: {
   title: string;
@@ -55,6 +56,7 @@ export function ReportSubSection({
   tooltip?: string;
   tooltipVariant?: 'default' | 'danger';
   className?: string;
+  action?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
@@ -63,6 +65,7 @@ export function ReportSubSection({
         <div className="flex items-center gap-1.5">
           <h3 className="text-base font-bold text-text-accent">{title}</h3>
           {tooltip && <Tooltip text={tooltip} variant={tooltipVariant} />}
+          {action && <div className="ml-auto">{action}</div>}
         </div>
         {description && (
           <p className="text-xs lg:text-sm font-normal text-text-muted">{description}</p>

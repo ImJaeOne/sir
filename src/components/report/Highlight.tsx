@@ -14,6 +14,7 @@ import {
 import { ReportSection } from '@/components/report/ReportSection';
 import { Snapshot } from '@/components/report/highlight/Snapshot';
 import { Reputation } from '@/components/report/highlight/Reputation';
+import { EditableReputation } from '@/components/report/highlight/EditableReputation';
 import { SirStockPanel } from '@/components/report/highlight/SirStockPanel';
 import { SirRankingPanel } from '@/components/report/highlight/SirRankingPanel';
 import { WeeklyHighlightIcon } from '@/components/icons/WeeklyHighlightIcon';
@@ -30,11 +31,12 @@ interface HighlightProps {
   workspaceId: string;
   reportId: string;
   pdfMode?: boolean;
+  editable?: boolean;
 }
 
 const defaultRanking: SirRanking = { tiers: [], rank: 0, total: 0, average: 0 };
 
-export function Highlight({ workspaceId, reportId, pdfMode = false }: HighlightProps) {
+export function Highlight({ workspaceId, reportId, pdfMode = false, editable = false }: HighlightProps) {
   const { data: workspace } = useWorkspaceSir(workspaceId);
   const { data: report } = useReportInfo(reportId);
   const { data: summary } = useWeeklySummary(workspaceId, reportId);
@@ -92,7 +94,11 @@ export function Highlight({ workspaceId, reportId, pdfMode = false }: HighlightP
   return (
     <ReportSection icon={<WeeklyHighlightIcon size={36} />} title="주간 하이라이트">
       <Snapshot {...snapshotProps} />
-      <Reputation summary={summary ?? []} />
+      {editable ? (
+        <EditableReputation summary={summary ?? []} workspaceId={workspaceId} reportId={reportId} />
+      ) : (
+        <Reputation summary={summary ?? []} />
+      )}
       <SirStockPanel {...sirStockProps} />
       <SirRankingPanel {...sirRankingProps} />
     </ReportSection>

@@ -1,34 +1,24 @@
+export type ProfileRole = 'super_admin' | 'admin' | 'user';
+
 export interface AuthUser {
   id: string;
   email: string;
-  displayName: string;
-  department: string | null;
+  companyName: string;
   avatarUrl: string | null;
+  role: ProfileRole;
   createdAt: string;
   updatedAt: string;
 }
 
-/** DB profiles 테이블 row 타입 */
+/** DB user_profiles 테이블 row 타입 */
 export interface ProfileRow {
   id: string;
   email: string;
-  display_name: string;
-  department: string | null;
+  company_name: string;
   avatar_url: string | null;
+  role: ProfileRole;
   created_at: string;
   updated_at: string;
-}
-
-export interface LoginRequest {
-  email: string;
-  password: string;
-}
-
-export interface SignupRequest {
-  email: string;
-  password: string;
-  displayName: string;
-  department?: string;
 }
 
 export interface AuthResult {

@@ -5,9 +5,9 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { logout } from '@/app/auth/actions';
 import {
-  Home,
   LayoutDashboard,
   ShieldAlert,
+  Users,
   Activity,
   Settings,
   LogOut,
@@ -26,9 +26,9 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { label: '홈', href: '/', icon: Home },
   { label: '워크스페이스', href: '/workspace', icon: LayoutDashboard },
   { label: '리스크 관리', href: '/risk-reports', icon: ShieldAlert },
+  { label: '유저 관리', href: '/users', icon: Users },
   { label: '모니터링', href: '#', icon: Activity, disabled: true },
   { label: '설정', href: '#', icon: Settings, disabled: true },
 ];
@@ -41,7 +41,7 @@ interface AppShellProps {
 export function AppShell({ children, user = null }: AppShellProps) {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
-  const initial = user?.displayName?.charAt(0) ?? '?';
+  const initial = user?.companyName?.charAt(0) ?? '?';
 
   return (
     <div className="h-screen flex overflow-hidden">
@@ -119,7 +119,7 @@ export function AppShell({ children, user = null }: AppShellProps) {
           {isOpen ? (
             <div className="flex items-center gap-3">
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-slate-700 truncate">{user?.displayName ?? '사용자'}</p>
+                <p className="text-sm font-medium text-slate-700 truncate">{user?.companyName ?? '사용자'}</p>
                 <p className="text-xs text-slate-400 truncate">{user?.email}</p>
               </div>
               <button
