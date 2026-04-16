@@ -24,16 +24,14 @@ export async function signup(formData: FormData): Promise<AuthResult> {
 
   const email = formData.get('email') as string;
   const password = formData.get('password') as string;
-  const displayName = formData.get('displayName') as string;
-  const department = formData.get('department') as string | null;
+  const companyName = formData.get('companyName') as string;
 
   const { error } = await supabase.auth.signUp({
     email,
     password,
     options: {
       data: {
-        display_name: displayName,
-        department: department || null,
+        company_name: companyName,
       },
     },
   });

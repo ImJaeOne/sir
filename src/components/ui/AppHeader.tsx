@@ -16,7 +16,7 @@ export function AppHeader({ user }: AppHeaderProps) {
   const toggle = useSidebarStore((s) => s.toggle);
   const [showUserMenu, setShowUserMenu] = useState(false);
 
-  const initial = user?.displayName?.charAt(0) ?? '?';
+  const initial = user?.companyName?.charAt(0) ?? '?';
 
   return (
     <header
@@ -65,10 +65,7 @@ export function AppHeader({ user }: AppHeaderProps) {
                 <span className="text-[10px] font-bold text-blue-600">{initial}</span>
               </div>
               <span className="text-sm font-medium text-slate-700 hidden sm:block">
-                {user?.displayName ?? '사용자'}
-                {user?.department && (
-                  <span className="text-slate-400 font-normal">({user.department})</span>
-                )}
+                {user?.companyName ?? '사용자'}
               </span>
               <ChevronDown
                 size={14}
@@ -82,8 +79,8 @@ export function AppHeader({ user }: AppHeaderProps) {
                 <div className="fixed inset-0 z-40" onClick={() => setShowUserMenu(false)} />
                 <div className="absolute right-0 top-full mt-1 w-48 bg-white border border-slate-200 rounded-xl shadow-lg z-50 py-1">
                   <div className="px-3 py-2.5 border-b border-slate-100">
-                    <p className="text-sm font-medium text-slate-800">{user?.displayName}</p>
-                    <p className="text-xs text-slate-400">{user?.department ?? user?.email}</p>
+                    <p className="text-sm font-medium text-slate-800">{user?.companyName}</p>
+                    <p className="text-xs text-slate-400">{user?.email}</p>
                   </div>
                   <button
                     className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer"
