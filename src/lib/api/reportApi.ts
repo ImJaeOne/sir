@@ -1,5 +1,22 @@
 import { createClient } from '@/lib/supabase/client';
 
+// ── 타입 re-export (기존 import 호환) ──
+export type {
+  SummarySubsection, SummarySection,
+  SirStockPoint, TierItem, SirRanking,
+  ChannelStat, ChannelItem, RiskItem,
+  StrategyAction, StrategyData, StrategyGroup,
+  PrevReport, TrendPoint, SearchTrendResult,
+  RiskReport, NewsClusterResponse as NewsCluster,
+} from '@/types/report';
+
+import type {
+  SummarySection, SirStockPoint, SirRanking,
+  ChannelStat, ChannelItem, RiskItem,
+  StrategyGroup, PrevReport, SearchTrendResult, RiskReport,
+  NewsClusterResponse,
+} from '@/types/report';
+
 const supabase = createClient();
 
 // ── Report Meta 캐시 (session IDs + period) ──
@@ -36,17 +53,28 @@ async function getReportMeta(reportId: string): Promise<ReportMeta> {
   return meta;
 }
 
+// ── 리포트 기본 정보 ──
+
+export async function getReportInfo(reportId: string) {
+  const { data } = await supabase
+    .from('reports')
+    .select('type, period_start, period_end, created_at, sir_score, status')
+    .eq('id', reportId)
+    .maybeSingle();
+  return data;
+}
+
+// ── 리포트 발행 ──
+
+export async function publishReport(reportId: string): Promise<void> {
+  const { error } = await supabase
+    .from('reports')
+    .update({ status: 'published' })
+    .eq('id', reportId);
+  if (error) throw error;
+}
+
 // ── 주간 총평 ──
-
-export interface SummarySubsection {
-  title: string;
-  points: string[];
-}
-
-export interface SummarySection {
-  summary: string;
-  subsections: SummarySubsection[];
-}
 
 export async function getWeeklySummary(workspaceId: string, reportId?: string): Promise<SummarySection[]> {
   let query = supabase
@@ -95,16 +123,6 @@ export async function upsertWeeklySummary(workspaceId: string, reportId: string,
 }
 
 // ── SIR & 주가 차트 ──
-
-export interface SirStockPoint {
-  date: string;
-  fullDate: string;
-  sir: number | null;
-  open_price: number | null;
-  high_price: number | null;
-  low_price: number | null;
-  close_price: number | null;
-}
 
 export async function getSirStockData(workspaceId: string, reportId?: string): Promise<SirStockPoint[]> {
   let snapshotQuery = supabase.from('daily_snapshots').select('date, sir_score').eq('workspace_id', workspaceId).order('date');
@@ -157,20 +175,6 @@ export async function getSirStockData(workspaceId: string, reportId?: string): P
 }
 
 // ── SIR 순위 ──
-
-export type TierItem = {
-  [key: string]: string | number;
-  tier: string;
-  count: number;
-  isCurrent: number;
-};
-
-export interface SirRanking {
-  tiers: TierItem[];
-  rank: number;
-  total: number;
-  average: number;
-}
 
 const TIER_RANGES = [
   { label: '상위 1구간 (900~1000)', min: 900, max: 1001 },
@@ -225,17 +229,6 @@ export async function getSirRanking(workspaceId: string, reportId?: string): Pro
 }
 
 // ── 채널별 통계 ──
-
-export interface ChannelStat {
-  id: string;
-  label: string;
-  value: number;
-  color: string;
-  sir: number;
-  positive: number;
-  negative: number;
-  neutral: number;
-}
 
 const PLATFORM_TO_CHANNEL: Record<string, string> = {
   naver_news: 'news',
@@ -311,15 +304,7 @@ export async function getChannelStats(workspaceId: string, channelItems: Channel
 
 // ── 뉴스 클러스터 ──
 
-export interface NewsCluster {
-  id: string;
-  representative_title: string;
-  sentiment: string | null;
-  summary: string | null;
-  items: { title: string; source: string; link: string }[];
-}
-
-export async function getNewsClusters(workspaceId: string, reportId?: string): Promise<NewsCluster[]> {
+export async function getNewsClusters(workspaceId: string, reportId?: string): Promise<NewsClusterResponse[]> {
   if (reportId) {
     const meta = await getReportMeta(reportId);
     if (meta.sessionIds.length === 0) return [];
@@ -374,22 +359,6 @@ export async function getNewsClusters(workspaceId: string, reportId?: string): P
 }
 
 // ── 채널별 아이템 (감정 상세 + 상위 콘텐츠 공유) ──
-
-export interface ChannelItem {
-  id: string;
-  platform_id: string;
-  title: string;
-  content: string | null;
-  summary: string | null;
-  sentiment: string;
-  link: string;
-  source: string | null;
-  views: number | null;
-  published_at: string | null;
-  critical_type: string | null;
-  cluster_id: string | null;
-  impact_score: number | null;
-}
 
 export async function getChannelItems(workspaceId: string, reportId?: string): Promise<ChannelItem[]> {
   if (reportId) {
@@ -458,16 +427,6 @@ export async function getChannelItems(workspaceId: string, reportId?: string): P
 
 // ── 리스크 콘텐츠 ──
 
-export interface RiskItem {
-  id: string;
-  platform_id: string;
-  title: string;
-  link: string;
-  critical_type: string;
-  critical_reason: string | null;
-  published_at: string | null;
-}
-
 const PLATFORM_LABELS: Record<string, string> = {
   naver_news: '뉴스',
   naver_blog: '블로그',
@@ -520,33 +479,6 @@ export async function getRiskItems(workspaceId: string, reportId?: string): Prom
 
 // ── 대응 전략 ──
 
-export interface StrategyAction {
-  platform: string;
-  topic: string;
-  contents: string[];
-}
-
-export interface StrategyData {
-  background: {
-    summary: string;
-    points: string[];
-  };
-  proposal: {
-    summary: string;
-    actions: StrategyAction[];
-  };
-  effect: {
-    summary: string;
-    points: string[];
-  };
-}
-
-export interface StrategyGroup {
-  category: string;
-  label: string;
-  strategy: StrategyData;
-}
-
 const CATEGORY_LABELS: Record<string, string> = {
   news: '뉴스 채널 대응 전략',
   sns: 'SNS 채널 대응 전략',
@@ -579,16 +511,6 @@ export async function getStrategies(workspaceId: string, reportId?: string): Pro
 }
 
 // ── 이전 리포트 비교 ──
-
-export interface PrevReport {
-  id: string;
-  type: string;
-  sirScore: number;
-  createdAt: string;
-  totalItems: number;
-  riskCount: number;
-  channelSirMap: Record<string, number>;
-}
 
 export async function getPrevReport(workspaceId: string, currentReportId: string): Promise<PrevReport | null> {
   const { data } = await supabase
@@ -647,16 +569,6 @@ export async function getPrevReport(workspaceId: string, currentReportId: string
 
 // ── 검색 트렌드 ──
 
-export interface TrendPoint {
-  date: string;
-  ratio: number;
-}
-
-export interface SearchTrendResult {
-  naver: TrendPoint[];
-  google: TrendPoint[];
-}
-
 export async function getSearchTrend(workspaceId: string, reportId?: string): Promise<SearchTrendResult> {
   if (!reportId) return { naver: [], google: [] };
 
@@ -674,25 +586,6 @@ export async function getSearchTrend(workspaceId: string, reportId?: string): Pr
 }
 
 // ── 신고 대행 요청 ──
-
-export interface RiskReport {
-  id: string;
-  workspace_id: string;
-  report_id: string;
-  source_table: string;
-  source_id: string;
-  platform_id: string;
-  title: string;
-  link: string;
-  critical_type: string;
-  reason: string;
-  evidence: string;
-  file_urls: string[];
-  status: string;
-  admin_note: string | null;
-  requested_at: string;
-  resolved_at: string | null;
-}
 
 export async function getRiskReports(workspaceId: string, reportId?: string): Promise<RiskReport[]> {
   let query = supabase.from('risk_reports').select('*').order('requested_at', { ascending: false });
@@ -724,4 +617,30 @@ export async function updateRiskReport(id: string, body: { status?: string; admi
     body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error('상태 업데이트 실패');
+}
+
+// ── 대응 전략 수정 ──
+
+export async function updateStrategies(workspaceId: string, reportId: string, strategies: StrategyGroup[]): Promise<void> {
+  for (const group of strategies) {
+    const { error } = await supabase
+      .from('session_strategies')
+      .update({ strategy: group.strategy })
+      .eq('workspace_id', workspaceId)
+      .eq('report_id', reportId)
+      .eq('category', group.category);
+    if (error) throw error;
+  }
+}
+
+// ── 주가 데이터 ──
+
+export async function getStockPrices(workspaceId: string) {
+  const { data, error } = await supabase
+    .from('stock_prices')
+    .select('date, close_price')
+    .eq('workspace_id', workspaceId)
+    .order('date');
+  if (error) throw error;
+  return data as { date: string; close_price: number }[];
 }

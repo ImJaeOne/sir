@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import {
+  getReportInfo,
   getWeeklySummary,
   getSirStockData,
   getSirRanking,
@@ -12,11 +13,9 @@ import {
   getPrevReport,
   getRiskReports,
 } from '@/lib/api/reportApi';
-import type { ChannelStat, ChannelItem, RiskItem } from '@/lib/api/reportApi';
+import type { ChannelItem } from '@/lib/api/reportApi';
 import { workspaceKeys } from '@/hooks/workspace/useWorkspaceQuery';
 import { getWorkspace } from '@/lib/api/workspaceApi';
-
-import { createClient } from '@/lib/supabase/client';
 
 export const reportKeys = {
   info: (reportId: string) => ['report', reportId, 'info'] as const,
@@ -40,19 +39,11 @@ const REPORT_OPTS = {
   refetchOnWindowFocus: false,
 } as const;
 
-/** 리포트 기본 정보 (type, period, created_at) */
+/** 리포트 기본 정보 (type, period, status, sir_score) */
 export function useReportInfo(reportId: string) {
   return useQuery({
     queryKey: reportKeys.info(reportId),
-    queryFn: async () => {
-      const supabase = createClient();
-      const { data } = await supabase
-        .from('reports')
-        .select('type, period_start, period_end, created_at, sir_score')
-        .eq('id', reportId)
-        .maybeSingle();
-      return data;
-    },
+    queryFn: () => getReportInfo(reportId),
     enabled: !!reportId,
     ...REPORT_OPTS,
   });

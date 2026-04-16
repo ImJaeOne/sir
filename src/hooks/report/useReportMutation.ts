@@ -1,7 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { upsertWeeklySummary } from '@/lib/api/reportApi';
-import { createClient } from '@/lib/supabase/client';
+import { upsertWeeklySummary, updateStrategies } from '@/lib/api/reportApi';
 import { reportKeys } from '@/hooks/report/useReportQuery';
 import type { SummarySection, StrategyGroup } from '@/lib/api/reportApi';
 
@@ -34,23 +33,6 @@ export function useUpdateSummary(workspaceId: string, reportId: string) {
 }
 
 // ── 대응 전략 수정 ──
-
-async function updateStrategies(
-  workspaceId: string,
-  reportId: string,
-  strategies: StrategyGroup[]
-) {
-  const supabase = createClient();
-  for (const group of strategies) {
-    const { error } = await supabase
-      .from('session_strategies')
-      .update({ strategy: group.strategy })
-      .eq('workspace_id', workspaceId)
-      .eq('report_id', reportId)
-      .eq('category', group.category);
-    if (error) throw error;
-  }
-}
 
 export function useUpdateStrategies(workspaceId: string, reportId: string) {
   const queryClient = useQueryClient();

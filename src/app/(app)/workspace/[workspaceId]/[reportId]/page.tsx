@@ -16,7 +16,7 @@ import { Loading } from '@/components/ui/Loading';
 import { AdminButton } from '@/components/ui/AdminButton';
 import { useWorkspace } from '@/hooks/workspace/useWorkspaceQuery';
 import { useReportInfo, reportKeys } from '@/hooks/report/useReportQuery';
-import { createClient } from '@/lib/supabase/client';
+import { publishReport } from '@/lib/api/reportApi';
 
 const BG_COLORS = {
   'bg-light': 'var(--color-bg-light)',
@@ -76,12 +76,7 @@ export default function ReportPage() {
   const handlePublish = async () => {
     setPublishing(true);
     try {
-      const supabase = createClient();
-      const { error } = await supabase
-        .from('reports')
-        .update({ status: 'published' })
-        .eq('id', reportId);
-      if (error) throw error;
+      await publishReport(reportId);
       await queryClient.refetchQueries({ queryKey: reportKeys.info(reportId) });
       toast.success('보고서가 발행되었습니다.');
     } catch {
