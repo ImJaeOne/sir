@@ -632,6 +632,53 @@ export async function deleteRiskReport(id: string): Promise<void> {
   if (error) throw error;
 }
 
+// 신고 대상 아이템의 platform_id → risk_reports.source_table
+const RISK_SOURCE_TABLE: Record<string, string> = {
+  naver_news: 'news_items',
+  naver_blog: 'sns_items',
+  youtube: 'sns_items',
+  naver_stock: 'community_items',
+  dcinside: 'community_items',
+};
+
+export interface SubmitRiskReportInput {
+  workspaceId: string;
+  reportId: string;
+  item: RiskItem;
+  reason: string;
+  evidence: string;
+  files: File[];
+}
+
+export async function submitRiskReport(input: SubmitRiskReportInput): Promise<void> {
+  const { workspaceId, reportId, item, reason, evidence, files } = input;
+
+  const fileUrls: string[] = [];
+  for (const f of files) {
+    const ext = f.name.split('.').pop() ?? '';
+    const path = `${workspaceId}/${crypto.randomUUID()}.${ext}`;
+    const { error } = await supabase.storage.from('risk-attachments').upload(path, f);
+    if (error) throw error;
+    fileUrls.push(path);
+  }
+
+  const { error } = await supabase.from('risk_reports').insert({
+    workspace_id: workspaceId,
+    report_id: reportId,
+    source_table: RISK_SOURCE_TABLE[item.platform_id] ?? 'community_items',
+    source_id: item.id,
+    platform_id: item.platform_id,
+    title: item.title,
+    link: item.link,
+    critical_type: item.critical_type,
+    reason,
+    evidence,
+    file_urls: fileUrls,
+    status: 'requested',
+  });
+  if (error) throw error;
+}
+
 export async function updateRiskReport(id: string, body: { status?: string; admin_note?: string }): Promise<void> {
   const { data: { session } } = await supabase.auth.getSession();
   const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/risk-report/${id}`, {

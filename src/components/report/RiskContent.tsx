@@ -1,11 +1,8 @@
 'use client';
 
-import { useMemo, useCallback } from 'react';
-import { toast } from 'sonner';
-import { useQueryClient } from '@tanstack/react-query';
+import { useMemo } from 'react';
 import { useRiskItems, useRiskReports, useReportInfo } from '@/hooks/report/useReportQuery';
-import { deleteRiskReport } from '@/lib/api/reportApi';
-import { reportKeys } from '@/hooks/report/useReportQuery';
+import { useDeleteRiskReport } from '@/hooks/report/useReportMutation';
 import { ReportSection } from '@/components/report/ReportSection';
 import { RiskDetectionTable } from '@/components/report/risk-content/RiskDetectionTable';
 import { RiskResultTable } from '@/components/report/risk-content/RiskResultTable';
@@ -21,7 +18,7 @@ export function RiskContent({ workspaceId, reportId, editable = false }: RiskCon
   const { data: report } = useReportInfo(reportId);
   const { data: riskItems } = useRiskItems(workspaceId, reportId);
   const { data: riskReports } = useRiskReports(workspaceId, reportId);
-  const queryClient = useQueryClient();
+  const deleteMutation = useDeleteRiskReport(workspaceId, reportId);
 
   const { reportedSourceIds, riskReportBySourceId } = useMemo(() => {
     const ids = new Set<string>();
@@ -32,19 +29,6 @@ export function RiskContent({ workspaceId, reportId, editable = false }: RiskCon
     }
     return { reportedSourceIds: ids, riskReportBySourceId: map };
   }, [riskReports]);
-
-  const handleCancelReport = useCallback(
-    async (riskReportId: string) => {
-      try {
-        await deleteRiskReport(riskReportId);
-        queryClient.invalidateQueries({ queryKey: reportKeys.riskReports(workspaceId, reportId) });
-        toast.success('신고가 취소되었습니다.');
-      } catch {
-        toast.error('신고 대행 취소에 실패했습니다.');
-      }
-    },
-    [workspaceId, reportId, queryClient],
-  );
 
   const isDaily = report?.type === 'daily';
 
@@ -57,7 +41,7 @@ export function RiskContent({ workspaceId, reportId, editable = false }: RiskCon
           reportId={reportId}
           reportedSourceIds={reportedSourceIds}
           riskReportBySourceId={riskReportBySourceId}
-          onCancelReport={handleCancelReport}
+          onCancelReport={deleteMutation.mutate}
           editable={editable}
         />
         {report?.period_start && report?.period_end && (
