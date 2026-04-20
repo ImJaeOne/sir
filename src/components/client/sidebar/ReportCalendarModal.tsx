@@ -23,6 +23,8 @@ interface ReportCalendarModalProps {
   onClose: () => void;
 }
 
+type Mode = 'daily' | 'weekly';
+
 function parseDate(str: string | null): Date | null {
   if (!str) return null;
   return new Date(str + 'T00:00:00');
@@ -44,16 +46,31 @@ export function ReportCalendarModal({
   onSelect,
   onClose,
 }: ReportCalendarModalProps) {
+  // 현재 보고 있는 보고서 type 에 따라 초기 모드 결정
+  const [mode, setMode] = useState<Mode>(() => {
+    const current = reports.find((r) => r.id === currentReportId);
+    return current?.type === 'daily' ? 'daily' : 'weekly';
+  });
+
+  // 모드에 해당하는 보고서만 필터
+  const visibleReports = useMemo(
+    () =>
+      mode === 'daily'
+        ? reports.filter((r) => r.type === 'daily')
+        : reports.filter((r) => r.type !== 'daily'),
+    [reports, mode],
+  );
+
   const [selectedReportId, setSelectedReportId] = useState<string | undefined>(currentReportId);
   const [month, setMonth] = useState<Date | undefined>(() => {
     const current = reports.find((r) => r.id === currentReportId);
     return current?.period_end ? (parseDate(current.period_end) ?? undefined) : undefined;
   });
 
-  // 날짜 → 보고서 매핑
+  // 날짜 → 보고서 매핑 (현재 모드 내에서만)
   const reportDateMap = useMemo(() => {
     const map = new Map<string, Report>();
-    for (const report of reports) {
+    for (const report of visibleReports) {
       const start = parseDate(report.period_start);
       const end = parseDate(report.period_end);
       if (!start || !end) continue;
@@ -62,54 +79,56 @@ export function ReportCalendarModal({
       }
     }
     return map;
-  }, [reports]);
+  }, [visibleReports]);
 
-  // 현재 보고 있는 보고서 기간 (currentReportId 없으면 전체 보고서 기간 표시)
-  const {
-    dates: currentDates,
-    starts: currentStarts,
-    ends: currentEnds,
-  } = useMemo(() => {
-    if (currentReportId) {
-      const target = reports.find((r) => r.id === currentReportId);
-      if (!target) return { dates: [], starts: [], ends: [] };
-      const s = parseDate(target.period_start);
-      const e = parseDate(target.period_end);
-      if (!s || !e) return { dates: [], starts: [], ends: [] };
-      return { dates: getDatesInRange(s, e), starts: [s], ends: [e] };
-    }
-    // 전체: 모든 보고서 기간 표시
-    const allDates: Date[] = [];
-    const allStarts: Date[] = [];
-    const allEnds: Date[] = [];
-    for (const r of reports) {
+  // 모드별 전체 보고서 날짜 (범위·점 표시용)
+  const allReportDates = useMemo(() => {
+    const dates: Date[] = [];
+    const starts: Date[] = [];
+    const ends: Date[] = [];
+    for (const r of visibleReports) {
       const s = parseDate(r.period_start);
       const e = parseDate(r.period_end);
       if (!s || !e) continue;
-      allDates.push(...getDatesInRange(s, e));
-      allStarts.push(s);
-      allEnds.push(e);
+      dates.push(...getDatesInRange(s, e));
+      starts.push(s);
+      ends.push(e);
     }
-    return { dates: allDates, starts: allStarts, ends: allEnds };
-  }, [reports, currentReportId]);
+    return { dates, starts, ends };
+  }, [visibleReports]);
 
-  // 선택된 보고서 기간 (현재 보고서와 다른 것)
-  const {
-    dates: selectedDates,
-    start: selectedStart,
-    end: selectedEnd,
-  } = useMemo(() => {
+  // 현재 보고서 하이라이트 — 현재 모드와 같은 타입일 때만
+  const currentHighlight = useMemo(() => {
+    if (!currentReportId) return { dates: [], starts: [], ends: [] };
+    const target = reports.find((r) => r.id === currentReportId);
+    if (!target) return { dates: [], starts: [], ends: [] };
+    const isCurrentDaily = target.type === 'daily';
+    if ((mode === 'daily') !== isCurrentDaily) {
+      return { dates: [], starts: [], ends: [] };
+    }
+    const s = parseDate(target.period_start);
+    const e = parseDate(target.period_end);
+    if (!s || !e) return { dates: [], starts: [], ends: [] };
+    return { dates: getDatesInRange(s, e), starts: [s], ends: [e] };
+  }, [reports, currentReportId, mode]);
+
+  // 선택된 보고서 기간 (현재 보고서와 다른 것, 같은 모드만)
+  const selectedHighlight = useMemo(() => {
     if (!selectedReportId || selectedReportId === currentReportId)
-      return { dates: [], start: null, end: null };
+      return { dates: [], start: null as Date | null, end: null as Date | null };
     const target = reports.find((r) => r.id === selectedReportId);
     if (!target) return { dates: [], start: null, end: null };
+    const isSelectedDaily = target.type === 'daily';
+    if ((mode === 'daily') !== isSelectedDaily) {
+      return { dates: [], start: null, end: null };
+    }
     const s = parseDate(target.period_start);
     const e = parseDate(target.period_end);
     if (!s || !e) return { dates: [], start: null, end: null };
     return { dates: getDatesInRange(s, e), start: s, end: e };
-  }, [reports, selectedReportId, currentReportId]);
+  }, [reports, selectedReportId, currentReportId, mode]);
 
-  // 최신 보고서의 period_end 이후는 비활성화
+  // 최신 보고서의 period_end 이후는 비활성화 (모드 무관 전체 기준)
   const latestEnd = useMemo(() => {
     const dates = reports.map((r) => parseDate(r.period_end)).filter((d): d is Date => d !== null);
     if (dates.length === 0) return undefined;
@@ -129,7 +148,6 @@ export function ReportCalendarModal({
 
   const isChanged = selectedReportId && selectedReportId !== currentReportId;
 
-  // 월 네비게이션 핸들러
   const goToPrevMonth = () => {
     setMonth((prev) => {
       const d = prev ? new Date(prev) : new Date();
@@ -160,7 +178,28 @@ export function ReportCalendarModal({
       }
     >
       <div className="flex flex-col gap-4 items-center">
-        {/* 달력 */}
+        {/* 모드 토글 */}
+        <div className="flex gap-1 bg-slate-100 rounded-full p-1">
+          {(['weekly', 'daily'] as const).map((m) => {
+            const active = mode === m;
+            return (
+              <button
+                key={m}
+                type="button"
+                onClick={() => {
+                  setMode(m);
+                  setSelectedReportId(currentReportId);
+                }}
+                className={`px-4 py-1.5 text-xs font-semibold rounded-full transition-colors cursor-pointer ${
+                  active ? 'bg-white text-text-dark shadow-sm' : 'text-text-muted hover:text-text-dark'
+                }`}
+              >
+                {m === 'weekly' ? '주간' : '일간'}
+              </button>
+            );
+          })}
+        </div>
+
         <style>{`
           .report-calendar .rdp-nav { display: none; }
           .report-calendar .rdp-month_caption { display: none; }
@@ -189,18 +228,36 @@ export function ReportCalendarModal({
             content: '';
             position: absolute;
             left: 50%;
-            bottom: 8px;
+            bottom: 4px;
             transform: translateX(-50%);
             width: 4px;
             height: 4px;
             border-radius: 9999px;
             background-color: var(--color-bg-accent, #362CFF);
           }
+          /* 전체 모드 보고서 표시 — 모드별로 다름 */
+          .report-calendar .day-has-report,
           .report-calendar .day-current,
           .report-calendar .day-selected {
             position: relative;
             isolation: isolate;
           }
+          .report-calendar .day-has-report::before {
+            content: '';
+            position: absolute;
+            inset: 20% 0;
+            z-index: -1;
+            border-radius: 0;
+          }
+          .report-calendar.mode-weekly .day-has-report::before {
+            background-color: rgba(54, 44, 255, 0.08);
+          }
+          .report-calendar.mode-daily .day-has-report::before {
+            background-color: rgba(151, 71, 255, 0.1);
+            border-radius: 9999px;
+            inset: 15% 15%;
+          }
+          /* 현재 / 선택 보고서 강조 (위 표시보다 위에 쌓임) */
           .report-calendar .day-current::before,
           .report-calendar .day-selected::before {
             content: '';
@@ -215,6 +272,11 @@ export function ReportCalendarModal({
           .report-calendar .day-selected::before {
             background-color: var(--color-bg-pupple-calendar, #9747ff26);
           }
+          .report-calendar.mode-daily .day-current::before,
+          .report-calendar.mode-daily .day-selected::before {
+            border-radius: 9999px;
+            inset: 10% 10%;
+          }
           .report-calendar .day-range-start::before {
             border-radius: 9999px 0 0 9999px;
           }
@@ -222,11 +284,10 @@ export function ReportCalendarModal({
             border-radius: 0 9999px 9999px 0;
           }
           .report-calendar .day-range-start.day-range-end::before {
-            border-radius: 8px;
+            border-radius: 9999px;
           }
         `}</style>
         <div className="inline-flex flex-col gap-2">
-          {/* 월 네비게이션 — 달력과 동일 너비 */}
           <div className="flex items-center justify-between">
             <button
               onClick={goToPrevMonth}
@@ -244,21 +305,23 @@ export function ReportCalendarModal({
           </div>
 
           <DayPicker
-            className="report-calendar"
+            className={`report-calendar mode-${mode}`}
             locale={ko}
             weekStartsOn={1}
             month={month}
             onMonthChange={setMonth}
             disabled={latestEnd ? { after: latestEnd } : undefined}
             modifiers={{
-              current: currentDates,
-              currentStart: currentStarts,
-              currentEnd: currentEnds,
-              selected: selectedDates,
-              selectedStart: selectedStart ? [selectedStart] : [],
-              selectedEnd: selectedEnd ? [selectedEnd] : [],
+              hasReport: allReportDates.dates,
+              current: currentHighlight.dates,
+              currentStart: currentHighlight.starts,
+              currentEnd: currentHighlight.ends,
+              selected: selectedHighlight.dates,
+              selectedStart: selectedHighlight.start ? [selectedHighlight.start] : [],
+              selectedEnd: selectedHighlight.end ? [selectedHighlight.end] : [],
             }}
             modifiersClassNames={{
+              hasReport: 'day-has-report',
               current: 'day-current',
               currentStart: 'day-range-start',
               currentEnd: 'day-range-end',
@@ -272,10 +335,10 @@ export function ReportCalendarModal({
         </div>
 
         {/* 범례 */}
-        <div className="flex items-center justify-end gap-4">
+        <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-2">
           <div className="flex items-center gap-1.5">
-            <div className="w-2.5 h-2.5 rounded-full bg-bg-accent" />
-            <span className="text-xs text-text-muted">오늘</span>
+            <div className={`w-2.5 h-2.5 ${mode === 'daily' ? 'rounded-full' : ''}`} style={{ backgroundColor: mode === 'daily' ? 'rgba(151, 71, 255, 0.35)' : 'rgba(54, 44, 255, 0.2)' }} />
+            <span className="text-xs text-text-muted">{mode === 'daily' ? '일간 보고서' : '주간 보고서'}</span>
           </div>
           <div className="flex items-center gap-1.5">
             <div className="w-2.5 h-2.5 rounded-full bg-bg-blue" />
@@ -284,6 +347,12 @@ export function ReportCalendarModal({
           <div className="flex items-center gap-1.5">
             <div className="w-2.5 h-2.5 rounded-full bg-bg-pupple-calendar" />
             <span className="text-xs text-text-muted">선택된 보고서</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="relative w-2.5 h-2.5">
+              <div className="absolute left-1/2 -translate-x-1/2 bottom-0 w-1 h-1 rounded-full bg-bg-accent" />
+            </div>
+            <span className="text-xs text-text-muted">오늘</span>
           </div>
         </div>
       </div>
