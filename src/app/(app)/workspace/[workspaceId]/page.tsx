@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useState, useEffect, useMemo } from 'react';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { Tooltip } from '@/components/ui/Tooltip';
@@ -363,10 +363,28 @@ function CreateReportButton({ workspaceId }: { workspaceId: string }) {
   );
 }
 
+type ReportFilterTab = 'all' | 'weekly' | 'daily';
+
+function isFilterTab(v: string | null): v is ReportFilterTab {
+  return v === 'all' || v === 'weekly' || v === 'daily';
+}
+
 export default function WorkspaceDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const workspaceId = params?.workspaceId as string;
+
+  const typeParam = searchParams?.get('type') ?? null;
+  const currentTab: ReportFilterTab = isFilterTab(typeParam) ? typeParam : 'all';
+
+  const setTab = (t: ReportFilterTab) => {
+    const next = new URLSearchParams(searchParams?.toString() ?? '');
+    if (t === 'all') next.delete('type');
+    else next.set('type', t);
+    const qs = next.toString();
+    router.replace(`/workspace/${workspaceId}${qs ? `?${qs}` : ''}`);
+  };
 
   const { data: workspace } = useWorkspace(workspaceId);
   const { data: profile } = useWorkspaceProfile(workspaceId);
@@ -374,6 +392,14 @@ export default function WorkspaceDetailPage() {
   const { data: reports, isLoading } = useReports(workspaceId);
   const { data: progressList } = useReportProgress(workspaceId);
   useReportRealtimeSync(workspaceId);
+
+  // initial(월간)은 '주간' 탭에 포함 — weekly 흐름의 첫 번째 30일치라 의미상 같은 축
+  const filteredReports = useMemo(() => {
+    if (!reports) return reports;
+    if (currentTab === 'all') return reports;
+    if (currentTab === 'daily') return reports.filter((r) => r.type === 'daily');
+    return reports.filter((r) => r.type !== 'daily');
+  }, [reports, currentTab]);
 
   // 진행 중인 보고서는 기본 열림, 완료된 보고서는 닫힘
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
@@ -442,7 +468,14 @@ export default function WorkspaceDetailPage() {
 
         {/* 리포트 목록 */}
         <div className="flex flex-col gap-4">
-          <h2 className="text-sm font-semibold text-slate-700">보고서</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-slate-700">보고서</h2>
+            <div className="flex gap-1">
+              <ReportTabButton active={currentTab === 'all'} onClick={() => setTab('all')}>전체</ReportTabButton>
+              <ReportTabButton active={currentTab === 'weekly'} onClick={() => setTab('weekly')}>주간</ReportTabButton>
+              <ReportTabButton active={currentTab === 'daily'} onClick={() => setTab('daily')}>일간</ReportTabButton>
+            </div>
+          </div>
 
           {isLoading && <p className="text-sm text-slate-400 py-8 text-center">불러오는 중...</p>}
 
@@ -453,18 +486,38 @@ export default function WorkspaceDetailPage() {
             </div>
           )}
 
-          {reports?.map((report) => {
+          {!isLoading && reports && reports.length > 0 && filteredReports?.length === 0 && (
+            <div className="bg-white rounded-2xl border border-dashed border-slate-200 shadow-sm py-12 flex flex-col items-center gap-2">
+              <span className="text-sm text-slate-400">
+                {currentTab === 'daily' ? '일간' : '주간'} 보고서가 없습니다
+              </span>
+            </div>
+          )}
+
+          {filteredReports?.map((report) => {
             const periodStart = report.period_start.replace(/-/g, '.');
             const periodEnd = report.period_end.replace(/-/g, '.');
-            const typeLabel = report.type === 'initial' ? '월간 보고서' : '주간 보고서';
-            const statusColor = report.status === 'published'
-              ? 'bg-emerald-50 text-emerald-700'
-              : 'bg-amber-50 text-amber-700';
-            const statusLabel = report.status === 'published' ? '검토 완료' : '검토 대기';
+            const typeLabel =
+              report.type === 'initial'
+                ? '월간 보고서'
+                : report.type === 'daily'
+                  ? '일간 보고서'
+                  : '주간 보고서';
+            const isAutoPublished = report.type === 'daily' && report.status === 'published';
+            const statusColor = isAutoPublished
+              ? 'bg-violet-50 text-violet-700'
+              : report.status === 'published'
+                ? 'bg-emerald-50 text-emerald-700'
+                : 'bg-amber-50 text-amber-700';
+            const statusLabel = isAutoPublished
+              ? '자동 발행'
+              : report.status === 'published'
+                ? '검토 완료'
+                : '검토 대기';
             const isExpanded = expandedIds.has(report.id);
             const progress = progressList?.find(p => p.reportId === report.id);
             const isNotAnalyzed = !progress || progress.sessions.length === 0;
-            const periodLabel = `${periodStart} ~ ${periodEnd}`;
+            const periodLabel = report.type === 'daily' ? periodStart : `${periodStart} ~ ${periodEnd}`;
 
             return (
               <div
@@ -521,5 +574,29 @@ export default function WorkspaceDetailPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+function ReportTabButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`px-3 py-1 text-xs font-semibold rounded-full transition-colors cursor-pointer ${
+        active
+          ? 'bg-slate-800 text-white'
+          : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+      }`}
+    >
+      {children}
+    </button>
   );
 }

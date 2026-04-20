@@ -512,6 +512,10 @@ export async function getStrategies(workspaceId: string, reportId?: string): Pro
 
 // ── 이전 리포트 비교 ──
 
+/**
+ * daily ↔ daily, weekly ↔ weekly|initial 로 매칭해서 비교할 이전 보고서를 찾는다.
+ * daily 가 있는 워크스페이스에서 daily 와 weekly 가 혼재해도 비교 기준 기간이 일관되도록.
+ */
 export async function getPrevReport(workspaceId: string, currentReportId: string): Promise<PrevReport | null> {
   const { data } = await supabase
     .from('reports')
@@ -522,9 +526,13 @@ export async function getPrevReport(workspaceId: string, currentReportId: string
   if (!data || data.length < 2) return null;
 
   const currIdx = data.findIndex(r => r.id === currentReportId);
-  if (currIdx === -1 || currIdx + 1 >= data.length) return null;
+  if (currIdx === -1) return null;
 
-  const prev = data[currIdx + 1];
+  const currType = data[currIdx].type;
+  const compatibleTypes = currType === 'daily' ? ['daily'] : ['weekly', 'initial'];
+
+  const prev = data.slice(currIdx + 1).find(r => compatibleTypes.includes(r.type));
+  if (!prev) return null;
 
   // 이전 report의 아이템/리스크 건수 조회 (session 기반)
   const meta = await getReportMeta(prev.id);
@@ -595,6 +603,24 @@ export async function getRiskReports(workspaceId: string, reportId?: string): Pr
   return data ?? [];
 }
 
+/**
+ * 보고서 기간 내에 "처리 완료" 또는 "반려" 로 결과가 확정된 신고 건만 반환.
+ * 접수 시점이 아닌 resolved_at 기준 → 처리 결과가 확정된 날의 익일 보고서에 반영됨.
+ */
+export async function getResolvedRiskReports(workspaceId: string, periodStart: string, periodEnd: string): Promise<RiskReport[]> {
+  const startIso = `${periodStart}T00:00:00`;
+  const endIso = `${periodEnd}T23:59:59.999`;
+  const { data } = await supabase
+    .from('risk_reports')
+    .select('*')
+    .eq('workspace_id', workspaceId)
+    .in('status', ['resolved', 'rejected'])
+    .gte('resolved_at', startIso)
+    .lte('resolved_at', endIso)
+    .order('resolved_at', { ascending: false });
+  return data ?? [];
+}
+
 export async function deleteRiskReport(id: string): Promise<void> {
   // Storage 파일 삭제 후 DB row 삭제
   const { data } = await supabase.from('risk_reports').select('file_urls').eq('id', id).single();
@@ -620,6 +646,20 @@ export async function updateRiskReport(id: string, body: { status?: string; admi
 }
 
 // ── 대응 전략 수정 ──
+
+// ── 리스크 해제 (관리자 전용) ──
+
+export async function clearCriticalType(platformId: string, itemId: string): Promise<void> {
+  const res = await fetch('/api/admin/clear-critical', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ platform_id: platformId, id: itemId }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail ?? '리스크 해제 실패');
+  }
+}
 
 export async function updateStrategies(workspaceId: string, reportId: string, strategies: StrategyGroup[]): Promise<void> {
   for (const group of strategies) {

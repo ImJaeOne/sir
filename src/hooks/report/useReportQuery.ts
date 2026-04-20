@@ -12,6 +12,7 @@ import {
   getSearchTrend,
   getPrevReport,
   getRiskReports,
+  getResolvedRiskReports,
 } from '@/lib/api/reportApi';
 import type { ChannelItem } from '@/lib/api/reportApi';
 import { workspaceKeys } from '@/hooks/workspace/useWorkspaceQuery';
@@ -30,6 +31,7 @@ export const reportKeys = {
   searchTrend: (id: string, reportId?: string) => ['report', id, 'searchTrend', reportId] as const,
   prevReport: (id: string, reportId: string) => ['report', id, 'prevReport', reportId] as const,
   riskReports: (id: string, reportId?: string) => ['report', id, 'riskReports', reportId] as const,
+  resolvedRiskReports: (id: string, from: string, to: string) => ['report', id, 'resolvedRiskReports', from, to] as const,
 };
 
 // 리포트 데이터는 주간 보고서 — 페이지 내 refetch 불필요, 캐시 공유 극대화
@@ -159,6 +161,17 @@ export function useRiskReports(workspaceId: string, reportId?: string) {
     queryKey: reportKeys.riskReports(workspaceId, reportId),
     queryFn: () => getRiskReports(workspaceId, reportId),
     enabled: !!workspaceId,
+    staleTime: 30 * 1000,
+    gcTime: 5 * 60 * 1000,
+  });
+}
+
+/** 보고서 기간 내 결과 확정(resolved/rejected)된 신고 — 처리 결과 섹션용 */
+export function useResolvedRiskReports(workspaceId: string, periodStart?: string, periodEnd?: string) {
+  return useQuery({
+    queryKey: reportKeys.resolvedRiskReports(workspaceId, periodStart ?? '', periodEnd ?? ''),
+    queryFn: () => getResolvedRiskReports(workspaceId, periodStart!, periodEnd!),
+    enabled: !!workspaceId && !!periodStart && !!periodEnd,
     staleTime: 30 * 1000,
     gcTime: 5 * 60 * 1000,
   });

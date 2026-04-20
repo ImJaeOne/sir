@@ -3,9 +3,13 @@
 
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
+import { useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { Badge } from '@/components/ui/Badge';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { RiskReportRequestModal } from '@/components/report/risk-content/RiskReportRequestModal';
+import { clearCriticalType } from '@/lib/api/reportApi';
+import { reportKeys } from '@/hooks/report/useReportQuery';
 import type { RiskItem } from '@/lib/api/reportApi';
 
 const criticalTypeConfig: Record<
@@ -58,6 +62,7 @@ interface RiskTableProps {
   reportedSourceIds: Set<string>;
   riskReportBySourceId: Map<string, string>;
   onCancelReport: (riskReportId: string) => void;
+  editable?: boolean;
 }
 
 export function RiskTable({
@@ -67,10 +72,26 @@ export function RiskTable({
   reportedSourceIds,
   riskReportBySourceId,
   onCancelReport,
+  editable = false,
 }: RiskTableProps) {
   const [tab, setTab] = useState<string>('all');
   const [reportTarget, setReportTarget] = useState<RiskItem | null>(null);
+  const [clearingId, setClearingId] = useState<string | null>(null);
   const parentRef = useRef<HTMLDivElement>(null);
+  const queryClient = useQueryClient();
+
+  const handleClearRisk = async (item: RiskItem) => {
+    setClearingId(item.id);
+    try {
+      await clearCriticalType(item.platform_id, item.id);
+      queryClient.invalidateQueries({ queryKey: reportKeys.riskItems(workspaceId) });
+      toast.success('리스크 분류를 해제했습니다.');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : '리스크 해제 실패');
+    } finally {
+      setClearingId(null);
+    }
+  };
 
   const filtered = useMemo(() => {
     if (tab === 'all') return riskItems;
@@ -213,7 +234,21 @@ export function RiskTable({
                           </div>
                         </div>
                         <div className="text-right pr-2">
-                          {reportedSourceIds.has(item.id) ? (
+                          {editable ? (
+                            <button
+                              type="button"
+                              onClick={() => handleClearRisk(item)}
+                              disabled={clearingId === item.id}
+                              className="cursor-pointer disabled:opacity-50 disabled:cursor-wait"
+                            >
+                              <Badge
+                                variant="slate"
+                                className="px-3 py-1.5 hover:bg-red-50 hover:text-red-600 transition-colors"
+                              >
+                                {clearingId === item.id ? '해제 중...' : '리스크 해제'}
+                              </Badge>
+                            </button>
+                          ) : reportedSourceIds.has(item.id) ? (
                             <button
                               type="button"
                               onClick={() => {
@@ -311,7 +346,16 @@ export function RiskTable({
                       )}
                     </div>
                   </div>
-                  {reportedSourceIds.has(item.id) ? (
+                  {editable ? (
+                    <button
+                      type="button"
+                      onClick={() => handleClearRisk(item)}
+                      disabled={clearingId === item.id}
+                      className="w-full py-2.5 rounded-xl text-xs font-semibold bg-slate-100 text-slate-500 hover:bg-red-50 hover:text-red-600 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-wait"
+                    >
+                      {clearingId === item.id ? '해제 중...' : '리스크 해제'}
+                    </button>
+                  ) : reportedSourceIds.has(item.id) ? (
                     <button
                       type="button"
                       onClick={() => {
