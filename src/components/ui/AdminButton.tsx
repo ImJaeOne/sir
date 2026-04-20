@@ -4,6 +4,7 @@ interface AdminButtonProps {
   disabled?: boolean;
   variant?: 'primary' | 'secondary' | 'danger';
   size?: 'sm' | 'md';
+  fullWidth?: boolean;
   className?: string;
   type?: 'button' | 'submit';
 }
@@ -16,7 +17,7 @@ const VARIANTS = {
 
 const SIZES = {
   sm: 'text-xs px-3 py-2',
-  md: 'text-sm px-4 py-1.5',
+  md: 'text-sm px-4 py-2.5',
 } as const;
 
 export function AdminButton({
@@ -25,6 +26,7 @@ export function AdminButton({
   disabled = false,
   variant = 'secondary',
   size = 'md',
+  fullWidth = false,
   className = '',
   type = 'button',
 }: AdminButtonProps) {
@@ -33,7 +35,7 @@ export function AdminButton({
       type={type}
       onClick={onClick}
       disabled={disabled}
-      className={`font-semibold rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${VARIANTS[variant]} ${SIZES[size]} ${className}`}
+      className={`font-semibold rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${fullWidth ? 'w-full' : ''} ${VARIANTS[variant]} ${SIZES[size]} ${className}`}
     >
       {children}
     </button>
