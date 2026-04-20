@@ -11,6 +11,8 @@ interface SnapshotProps {
   sirRanking: SirRanking;
   isInitial: boolean;
   prevIsInitial: boolean;
+  isDaily?: boolean;
+  hasPrev?: boolean;
   snapshotDiff?: SnapshotDiff;
 }
 
@@ -21,14 +23,24 @@ export function Snapshot({
   sirRanking,
   isInitial,
   prevIsInitial,
+  isDaily = false,
+  hasPrev = false,
   snapshotDiff,
 }: SnapshotProps) {
-  const prefix = isInitial ? '' : prevIsInitial ? '전월 대비 ' : '전주 대비 ';
+  const prefix = !hasPrev
+    ? '기준점 대비 '
+    : isDaily
+      ? '전일 대비 '
+      : prevIsInitial
+        ? '전월 대비 '
+        : '전주 대비 ';
+
+  const period = isDaily ? '일간' : '주간';
 
   const cards = [
     {
-      title: '주간 SIR 지수',
-      mobileTitle: '주간 SIR 지수',
+      title: `${period} SIR 지수`,
+      mobileTitle: `${period} SIR 지수`,
       description: '1,000점 만점 기준',
       value: `${Math.round(score)}점`,
       change: snapshotDiff
@@ -36,8 +48,8 @@ export function Snapshot({
         : undefined,
     },
     {
-      title: '주간 수집된 평판 데이터 수',
-      mobileTitle: '주간 수집된\n평판 데이터 수',
+      title: `${period} 수집된 평판 데이터 수`,
+      mobileTitle: `${period} 수집된\n평판 데이터 수`,
       description: '6개 채널 통합 수집',
       value: `${totalItems.toLocaleString()}개`,
       change: snapshotDiff
@@ -45,8 +57,8 @@ export function Snapshot({
         : undefined,
     },
     {
-      title: '주간 리스크 높은 콘텐츠 수',
-      mobileTitle: '주간 리스크\n높은 콘텐츠 수',
+      title: `${period} 리스크 높은 콘텐츠 수`,
+      mobileTitle: `${period} 리스크\n높은 콘텐츠 수`,
       description: '즉시 검토 권장',
       value: `${riskCount.toLocaleString()}개`,
       change: snapshotDiff
@@ -54,8 +66,8 @@ export function Snapshot({
         : undefined,
     },
     {
-      title: '주간 SIR 순위',
-      mobileTitle: '주간 SIR 순위',
+      title: `${period} SIR 순위`,
+      mobileTitle: `${period} SIR 순위`,
       description: `총 참여 기업 ${sirRanking.total}개`,
       value: getSirTier(score),
       change: snapshotDiff

@@ -32,6 +32,7 @@ export function OnlineReputation({ workspaceId, reportId, pdfMode = false }: Onl
   const { data: prevReport } = usePrevReport(workspaceId, reportId);
 
   const isInitial = report?.type === 'initial';
+  const isDaily = report?.type === 'daily';
   const prevIsInitial = prevReport?.type === 'initial';
 
   const searchTrendProps = useMemo(
@@ -57,9 +58,9 @@ export function OnlineReputation({ workspaceId, reportId, pdfMode = false }: Onl
   return (
     <div className="print-break">
       <ReportSection id="section-reputation" icon={<OnlineReputationIcon size={36} />} title="온라인 평판 종합">
-        <SearchTrendPanel {...searchTrendProps} />
+        {!isDaily && <SearchTrendPanel {...searchTrendProps} />}
         <ChannelVolumePanel {...channelVolumeProps} />
-        <ChannelSirPanel channelStats={channelStats ?? []} isInitial={isInitial} prevIsInitial={prevIsInitial} prevChannelSirMap={prevReport?.channelSirMap ?? {}} />
+        <ChannelSirPanel channelStats={channelStats ?? []} isInitial={isInitial} prevIsInitial={prevIsInitial} isDaily={isDaily} prevChannelSirMap={prevReport?.channelSirMap ?? {}} />
         <SentimentPanel {...sentimentProps} />
         <ChannelDetailPanel {...channelDetailProps} />
       </ReportSection>

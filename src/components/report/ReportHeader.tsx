@@ -17,11 +17,15 @@ export function ReportHeader({ workspaceId, reportId, showPdfButton = true }: Re
 
   const periodStart = report?.period_start?.replace(/-/g, '.') ?? '';
   const periodEnd = report?.period_end?.replace(/-/g, '.') ?? '';
+  const isDaily = report?.type === 'daily';
+  const headerLabel = isDaily ? 'SIR Daily Report' : 'SIR Weekly Report';
+  const periodTitle = isDaily ? '분석 일자' : '분석 기간';
+  const periodValue = isDaily ? periodStart : `${periodStart} ~ ${periodEnd}`;
 
   return (
     <div className="flex flex-col gap-2">
       <div className="w-full flex justify-between items-center">
-        <p className="text-sm lg:text-base text-text-muted font-semibold">SIR Weekly Report</p>
+        <p className="text-sm lg:text-base text-text-muted font-semibold">{headerLabel}</p>
         {showPdfButton && (
           <Link
             href={`/report/${workspaceId}/${reportId}`}
@@ -39,10 +43,8 @@ export function ReportHeader({ workspaceId, reportId, showPdfButton = true }: Re
           <span className="text-text-muted text-sm lg:text-[22px]">{workspace?.ticker ?? ''}</span>
         </h1>
         <p className="flex flex-col lg:flex-row text-[10px] lg:text-sm">
-          <span className="w-12 lg:w-20 text-white font-bold">분석 기간</span>
-          <span className="text-text-muted">
-            {periodStart} ~ {periodEnd}
-          </span>
+          <span className="w-12 lg:w-20 text-white font-bold">{periodTitle}</span>
+          <span className="text-text-muted">{periodValue}</span>
         </p>
       </div>
     </div>

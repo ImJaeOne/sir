@@ -2,7 +2,7 @@
 'use no memo';
 
 import { useEffect, useRef, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { useIsFetching } from '@tanstack/react-query';
 import { ReportHeader } from '@/components/report/ReportHeader';
 import { Highlight } from '@/components/report/Highlight';
@@ -13,6 +13,8 @@ import { Strategy } from '@/components/report/Strategy';
 import { ServiceCTA } from '@/components/report/ServiceCTA';
 import { ReportDisclaimer } from '@/components/report/ReportDisclaimer';
 import { Loading } from '@/components/ui/Loading';
+import { useReportInfo } from '@/hooks/report/useReportQuery';
+import { getClientReportSections } from '@/components/client/sidebar/sections';
 
 const BG_COLORS = {
   'bg-light': 'var(--color-bg-light)',
@@ -51,12 +53,19 @@ function SectionBg({
 
 export default function ClientReportPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const workspaceId = params?.workspaceId as string;
   const reportId = params?.reportId as string;
   const isFetching = useIsFetching();
+  const { data: report } = useReportInfo(reportId);
+  const isDaily = report?.type === 'daily';
+  const pdfMode = searchParams?.get('pdf') === '1';
 
-  // 첫 fetch 완료 여부 추적: sections를 항상 mount해서 쿼리를 발사하되,
-  // 첫 fetch가 끝날 때까지는 invisible로 숨김 (DOM 유지 → scroll 위치 보존)
+  const allowedIds = new Set(getClientReportSections(isDaily).map((s) => s.id));
+  const sectionParam = searchParams?.get('section');
+  const activeSection = sectionParam && allowedIds.has(sectionParam) ? sectionParam : 'section-highlight';
+
+  // 첫 fetch 완료 여부 추적 — 섹션 스위칭 전에 데이터 prefetch
   const startedRef = useRef(false);
   const [ready, setReady] = useState(false);
 
@@ -66,6 +75,48 @@ export default function ClientReportPage() {
     if (isFetching === 0 && startedRef.current) setReady(true);
   }, [isFetching]);
 
+  // PDF 모드: 모든 섹션을 수직 나열 (기존 single-scroll 레이아웃 유지)
+  if (pdfMode) {
+    return (
+      <div className="relative">
+        {!ready && (
+          <div className="absolute inset-0 z-50 bg-bg-light min-h-screen">
+            <Loading />
+          </div>
+        )}
+        <div className={`lg:min-w-fit ${ready ? '' : 'invisible'}`}>
+          <SectionBg color="bg-light">
+            <div className="flex flex-col lg:gap-10">
+              <ReportHeader workspaceId={workspaceId} reportId={reportId} showPdfButton={false} />
+              <Highlight workspaceId={workspaceId} reportId={reportId} pdfMode />
+            </div>
+          </SectionBg>
+          <SectionBg color="blue" gradient="from-light">
+            <OnlineReputation workspaceId={workspaceId} reportId={reportId} pdfMode />
+          </SectionBg>
+          {!isDaily && (
+            <SectionBg color="bg-light" gradient="from-blue">
+              <TopContent workspaceId={workspaceId} reportId={reportId} />
+            </SectionBg>
+          )}
+          <SectionBg color="blue" gradient={isDaily ? undefined : 'from-light'}>
+            <RiskContent workspaceId={workspaceId} reportId={reportId} />
+          </SectionBg>
+          {!isDaily && (
+            <SectionBg color="bg-light" gradient="from-blue">
+              <Strategy workspaceId={workspaceId} reportId={reportId} />
+            </SectionBg>
+          )}
+          <SectionBg color="blue" gradient={isDaily ? undefined : 'from-light'}>
+            <ServiceCTA />
+            <ReportDisclaimer />
+          </SectionBg>
+        </div>
+      </div>
+    );
+  }
+
+  // 탭 모드: ReportHeader 고정 + 선택 섹션만 렌더
   return (
     <div className="relative">
       {!ready && (
@@ -75,24 +126,34 @@ export default function ClientReportPage() {
       )}
       <div className={`lg:min-w-fit ${ready ? '' : 'invisible'}`}>
         <SectionBg color="bg-light">
-          <section id="section-highlight" className="flex flex-col lg:gap-10">
+          <div className="flex flex-col lg:gap-10">
             <ReportHeader workspaceId={workspaceId} reportId={reportId} showPdfButton={false} />
-            <Highlight workspaceId={workspaceId} reportId={reportId} />
-          </section>
+            {activeSection === 'section-highlight' && (
+              <Highlight workspaceId={workspaceId} reportId={reportId} />
+            )}
+          </div>
         </SectionBg>
-        <SectionBg color="blue" gradient="from-light">
-          <OnlineReputation workspaceId={workspaceId} reportId={reportId} />
-        </SectionBg>
-        <SectionBg color="bg-light" gradient="from-blue">
-          <TopContent workspaceId={workspaceId} reportId={reportId} />
-        </SectionBg>
-        <SectionBg color="blue" gradient="from-light">
-          <RiskContent workspaceId={workspaceId} reportId={reportId} />
-        </SectionBg>
-        <SectionBg color="bg-light" gradient="from-blue">
-          <Strategy workspaceId={workspaceId} reportId={reportId} />
-        </SectionBg>
-        <SectionBg color="blue" gradient="from-light">
+        {activeSection === 'section-reputation' && (
+          <SectionBg color="blue" gradient="from-light">
+            <OnlineReputation workspaceId={workspaceId} reportId={reportId} />
+          </SectionBg>
+        )}
+        {activeSection === 'section-top-content' && !isDaily && (
+          <SectionBg color="bg-light" gradient="from-blue">
+            <TopContent workspaceId={workspaceId} reportId={reportId} />
+          </SectionBg>
+        )}
+        {activeSection === 'section-risk' && (
+          <SectionBg color="blue" gradient={isDaily ? undefined : 'from-light'}>
+            <RiskContent workspaceId={workspaceId} reportId={reportId} />
+          </SectionBg>
+        )}
+        {activeSection === 'section-strategy' && !isDaily && (
+          <SectionBg color="bg-light" gradient="from-blue">
+            <Strategy workspaceId={workspaceId} reportId={reportId} />
+          </SectionBg>
+        )}
+        <SectionBg color="blue" gradient={isDaily ? undefined : 'from-light'}>
           <ServiceCTA />
           <ReportDisclaimer />
         </SectionBg>

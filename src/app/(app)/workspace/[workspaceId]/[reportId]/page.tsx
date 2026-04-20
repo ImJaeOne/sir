@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useIsFetching, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { ChevronRight, ExternalLink, Check } from 'lucide-react';
@@ -17,6 +17,7 @@ import { AdminButton } from '@/components/ui/AdminButton';
 import { useWorkspace } from '@/hooks/workspace/useWorkspaceQuery';
 import { useReportInfo, reportKeys } from '@/hooks/report/useReportQuery';
 import { publishReport } from '@/lib/api/reportApi';
+import { getClientReportSections } from '@/components/client/sidebar/sections';
 
 const BG_COLORS = {
   'bg-light': 'var(--color-bg-light)',
@@ -56,6 +57,8 @@ function SectionBg({
 export default function ReportPage() {
   const params = useParams();
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const workspaceId = params?.workspaceId as string;
   const reportId = params?.reportId as string;
   const isFetching = useIsFetching();
@@ -72,6 +75,19 @@ export default function ReportPage() {
   }, [isFetching]);
 
   const isPublished = report?.status === 'published';
+  const isDaily = report?.type === 'daily';
+
+  const sections = useMemo(() => getClientReportSections(isDaily), [isDaily]);
+  const sectionParam = searchParams?.get('section');
+  const activeSection = sectionParam && sections.some((s) => s.id === sectionParam)
+    ? sectionParam
+    : sections[0]?.id ?? 'section-highlight';
+
+  const handleTabClick = (id: string) => {
+    const next = new URLSearchParams(searchParams?.toString() ?? '');
+    next.set('section', id);
+    router.replace(`${pathname}?${next.toString()}`, { scroll: false });
+  };
 
   const handlePublish = async () => {
     setPublishing(true);
@@ -117,26 +133,57 @@ export default function ReportPage() {
           </Link>
         </div>
 
+        {/* 섹션 탭 */}
+        <div className="flex gap-1 border-b border-slate-200">
+          {sections.map((s) => {
+            const active = activeSection === s.id;
+            return (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => handleTabClick(s.id)}
+                className={`px-4 py-2 text-sm font-semibold border-b-2 -mb-px transition-colors cursor-pointer ${
+                  active
+                    ? 'border-slate-700 text-slate-800'
+                    : 'border-transparent text-slate-400 hover:text-slate-600'
+                }`}
+              >
+                {s.label}
+              </button>
+            );
+          })}
+        </div>
+
         {/* 종이 */}
         <div className="bg-white rounded-2xl shadow-[0_2px_40px_rgba(0,0,0,0.08)] overflow-hidden">
           <SectionBg color="bg-light">
             <div className="flex flex-col gap-10">
               <ReportHeader workspaceId={workspaceId} reportId={reportId} showPdfButton={false} />
-              <Highlight workspaceId={workspaceId} reportId={reportId} editable />
+              {activeSection === 'section-highlight' && (
+                <Highlight workspaceId={workspaceId} reportId={reportId} editable />
+              )}
             </div>
           </SectionBg>
-          <SectionBg color="blue" gradient="from-light">
-            <OnlineReputation workspaceId={workspaceId} reportId={reportId} />
-          </SectionBg>
-          <SectionBg color="bg-light" gradient="from-blue">
-            <TopContent workspaceId={workspaceId} reportId={reportId} />
-          </SectionBg>
-          <SectionBg color="blue" gradient="from-light">
-            <RiskContent workspaceId={workspaceId} reportId={reportId} />
-          </SectionBg>
-          <SectionBg color="bg-light" gradient="from-blue">
-            <Strategy workspaceId={workspaceId} reportId={reportId} editable />
-          </SectionBg>
+          {activeSection === 'section-reputation' && (
+            <SectionBg color="blue" gradient="from-light">
+              <OnlineReputation workspaceId={workspaceId} reportId={reportId} />
+            </SectionBg>
+          )}
+          {activeSection === 'section-top-content' && !isDaily && (
+            <SectionBg color="bg-light" gradient="from-blue">
+              <TopContent workspaceId={workspaceId} reportId={reportId} />
+            </SectionBg>
+          )}
+          {activeSection === 'section-risk' && (
+            <SectionBg color="blue" gradient={isDaily ? undefined : 'from-light'}>
+              <RiskContent workspaceId={workspaceId} reportId={reportId} editable />
+            </SectionBg>
+          )}
+          {activeSection === 'section-strategy' && !isDaily && (
+            <SectionBg color="bg-light" gradient="from-blue">
+              <Strategy workspaceId={workspaceId} reportId={reportId} editable />
+            </SectionBg>
+          )}
         </div>
       </div>
 

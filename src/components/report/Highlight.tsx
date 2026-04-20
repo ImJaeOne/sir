@@ -47,6 +47,7 @@ export function Highlight({ workspaceId, reportId, pdfMode = false, editable = f
   const { data: prevReport } = usePrevReport(workspaceId, reportId);
 
   const isInitial = report?.type === 'initial';
+  const isDaily = report?.type === 'daily';
   const sirScore = report?.sir_score ?? 0;
   const totalItems = channelItems?.length ?? 0;
   const riskCount = riskItems?.length ?? 0;
@@ -73,10 +74,11 @@ export function Highlight({ workspaceId, reportId, pdfMode = false, editable = f
   }, [sirScore, totalItems, riskCount, prevReport]);
 
   const prevIsInitial = prevReport?.type === 'initial';
+  const hasPrev = !!prevReport;
 
   const snapshotProps = useMemo(
-    () => ({ score: sirScore, totalItems, riskCount, sirRanking: sirRanking ?? defaultRanking, isInitial, prevIsInitial, snapshotDiff }),
-    [sirScore, totalItems, riskCount, sirRanking, isInitial, prevIsInitial, snapshotDiff],
+    () => ({ score: sirScore, totalItems, riskCount, sirRanking: sirRanking ?? defaultRanking, isInitial, prevIsInitial, isDaily, hasPrev, snapshotDiff }),
+    [sirScore, totalItems, riskCount, sirRanking, isInitial, prevIsInitial, isDaily, hasPrev, snapshotDiff],
   );
 
   const sirStockProps = useMemo(
@@ -87,20 +89,24 @@ export function Highlight({ workspaceId, reportId, pdfMode = false, editable = f
   const avgScore = workspace?.sir_score ?? 0;
 
   const sirRankingProps = useMemo(
-    () => ({ score: sirScore, avgScore, companyName: workspace?.company_name ?? '', sirRanking: sirRanking ?? defaultRanking, pdfMode }),
-    [sirScore, avgScore, workspace?.company_name, sirRanking, pdfMode],
+    () => ({ score: sirScore, avgScore, companyName: workspace?.company_name ?? '', sirRanking: sirRanking ?? defaultRanking, pdfMode, isDaily }),
+    [sirScore, avgScore, workspace?.company_name, sirRanking, pdfMode, isDaily],
   );
 
   return (
-    <ReportSection icon={<WeeklyHighlightIcon size={36} />} title="주간 하이라이트">
+    <ReportSection icon={<WeeklyHighlightIcon size={36} />} title={isDaily ? '일간 하이라이트' : '주간 하이라이트'}>
       <Snapshot {...snapshotProps} />
-      {editable ? (
-        <EditableReputation summary={summary ?? []} workspaceId={workspaceId} reportId={reportId} />
-      ) : (
-        <Reputation summary={summary ?? []} />
+      {!isDaily && (
+        <>
+          {editable ? (
+            <EditableReputation summary={summary ?? []} workspaceId={workspaceId} reportId={reportId} />
+          ) : (
+            <Reputation summary={summary ?? []} />
+          )}
+          <SirStockPanel {...sirStockProps} />
+          <SirRankingPanel {...sirRankingProps} />
+        </>
       )}
-      <SirStockPanel {...sirStockProps} />
-      <SirRankingPanel {...sirRankingProps} />
     </ReportSection>
   );
 }

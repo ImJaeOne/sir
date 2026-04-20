@@ -3,7 +3,7 @@
 import { useMemo, useCallback } from 'react';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
-import { useRiskItems, useRiskReports, usePrevReport } from '@/hooks/report/useReportQuery';
+import { useRiskItems, useRiskReports, useReportInfo } from '@/hooks/report/useReportQuery';
 import { deleteRiskReport } from '@/lib/api/reportApi';
 import { reportKeys } from '@/hooks/report/useReportQuery';
 import { ReportSection } from '@/components/report/ReportSection';
@@ -14,12 +14,13 @@ import { LiskContentIcon } from '@/components/icons/LiskContentIcon';
 interface RiskContentProps {
   workspaceId: string;
   reportId: string;
+  editable?: boolean;
 }
 
-export function RiskContent({ workspaceId, reportId }: RiskContentProps) {
+export function RiskContent({ workspaceId, reportId, editable = false }: RiskContentProps) {
+  const { data: report } = useReportInfo(reportId);
   const { data: riskItems } = useRiskItems(workspaceId, reportId);
   const { data: riskReports } = useRiskReports(workspaceId, reportId);
-  const { data: prevReport } = usePrevReport(workspaceId, reportId);
   const queryClient = useQueryClient();
 
   const { reportedSourceIds, riskReportBySourceId } = useMemo(() => {
@@ -45,6 +46,8 @@ export function RiskContent({ workspaceId, reportId }: RiskContentProps) {
     [workspaceId, reportId, queryClient],
   );
 
+  const isDaily = report?.type === 'daily';
+
   return (
     <div className="print-break">
       <ReportSection id="section-risk" icon={<LiskContentIcon size={36} />} title="리스크 콘텐츠 관리">
@@ -55,8 +58,16 @@ export function RiskContent({ workspaceId, reportId }: RiskContentProps) {
           reportedSourceIds={reportedSourceIds}
           riskReportBySourceId={riskReportBySourceId}
           onCancelReport={handleCancelReport}
+          editable={editable}
         />
-        {prevReport && <RiskResultTable workspaceId={workspaceId} prevReportId={prevReport.id} />}
+        {report?.period_start && report?.period_end && (
+          <RiskResultTable
+            workspaceId={workspaceId}
+            periodStart={report.period_start}
+            periodEnd={report.period_end}
+            isDaily={isDaily}
+          />
+        )}
       </ReportSection>
     </div>
   );
