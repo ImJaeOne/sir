@@ -64,14 +64,18 @@ export async function getReportInfo(reportId: string) {
   return data;
 }
 
-// ── 리포트 발행 ──
+// ── 리포트 발행 (관리자 전용) ──
 
 export async function publishReport(reportId: string): Promise<void> {
-  const { error } = await supabase
-    .from('reports')
-    .update({ status: 'published' })
-    .eq('id', reportId);
-  if (error) throw error;
+  const res = await fetch('/api/admin/publish-report', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ report_id: reportId }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail ?? '발행 실패');
+  }
 }
 
 // ── 주간 총평 ──

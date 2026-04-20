@@ -2,10 +2,9 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useIsFetching, useQueryClient } from '@tanstack/react-query';
+import { useIsFetching } from '@tanstack/react-query';
 import Link from 'next/link';
 import { ChevronRight, ExternalLink, Check } from 'lucide-react';
-import { toast } from 'sonner';
 import { ReportHeader } from '@/components/report/ReportHeader';
 import { Highlight } from '@/components/report/Highlight';
 import { OnlineReputation } from '@/components/report/OnlineReputation';
@@ -15,8 +14,8 @@ import { Strategy } from '@/components/report/Strategy';
 import { Loading } from '@/components/ui/Loading';
 import { AdminButton } from '@/components/ui/AdminButton';
 import { useWorkspace } from '@/hooks/workspace/useWorkspaceQuery';
-import { useReportInfo, reportKeys } from '@/hooks/report/useReportQuery';
-import { publishReport } from '@/lib/api/reportApi';
+import { useReportInfo } from '@/hooks/report/useReportQuery';
+import { usePublishReport } from '@/hooks/report/useReportMutation';
 import { getClientReportSections } from '@/components/client/sidebar/sections';
 
 const BG_COLORS = {
@@ -64,8 +63,7 @@ export default function ReportPage() {
   const isFetching = useIsFetching();
   const { data: workspace } = useWorkspace(workspaceId);
   const { data: report } = useReportInfo(reportId);
-  const queryClient = useQueryClient();
-  const [publishing, setPublishing] = useState(false);
+  const publishMutation = usePublishReport(reportId);
 
   const startedRef = useRef(false);
   const [ready, setReady] = useState(false);
@@ -75,6 +73,7 @@ export default function ReportPage() {
   }, [isFetching]);
 
   const isPublished = report?.status === 'published';
+  const isDraft = report?.status === 'draft';
   const isDaily = report?.type === 'daily';
 
   const sections = useMemo(() => getClientReportSections(isDaily), [isDaily]);
@@ -87,19 +86,6 @@ export default function ReportPage() {
     const next = new URLSearchParams(searchParams?.toString() ?? '');
     next.set('section', id);
     router.replace(`${pathname}?${next.toString()}`, { scroll: false });
-  };
-
-  const handlePublish = async () => {
-    setPublishing(true);
-    try {
-      await publishReport(reportId);
-      await queryClient.refetchQueries({ queryKey: reportKeys.info(reportId) });
-      toast.success('보고서가 발행되었습니다.');
-    } catch {
-      toast.error('발행에 실패했습니다.');
-    } finally {
-      setPublishing(false);
-    }
   };
 
   if (!ready) return <Loading />;
@@ -187,27 +173,29 @@ export default function ReportPage() {
         </div>
       </div>
 
-      {/* 종이와 발행 바 사이 여백 */}
-      <div className="h-8 lg:h-10" />
+      {/* 종이와 발행 바 사이 여백 — daily 는 자동 발행이므로 바 자체 숨김 */}
+      {!isDaily && <div className="h-8 lg:h-10" />}
 
-      {/* 하단 고정 발행 바 */}
-      <div className="sticky bottom-0 z-30 bg-white/90 backdrop-blur-md border-t border-slate-200 -mx-6 lg:-mx-10">
-        <div className="mx-auto max-w-[1280px] px-6 lg:px-10 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            {isPublished && <Check size={16} className="text-emerald-500" />}
-            <span className={`text-sm font-medium ${isPublished ? 'text-emerald-600' : 'text-slate-500'}`}>
-              {isPublished ? '발행됨' : '검토 대기'}
-            </span>
+      {/* 하단 고정 발행 바 (주간/월간 전용) */}
+      {!isDaily && (
+        <div className="sticky bottom-0 z-30 bg-white/90 backdrop-blur-md border-t border-slate-200 -mx-6 lg:-mx-10">
+          <div className="mx-auto max-w-[1280px] px-6 lg:px-10 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              {isPublished && <Check size={16} className="text-emerald-500" />}
+              <span className={`text-sm font-medium ${isPublished ? 'text-emerald-600' : isDraft ? 'text-slate-500' : 'text-amber-600'}`}>
+                {isPublished ? '발행됨' : isDraft ? '검토 대기' : '분석 중 — 발행 불가'}
+              </span>
+            </div>
+            <AdminButton
+              variant={isPublished ? 'secondary' : 'primary'}
+              onClick={() => publishMutation.mutate()}
+              disabled={publishMutation.isPending || !isDraft}
+            >
+              {publishMutation.isPending ? '발행 중...' : isPublished ? '발행 완료' : '보고서 발행'}
+            </AdminButton>
           </div>
-          <AdminButton
-            variant={isPublished ? 'secondary' : 'primary'}
-            onClick={handlePublish}
-            disabled={publishing || isPublished}
-          >
-            {publishing ? '발행 중...' : isPublished ? '발행 완료' : '보고서 발행'}
-          </AdminButton>
         </div>
-      </div>
+      )}
     </div>
   );
 }

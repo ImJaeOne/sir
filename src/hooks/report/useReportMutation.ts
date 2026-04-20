@@ -6,6 +6,7 @@ import {
   clearCriticalType,
   deleteRiskReport,
   submitRiskReport,
+  publishReport,
 } from '@/lib/api/reportApi';
 import { reportKeys } from '@/hooks/report/useReportQuery';
 import type {
@@ -39,6 +40,23 @@ export function useUpdateSummary(workspaceId: string, reportId: string) {
     },
     onSettled: () => {
       queryClient.refetchQueries({ queryKey });
+    },
+  });
+}
+
+// ── 보고서 발행 (관리자) ──
+
+export function usePublishReport(reportId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => publishReport(reportId),
+    onSuccess: () => {
+      queryClient.refetchQueries({ queryKey: reportKeys.info(reportId) });
+      toast.success('보고서가 발행되었습니다.');
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : '발행에 실패했습니다.');
     },
   });
 }
