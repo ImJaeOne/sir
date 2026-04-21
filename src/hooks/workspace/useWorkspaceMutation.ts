@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createWorkspace, deleteWorkspace, updateWorkspaceProfile } from '@/lib/api/workspaceApi';
-import { regenerateReport, retryFailedReport } from '@/lib/api/reportApi';
+import { retryFailedReport } from '@/lib/api/reportApi';
 import { workspaceKeys } from '@/hooks/workspace/useWorkspaceQuery';
 import type { CreateWorkspaceDto } from '@/types/workspace';
 
@@ -34,19 +34,6 @@ export function useUpdateWorkspaceProfile(workspaceId: string) {
       updateWorkspaceProfile(workspaceId, profile),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: workspaceKeys.profile(workspaceId) });
-    },
-  });
-}
-
-/** 리포트 finalize 재생성 — 플랫폼 전원 done 이어야 성공 */
-export function useRegenerateReport(workspaceId: string) {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (reportId: string) => regenerateReport(reportId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: workspaceKeys.progress(workspaceId) });
-      queryClient.invalidateQueries({ queryKey: workspaceKeys.reports(workspaceId) });
     },
   });
 }

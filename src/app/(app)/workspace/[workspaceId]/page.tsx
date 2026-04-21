@@ -9,10 +9,10 @@ import { TickerBadge } from '@/components/ui/Badge';
 import { BlacklistEditor } from '@/components/ui/BlacklistEditor';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { useWorkspace, useWorkspaceProfile, useReports, useReportProgress, useReportRealtimeSync, workspaceKeys } from '@/hooks/workspace/useWorkspaceQuery';
-import { useUpdateWorkspaceProfile, useRegenerateReport, useRetryFailedReport } from '@/hooks/workspace/useWorkspaceMutation';
+import { useUpdateWorkspaceProfile, useRetryFailedReport } from '@/hooks/workspace/useWorkspaceMutation';
 import { createClient } from '@/lib/supabase/client';
 import type { Report, ReportProgress } from '@/lib/api/workspaceApi';
-import { ACTIVE_PLATFORMS, isAllPlatformsDone } from '@/lib/api/workspaceApi';
+import { ACTIVE_PLATFORMS } from '@/lib/api/workspaceApi';
 import type { WorkspaceProfile } from '@/types/workspace';
 import { ChevronDown, ChevronUp, RefreshCw, AlertCircle } from 'lucide-react';
 
@@ -194,14 +194,16 @@ const PLATFORM_LABELS: Record<string, string> = {
   dcinside: '디시인사이드',
 };
 
-const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
-  pending: { label: '작업 전', color: 'text-slate-400' },
-  crawling: { label: '크롤링 중', color: 'text-blue-500' },
-  analyzing: { label: '분석 중', color: 'text-amber-500' },
-  clustering: { label: '클러스터링 중', color: 'text-violet-500' },
-  done: { label: '완료', color: 'text-emerald-500' },
-  failed: { label: '실패', color: 'text-red-500' },
+const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; border: string }> = {
+  pending:    { label: '작업 전',       color: 'text-slate-400',   bg: 'bg-slate-50',   border: 'border-slate-100'   },
+  crawling:   { label: '크롤링 중',     color: 'text-blue-500',    bg: 'bg-blue-50',    border: 'border-blue-100'    },
+  analyzing:  { label: '분석 중',       color: 'text-amber-500',   bg: 'bg-amber-50',   border: 'border-amber-100'   },
+  clustering: { label: '클러스터링 중', color: 'text-violet-500',  bg: 'bg-violet-50',  border: 'border-violet-100'  },
+  done:       { label: '완료',          color: 'text-emerald-500', bg: 'bg-emerald-50', border: 'border-emerald-100' },
+  failed:     { label: '실패',          color: 'text-red-500',     bg: 'bg-red-50',     border: 'border-red-100'     },
 };
+
+const STATUS_FALLBACK = STATUS_CONFIG.pending;
 
 function SessionStatusDot({ status }: { status: string }) {
   const dotColor =
@@ -221,10 +223,10 @@ function FailedPlatformRow({
 }: {
   platformId: string;
   session: ReportProgress['sessions'][number];
-  cfg: { label: string; color: string };
+  cfg: typeof STATUS_CONFIG[keyof typeof STATUS_CONFIG];
 }) {
   return (
-    <div className="flex flex-col gap-1 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+    <div className={`flex flex-col gap-1 border rounded-lg px-3 py-2 ${cfg.bg} ${cfg.border}`}>
       <div className="flex items-center gap-2">
         <SessionStatusDot status="failed" />
         <span className="text-xs text-slate-700 font-medium">{PLATFORM_LABELS[platformId] ?? platformId}</span>
@@ -245,10 +247,12 @@ function RetryFailedButton({
   workspaceId,
   reportId,
   failedLabels,
+  reportType,
 }: {
   workspaceId: string;
   reportId: string;
   failedLabels: string[];
+  reportType: Report['type'];
 }) {
   const retry = useRetryFailedReport(workspaceId);
   const [open, setOpen] = useState(false);
@@ -284,60 +288,12 @@ function RetryFailedButton({
         message={
           <>
             실패한 채널(<b>{channelText}</b>)에 대해 수집·분석을 재진행합니다.
-            <br />
-            성공 시 전략·총평까지 자동으로 재생성됩니다.
-          </>
-        }
-      />
-    </>
-  );
-}
-
-function RegenerateButton({
-  workspaceId,
-  reportId,
-  disabled,
-  reason,
-}: {
-  workspaceId: string;
-  reportId: string;
-  disabled: boolean;
-  reason: string;
-}) {
-  const regen = useRegenerateReport(workspaceId);
-  const [open, setOpen] = useState(false);
-  const handleConfirm = async () => {
-    setOpen(false);
-    try {
-      await regen.mutateAsync(reportId);
-      toast.success('재생성을 시작했습니다. 수 분 후 새로고침하세요.');
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : '재생성 실패');
-    }
-  };
-
-  return (
-    <>
-      <button
-        onClick={(e) => { e.stopPropagation(); setOpen(true); }}
-        disabled={disabled || regen.isPending}
-        title={disabled ? reason : '전략·총평·SIR 재생성'}
-        className="flex items-center gap-1 text-[10px] font-semibold text-blue-600 bg-white border border-blue-200 rounded-md px-2 py-1 hover:bg-blue-50 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-      >
-        <RefreshCw size={10} className={regen.isPending ? 'animate-spin' : ''} />
-        {regen.isPending ? '재생성 중' : '재생성'}
-      </button>
-      <ConfirmModal
-        open={open}
-        onClose={() => setOpen(false)}
-        onConfirm={handleConfirm}
-        title="보고서 재생성"
-        confirmLabel="재생성"
-        message={
-          <>
-            전략·총평·검색트렌드·SIR 을 재생성합니다.
-            <br />
-            기존 전략·총평 행은 삭제됩니다.
+            {reportType !== 'daily' && (
+              <>
+                <br />
+                성공 시 전략·총평까지 자동으로 재생성됩니다.
+              </>
+            )}
           </>
         }
       />
@@ -357,8 +313,6 @@ function ReportProgressPanel({
   progress: ReportProgress;
 }) {
   const sessionMap = new Map(progress.sessions.map((s) => [s.platform_id, s]));
-  const platformsOk = isAllPlatformsDone(progress);
-  const isFinalizable = reportType !== 'daily';
   const failedPlatforms = ALL_PLATFORMS.filter((p) => sessionMap.get(p)?.status === 'failed');
   const failedLabels = failedPlatforms.map((p) => PLATFORM_LABELS[p] ?? p);
   const hasAnyFinalize = progress.hasSummary || progress.strategyCategories.length > 0;
@@ -368,12 +322,13 @@ function ReportProgressPanel({
       {/* 플랫폼별 세션 상태 */}
       <div className="flex flex-col gap-1.5">
         <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold text-slate-500">플랫폼별 수집 현황</span>
-          {isFinalizable && failedLabels.length > 0 && (
+          <span className="text-xs font-semibold text-slate-500">채널별 수집·분석</span>
+          {failedLabels.length > 0 && (
             <RetryFailedButton
               workspaceId={workspaceId}
               reportId={reportId}
               failedLabels={failedLabels}
+              reportType={reportType}
             />
           )}
         </div>
@@ -381,7 +336,7 @@ function ReportProgressPanel({
           {ALL_PLATFORMS.map((platformId) => {
             const s = sessionMap.get(platformId);
             const status = s?.status ?? 'pending';
-            const cfg = STATUS_CONFIG[status] ?? { label: '작업 전', color: 'text-slate-400' };
+            const cfg = STATUS_CONFIG[status] ?? STATUS_FALLBACK;
 
             if (status === 'failed' && s) {
               return (
@@ -395,7 +350,7 @@ function ReportProgressPanel({
             }
 
             return (
-              <div key={platformId} className="flex items-center gap-2 bg-slate-50 rounded-lg px-3 py-2">
+              <div key={platformId} className={`flex items-center gap-2 border rounded-lg px-3 py-2 ${cfg.bg} ${cfg.border}`}>
                 <SessionStatusDot status={status} />
                 <span className="text-xs text-slate-600 font-medium">{PLATFORM_LABELS[platformId] ?? platformId}</span>
                 {status === 'done' && (
@@ -410,43 +365,47 @@ function ReportProgressPanel({
         </div>
       </div>
 
-      {/* 총평 & 전략 */}
-      <div className="flex flex-col gap-1.5">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold text-slate-500">보고서 생성 현황</span>
-          {/* 자동 재생성이 실패했을 때만 수동 fallback 버튼 노출 (전 플랫폼 done 인데 총평 없음) */}
-          {isFinalizable && platformsOk && !progress.hasSummary && (
-            <RegenerateButton
-              workspaceId={workspaceId}
-              reportId={reportId}
-              disabled={false}
-              reason=""
-            />
+      {/* 총평 & 전략 — daily 는 finalize 없음, 노출 생략 */}
+      {reportType !== 'daily' && (
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-slate-500">전략·총평 생성</span>
+          </div>
+          {failedLabels.length > 0 && hasAnyFinalize && (
+            <div className="flex items-start gap-1.5 text-[10px] text-amber-700 bg-amber-50 border border-amber-100 rounded-md px-2 py-1.5 leading-snug">
+              <AlertCircle size={12} className="text-amber-600 shrink-0 mt-0.5" />
+              <span>실패한 플랫폼 결과가 빠진 상태로 전략/총평이 생성되었습니다. 위 "실패 재시도" 버튼으로 일괄 복구하세요.</span>
+            </div>
           )}
+          <div className="grid grid-cols-2 gap-1.5">
+            {(() => {
+              const cfg = progress.hasSummary ? STATUS_CONFIG.done : STATUS_FALLBACK;
+              return (
+                <div className={`flex items-center gap-2 border rounded-lg px-3 py-2 ${cfg.bg} ${cfg.border}`}>
+                  <SessionStatusDot status={progress.hasSummary ? 'done' : 'crawling'} />
+                  <span className="text-xs text-slate-600 font-medium">총평</span>
+                  <span className={`text-xs font-semibold ml-auto ${cfg.color}`}>
+                    {progress.hasSummary ? '완료' : '작업 전'}
+                  </span>
+                </div>
+              );
+            })()}
+            {(() => {
+              const done = progress.strategyCategories.length > 0;
+              const cfg = done ? STATUS_CONFIG.done : STATUS_FALLBACK;
+              return (
+                <div className={`flex items-center gap-2 border rounded-lg px-3 py-2 ${cfg.bg} ${cfg.border}`}>
+                  <SessionStatusDot status={done ? 'done' : 'crawling'} />
+                  <span className="text-xs text-slate-600 font-medium">대응 전략</span>
+                  <span className={`text-xs font-semibold ml-auto ${cfg.color}`}>
+                    {done ? `${progress.strategyCategories.length}개 채널` : '작업 전'}
+                  </span>
+                </div>
+              );
+            })()}
+          </div>
         </div>
-        {failedLabels.length > 0 && hasAnyFinalize && (
-          <div className="flex items-start gap-1.5 text-[10px] text-amber-700 bg-amber-50 border border-amber-100 rounded-md px-2 py-1.5 leading-snug">
-            <AlertCircle size={12} className="text-amber-600 shrink-0 mt-0.5" />
-            <span>실패한 플랫폼 결과가 빠진 상태로 전략/총평이 생성되었습니다. 위 "실패 재시도" 버튼으로 일괄 복구하세요.</span>
-          </div>
-        )}
-        <div className="grid grid-cols-2 gap-1.5">
-          <div className="flex items-center gap-2 bg-slate-50 rounded-lg px-3 py-2">
-            <SessionStatusDot status={progress.hasSummary ? 'done' : 'crawling'} />
-            <span className="text-xs text-slate-600 font-medium">총평</span>
-            <span className={`text-xs font-semibold ml-auto ${progress.hasSummary ? 'text-emerald-500' : 'text-slate-400'}`}>
-              {progress.hasSummary ? '완료' : '작업 전'}
-            </span>
-          </div>
-          <div className="flex items-center gap-2 bg-slate-50 rounded-lg px-3 py-2">
-            <SessionStatusDot status={progress.strategyCategories.length > 0 ? 'done' : 'crawling'} />
-            <span className="text-xs text-slate-600 font-medium">대응 전략</span>
-            <span className={`text-xs font-semibold ml-auto ${progress.strategyCategories.length > 0 ? 'text-emerald-500' : 'text-slate-400'}`}>
-              {progress.strategyCategories.length > 0 ? `${progress.strategyCategories.length}개 채널` : '작업 전'}
-            </span>
-          </div>
-        </div>
-      </div>
+      )}
     </div>
   );
 }
