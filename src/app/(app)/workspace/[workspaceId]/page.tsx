@@ -211,8 +211,7 @@ function SessionStatusDot({ status }: { status: string }) {
   return <span className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />;
 }
 
-// UI 표시용 — dcinside 는 백엔드 활성에서 빠졌지만 과거 세션 표시 위해 목록엔 유지
-const ALL_PLATFORMS = ['naver_news', 'naver_blog', 'youtube', 'naver_stock', 'dcinside'];
+const ALL_PLATFORMS = ['naver_news', 'naver_blog', 'youtube', 'naver_stock'];
 
 function FailedPlatformRow({
   workspaceId,
