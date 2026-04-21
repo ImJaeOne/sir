@@ -8,6 +8,7 @@ import {
   useNewsClusters,
   useReportInfo,
   usePrevReport,
+  usePrevDailySnapshot,
 } from '@/hooks/report/useReportQuery';
 import { ReportSection } from '@/components/report/ReportSection';
 import { SearchTrendPanel } from '@/components/report/reputation/SearchTrendPanel';
@@ -35,6 +36,12 @@ export function OnlineReputation({ workspaceId, reportId, pdfMode = false }: Onl
   const isDaily = report?.type === 'daily';
   const prevIsInitial = prevReport?.type === 'initial';
 
+  // daily 는 이전 daily report 가 없어도 daily_snapshots 로 전일 채널별 SIR 비교
+  const { data: prevDaily } = usePrevDailySnapshot(workspaceId, report?.period_end, isDaily);
+  const prevChannelSirMap = isDaily
+    ? (prevDaily?.channelSirMap ?? {})
+    : (prevReport?.channelSirMap ?? {});
+
   const searchTrendProps = useMemo(
     () => ({ naverTrend: searchTrend?.naver ?? [], googleTrend: searchTrend?.google ?? [], pdfMode }),
     [searchTrend, pdfMode],
@@ -60,7 +67,7 @@ export function OnlineReputation({ workspaceId, reportId, pdfMode = false }: Onl
       <ReportSection id="section-reputation" icon={<OnlineReputationIcon size={36} />} title="온라인 평판 종합">
         {!isDaily && <SearchTrendPanel {...searchTrendProps} />}
         <ChannelVolumePanel {...channelVolumeProps} />
-        <ChannelSirPanel channelStats={channelStats ?? []} isInitial={isInitial} prevIsInitial={prevIsInitial} isDaily={isDaily} prevChannelSirMap={prevReport?.channelSirMap ?? {}} />
+        <ChannelSirPanel channelStats={channelStats ?? []} isInitial={isInitial} prevIsInitial={prevIsInitial} isDaily={isDaily} prevChannelSirMap={prevChannelSirMap} />
         <SentimentPanel {...sentimentProps} />
         <ChannelDetailPanel {...channelDetailProps} />
       </ReportSection>

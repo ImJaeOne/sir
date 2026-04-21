@@ -9,6 +9,7 @@ import {
   useChannelItems,
   useRiskItems,
   usePrevReport,
+  usePrevDailySnapshot,
   useReportInfo,
 } from '@/hooks/report/useReportQuery';
 import { ReportSection } from '@/components/report/ReportSection';
@@ -52,8 +53,21 @@ export function Highlight({ workspaceId, reportId, pdfMode = false, editable = f
   const totalItems = channelItems?.length ?? 0;
   const riskCount = riskItems?.length ?? 0;
 
+  // daily 는 이전 daily report 가 없어도(첫 daily) daily_snapshots 로 전일 비교
+  const { data: prevDaily } = usePrevDailySnapshot(workspaceId, report?.period_end, isDaily);
+
   const snapshotDiff = useMemo(() => {
     const getTierIdx = (s: number) => Math.min(Math.floor(s / 100), 9);
+
+    // daily: daily_snapshots 기반 전일 비교 (tierDiff 는 순위 카드가 daily 에서 안 보이므로 계산만)
+    if (isDaily && prevDaily) {
+      return {
+        scoreDiff: Math.round(sirScore - prevDaily.sirScore),
+        tierDiff: getTierIdx(sirScore) - getTierIdx(prevDaily.sirScore),
+        itemsDiff: totalItems - prevDaily.totalItems,
+        riskDiff: riskCount - prevDaily.riskCount,
+      };
+    }
 
     if (!prevReport) {
       // 첫 보고서 — SIR 500 기준, 나머지 0 기준
@@ -71,10 +85,10 @@ export function Highlight({ workspaceId, reportId, pdfMode = false, editable = f
       itemsDiff: totalItems - prevReport.totalItems,
       riskDiff: riskCount - prevReport.riskCount,
     };
-  }, [sirScore, totalItems, riskCount, prevReport]);
+  }, [isDaily, prevDaily, sirScore, totalItems, riskCount, prevReport]);
 
   const prevIsInitial = prevReport?.type === 'initial';
-  const hasPrev = !!prevReport;
+  const hasPrev = isDaily ? !!prevDaily : !!prevReport;
 
   const snapshotProps = useMemo(
     () => ({ score: sirScore, totalItems, riskCount, sirRanking: sirRanking ?? defaultRanking, isInitial, prevIsInitial, isDaily, hasPrev, snapshotDiff }),

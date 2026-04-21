@@ -11,6 +11,7 @@ import {
   getStrategies,
   getSearchTrend,
   getPrevReport,
+  getPrevDailySnapshot,
   getRiskReports,
   getResolvedRiskReports,
 } from '@/lib/api/reportApi';
@@ -30,6 +31,7 @@ export const reportKeys = {
   strategies: (id: string) => ['report', id, 'strategies'] as const,
   searchTrend: (id: string, reportId?: string) => ['report', id, 'searchTrend', reportId] as const,
   prevReport: (id: string, reportId: string) => ['report', id, 'prevReport', reportId] as const,
+  prevDailySnapshot: (id: string, periodEnd?: string) => ['report', id, 'prevDailySnapshot', periodEnd ?? ''] as const,
   riskReports: (id: string, reportId?: string) => ['report', id, 'riskReports', reportId] as const,
   resolvedRiskReports: (id: string, from: string, to: string) => ['report', id, 'resolvedRiskReports', from, to] as const,
 };
@@ -143,6 +145,16 @@ export function usePrevReport(workspaceId: string, reportId: string) {
     queryKey: reportKeys.prevReport(workspaceId, reportId),
     queryFn: () => getPrevReport(workspaceId, reportId),
     enabled: !!workspaceId && !!reportId,
+    ...REPORT_OPTS,
+  });
+}
+
+/** daily 보고서 전일 비교용 snapshot (daily_snapshots + items 기반) */
+export function usePrevDailySnapshot(workspaceId: string, periodEnd: string | undefined, enabled: boolean) {
+  return useQuery({
+    queryKey: reportKeys.prevDailySnapshot(workspaceId, periodEnd),
+    queryFn: () => getPrevDailySnapshot(workspaceId, periodEnd!),
+    enabled: enabled && !!workspaceId && !!periodEnd,
     ...REPORT_OPTS,
   });
 }
