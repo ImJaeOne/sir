@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
+import { useState, useRef, useCallback, useMemo, useSyncExternalStore } from 'react';
 import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { X } from 'lucide-react';
 import { useReportInfo } from '@/hooks/report/useReportQuery';
@@ -8,6 +8,11 @@ import { SirSymbol } from '@/components/icons/SirSymbol';
 import { getClientReportSections } from '@/components/client/sidebar/sections';
 
 const FAB_SIZE = 56;
+
+function subscribeResize(cb: () => void) {
+  window.addEventListener('resize', cb);
+  return () => window.removeEventListener('resize', cb);
+}
 
 export function MobileFab() {
   const params = useParams();
@@ -22,14 +27,16 @@ export function MobileFab() {
   const activeId = searchParams?.get('section') ?? sections[0]?.id;
 
   const [isOpen, setIsOpen] = useState(false);
-  // SSR 과 CSR 모두 동일한 초기값 ({x:0, y:0}) 으로 hydration mismatch 방지.
-  // mount 후 useEffect 에서 실제 뷰포트 기준으로 위치 재계산.
-  const [pos, setPos] = useState({ x: 0, y: 0 });
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => {
-    setPos({ x: window.innerWidth - FAB_SIZE - 20, y: window.innerHeight - FAB_SIZE - 24 });
-    setMounted(true);
-  }, []);
+  // SSR 은 '0x0' 을 반환해 초기 렌더를 (0,0) 로 고정하고, 클라이언트 마운트 후 실제 뷰포트로 동기화.
+  const viewport = useSyncExternalStore(
+    subscribeResize,
+    () => `${window.innerWidth}x${window.innerHeight}`,
+    () => '0x0',
+  );
+  const [vw, vh] = viewport.split('x').map(Number);
+  const mounted = vw > 0;
+  const [dragPos, setDragPos] = useState<{ x: number; y: number } | null>(null);
+  const pos = dragPos ?? { x: vw - FAB_SIZE - 20, y: vh - FAB_SIZE - 24 };
   const dragRef = useRef<{ startX: number; startY: number; startPosX: number; startPosY: number; moved: boolean } | null>(null);
   const fabRef = useRef<HTMLButtonElement>(null);
 
@@ -50,7 +57,7 @@ export function MobileFab() {
     const dy = touch.clientY - dragRef.current.startY;
     if (Math.abs(dx) > 3 || Math.abs(dy) > 3) dragRef.current.moved = true;
     const next = clamp(dragRef.current.startPosX + dx, dragRef.current.startPosY + dy);
-    setPos(next);
+    setDragPos(next);
   }, [clamp]);
 
   const handleTouchEnd = useCallback(() => {
