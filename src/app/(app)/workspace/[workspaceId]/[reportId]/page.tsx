@@ -13,10 +13,20 @@ import { RiskContent } from '@/components/report/RiskContent';
 import { Strategy } from '@/components/report/Strategy';
 import { Loading } from '@/components/ui/Loading';
 import { AdminButton } from '@/components/ui/AdminButton';
-import { useWorkspace } from '@/hooks/workspace/useWorkspaceQuery';
+import { useWorkspace, useReportProgress, useReportRealtimeSync } from '@/hooks/workspace/useWorkspaceQuery';
 import { useReportInfo } from '@/hooks/report/useReportQuery';
 import { usePublishReport } from '@/hooks/report/useReportMutation';
 import { getClientReportSections } from '@/components/client/sidebar/sections';
+import { ACTIVE_PLATFORMS, isAllPlatformsDone } from '@/lib/api/workspaceApi';
+import { AlertCircle } from 'lucide-react';
+
+const PLATFORM_LABELS: Record<string, string> = {
+  naver_news: '뉴스',
+  naver_blog: '블로그',
+  youtube: '유튜브',
+  naver_stock: '종토방',
+  dcinside: '디시인사이드',
+};
 
 const BG_COLORS = {
   'bg-light': 'var(--color-bg-light)',
@@ -63,6 +73,8 @@ export default function ReportPage() {
   const isFetching = useIsFetching();
   const { data: workspace } = useWorkspace(workspaceId);
   const { data: report } = useReportInfo(reportId);
+  const { data: progressList } = useReportProgress(workspaceId);
+  useReportRealtimeSync(workspaceId);
   const publishMutation = usePublishReport(reportId);
 
   const startedRef = useRef(false);
@@ -75,6 +87,15 @@ export default function ReportPage() {
   const isPublished = report?.status === 'published';
   const isDraft = report?.status === 'draft';
   const isDaily = report?.type === 'daily';
+
+  // 활성 플랫폼 중 실패/미완료 확인 — 발행 게이트
+  const progress = progressList?.find((p) => p.reportId === reportId);
+  const platformsOk = isAllPlatformsDone(progress);
+  const failedPlatforms = useMemo(() => {
+    if (!progress) return [] as string[];
+    const map = new Map(progress.sessions.map((s) => [s.platform_id, s]));
+    return ACTIVE_PLATFORMS.filter((p) => map.get(p)?.status !== 'done');
+  }, [progress]);
 
   const sections = useMemo(() => getClientReportSections(isDaily), [isDaily]);
   const sectionParam = searchParams?.get('section');
@@ -179,20 +200,38 @@ export default function ReportPage() {
       {/* 하단 고정 발행 바 (주간/월간 전용) */}
       {!isDaily && (
         <div className="sticky bottom-0 z-30 bg-white/90 backdrop-blur-md border-t border-slate-200 -mx-6 lg:-mx-10">
-          <div className="mx-auto max-w-[1280px] px-6 lg:px-10 py-3 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              {isPublished && <Check size={16} className="text-emerald-500" />}
-              <span className={`text-sm font-medium ${isPublished ? 'text-emerald-600' : isDraft ? 'text-slate-500' : 'text-amber-600'}`}>
-                {isPublished ? '발행됨' : isDraft ? '검토 대기' : '분석 중 — 발행 불가'}
-              </span>
+          <div className="mx-auto max-w-[1280px] px-6 lg:px-10 py-3 flex flex-col gap-2">
+            {!platformsOk && failedPlatforms.length > 0 && !isPublished && (
+              <div className="flex items-start gap-2 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                <AlertCircle size={14} className="text-amber-600 shrink-0 mt-0.5" />
+                <div className="flex-1 leading-snug">
+                  <span className="font-semibold">실패/미완료 플랫폼이 있습니다:</span>{' '}
+                  {failedPlatforms.map((p) => PLATFORM_LABELS[p] ?? p).join(', ')}
+                  <span className="text-amber-700"> — 워크스페이스 화면에서 재시도 후 발행하세요.</span>
+                </div>
+              </div>
+            )}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                {isPublished && <Check size={16} className="text-emerald-500" />}
+                <span className={`text-sm font-medium ${isPublished ? 'text-emerald-600' : isDraft ? 'text-slate-500' : 'text-amber-600'}`}>
+                  {isPublished ? '발행됨' : isDraft ? '검토 대기' : '분석 중 — 발행 불가'}
+                </span>
+              </div>
+              <AdminButton
+                variant={isPublished ? 'secondary' : 'primary'}
+                onClick={() => publishMutation.mutate()}
+                disabled={publishMutation.isPending || !isDraft || !platformsOk}
+              >
+                {publishMutation.isPending
+                  ? '발행 중...'
+                  : isPublished
+                    ? '발행 완료'
+                    : !platformsOk
+                      ? '재시도 필요'
+                      : '보고서 발행'}
+              </AdminButton>
             </div>
-            <AdminButton
-              variant={isPublished ? 'secondary' : 'primary'}
-              onClick={() => publishMutation.mutate()}
-              disabled={publishMutation.isPending || !isDraft}
-            >
-              {publishMutation.isPending ? '발행 중...' : isPublished ? '발행 완료' : '보고서 발행'}
-            </AdminButton>
           </div>
         </div>
       )}

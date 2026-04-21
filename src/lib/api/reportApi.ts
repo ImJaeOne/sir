@@ -78,6 +78,22 @@ export async function publishReport(reportId: string): Promise<void> {
   }
 }
 
+/** 전략·총평·검색트렌드·SIR 재생성. 활성 플랫폼 전원 done 이어야 성공.
+ *  백엔드: POST /api/reports/{id}/regenerate — session_strategies 이전 행 삭제 후 재생성. */
+export async function regenerateReport(reportId: string): Promise<void> {
+  const { data: { session: auth } } = await supabase.auth.getSession();
+  if (!auth) throw new Error('로그인이 필요합니다.');
+
+  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/reports/${reportId}/regenerate`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${auth.access_token}` },
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail ?? '재생성 요청 실패');
+  }
+}
+
 // ── 주간 총평 ──
 
 export async function getWeeklySummary(workspaceId: string, reportId?: string): Promise<SummarySection[]> {

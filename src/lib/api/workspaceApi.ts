@@ -145,9 +145,11 @@ export async function getReports(workspaceId: string): Promise<Report[]> {
 export interface ReportProgress {
   reportId: string;
   sessions: {
+    id: string;
     platform_id: string;
     status: string;
     failed_reason: string | null;
+    error_message: string | null;
     total_items: number;
   }[];
   hasSummary: boolean;
@@ -163,7 +165,7 @@ export async function getReportProgress(workspaceId: string): Promise<ReportProg
       .order('created_at', { ascending: false }),
     supabase
       .from('sessions')
-      .select('id, report_id, platform_id, status, failed_reason, total_items, created_at')
+      .select('id, report_id, platform_id, status, failed_reason, error_message, total_items, created_at')
       .eq('workspace_id', workspaceId)
       .not('platform_id', 'is', null)
       .order('created_at', { ascending: false }),
@@ -195,15 +197,27 @@ export async function getReportProgress(workspaceId: string): Promise<ReportProg
     return {
       reportId: report.id,
       sessions: Array.from(byPlatform.values()).map(s => ({
+        id: s.id,
         platform_id: s.platform_id!,
         status: s.status,
         failed_reason: s.failed_reason,
+        error_message: s.error_message,
         total_items: s.total_items,
       })),
       hasSummary,
       strategyCategories,
     };
   });
+}
+
+// 활성 플랫폼 목록 — 백엔드 config.ACTIVE_PLATFORMS 와 동기화 유지
+export const ACTIVE_PLATFORMS = ['naver_news', 'naver_blog', 'youtube', 'naver_stock'] as const;
+
+/** 활성 플랫폼 중 done 이 아닌 세션이 하나라도 있으면 false */
+export function isAllPlatformsDone(progress: ReportProgress | undefined): boolean {
+  if (!progress) return false;
+  const map = new Map(progress.sessions.map(s => [s.platform_id, s]));
+  return ACTIVE_PLATFORMS.every(p => map.get(p)?.status === 'done');
 }
 
 export async function updateWorkspaceProfile(

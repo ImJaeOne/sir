@@ -8,11 +8,12 @@ import { Tooltip } from '@/components/ui/Tooltip';
 import { TickerBadge } from '@/components/ui/Badge';
 import { BlacklistEditor } from '@/components/ui/BlacklistEditor';
 import { useWorkspace, useWorkspaceProfile, useReports, useReportProgress, useReportRealtimeSync, workspaceKeys } from '@/hooks/workspace/useWorkspaceQuery';
-import { useUpdateWorkspaceProfile } from '@/hooks/workspace/useWorkspaceMutation';
+import { useUpdateWorkspaceProfile, useRetrySession, useRegenerateReport } from '@/hooks/workspace/useWorkspaceMutation';
 import { createClient } from '@/lib/supabase/client';
 import type { Report, ReportProgress } from '@/lib/api/workspaceApi';
+import { ACTIVE_PLATFORMS, isAllPlatformsDone } from '@/lib/api/workspaceApi';
 import type { WorkspaceProfile } from '@/types/workspace';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, RefreshCw, AlertCircle } from 'lucide-react';
 
 function EditProfileModal({
   workspaceId,
@@ -210,10 +211,106 @@ function SessionStatusDot({ status }: { status: string }) {
   return <span className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />;
 }
 
+// UI 표시용 — dcinside 는 백엔드 활성에서 빠졌지만 과거 세션 표시 위해 목록엔 유지
 const ALL_PLATFORMS = ['naver_news', 'naver_blog', 'youtube', 'naver_stock', 'dcinside'];
 
-function ReportProgressPanel({ progress }: { progress: ReportProgress }) {
+function FailedPlatformRow({
+  workspaceId,
+  platformId,
+  session,
+  cfg,
+}: {
+  workspaceId: string;
+  platformId: string;
+  session: ReportProgress['sessions'][number];
+  cfg: { label: string; color: string };
+}) {
+  const retry = useRetrySession(workspaceId);
+  const handleRetry = async () => {
+    try {
+      await retry.mutateAsync(session.id);
+      toast.success(`${PLATFORM_LABELS[platformId] ?? platformId} 재시도를 시작했습니다.`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : '재시도 실패');
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-1 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+      <div className="flex items-center gap-2">
+        <SessionStatusDot status="failed" />
+        <span className="text-xs text-slate-700 font-medium">{PLATFORM_LABELS[platformId] ?? platformId}</span>
+        <span className={`text-xs font-semibold ml-auto ${cfg.color}`}>
+          {session.failed_reason ? `${cfg.label} (${session.failed_reason})` : cfg.label}
+        </span>
+        <button
+          onClick={(e) => { e.stopPropagation(); handleRetry(); }}
+          disabled={retry.isPending}
+          className="flex items-center gap-1 text-[10px] font-semibold text-red-600 bg-white border border-red-200 rounded-md px-2 py-1 hover:bg-red-100 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          title="이 플랫폼 재시도"
+        >
+          <RefreshCw size={10} className={retry.isPending ? 'animate-spin' : ''} />
+          {retry.isPending ? '재시도 중' : '재시도'}
+        </button>
+      </div>
+      {session.error_message && (
+        <p className="text-[10px] text-red-700/80 leading-snug pl-3.5 whitespace-pre-wrap break-words">
+          {session.error_message}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function RegenerateButton({
+  workspaceId,
+  reportId,
+  disabled,
+  reason,
+}: {
+  workspaceId: string;
+  reportId: string;
+  disabled: boolean;
+  reason: string;
+}) {
+  const regen = useRegenerateReport(workspaceId);
+  const handleClick = async () => {
+    if (!confirm('전략·총평·검색트렌드·SIR을 재생성합니다. 기존 전략·총평은 삭제됩니다. 계속할까요?')) return;
+    try {
+      await regen.mutateAsync(reportId);
+      toast.success('재생성을 시작했습니다. 수 분 후 새로고침하세요.');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : '재생성 실패');
+    }
+  };
+
+  return (
+    <button
+      onClick={(e) => { e.stopPropagation(); handleClick(); }}
+      disabled={disabled || regen.isPending}
+      title={disabled ? reason : '전략·총평·SIR 재생성'}
+      className="flex items-center gap-1 text-[10px] font-semibold text-blue-600 bg-white border border-blue-200 rounded-md px-2 py-1 hover:bg-blue-50 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+    >
+      <RefreshCw size={10} className={regen.isPending ? 'animate-spin' : ''} />
+      {regen.isPending ? '재생성 중' : '재생성'}
+    </button>
+  );
+}
+
+function ReportProgressPanel({
+  workspaceId,
+  reportId,
+  reportType,
+  progress,
+}: {
+  workspaceId: string;
+  reportId: string;
+  reportType: Report['type'];
+  progress: ReportProgress;
+}) {
   const sessionMap = new Map(progress.sessions.map((s) => [s.platform_id, s]));
+  const platformsOk = isAllPlatformsDone(progress);
+  const isFinalizable = reportType !== 'daily';
 
   return (
     <div className="px-5 pb-4 flex flex-col gap-3">
@@ -225,6 +322,19 @@ function ReportProgressPanel({ progress }: { progress: ReportProgress }) {
             const s = sessionMap.get(platformId);
             const status = s?.status ?? 'pending';
             const cfg = STATUS_CONFIG[status] ?? { label: '대기', color: 'text-slate-400' };
+
+            if (status === 'failed' && s) {
+              return (
+                <FailedPlatformRow
+                  key={platformId}
+                  workspaceId={workspaceId}
+                  platformId={platformId}
+                  session={s}
+                  cfg={cfg}
+                />
+              );
+            }
+
             return (
               <div key={platformId} className="flex items-center gap-2 bg-slate-50 rounded-lg px-3 py-2">
                 <SessionStatusDot status={status} />
@@ -233,7 +343,7 @@ function ReportProgressPanel({ progress }: { progress: ReportProgress }) {
                   <span className="text-[10px] text-slate-400 ml-auto">{s?.total_items ?? 0}건</span>
                 )}
                 <span className={`text-xs font-semibold ${status !== 'done' ? 'ml-auto' : ''} ${cfg.color}`}>
-                  {status === 'failed' && s?.failed_reason ? `${cfg.label} (${s.failed_reason})` : cfg.label}
+                  {cfg.label}
                 </span>
               </div>
             );
@@ -243,7 +353,23 @@ function ReportProgressPanel({ progress }: { progress: ReportProgress }) {
 
       {/* 총평 & 전략 */}
       <div className="flex flex-col gap-1.5">
-        <span className="text-xs font-semibold text-slate-500">보고서 생성 현황</span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold text-slate-500">보고서 생성 현황</span>
+          {isFinalizable && (progress.hasSummary || progress.strategyCategories.length > 0) && (
+            <RegenerateButton
+              workspaceId={workspaceId}
+              reportId={reportId}
+              disabled={!platformsOk}
+              reason={!platformsOk ? '실패/미완료 플랫폼이 있습니다 — 재시도로 완료하세요' : ''}
+            />
+          )}
+        </div>
+        {!platformsOk && (progress.hasSummary || progress.strategyCategories.length > 0) && (
+          <div className="flex items-start gap-1.5 text-[10px] text-amber-700 bg-amber-50 border border-amber-100 rounded-md px-2 py-1.5 leading-snug">
+            <AlertCircle size={12} className="text-amber-600 shrink-0 mt-0.5" />
+            <span>실패한 플랫폼 결과가 빠진 상태로 전략/총평이 생성되었습니다. 재시도 완료 후 재생성 권장.</span>
+          </div>
+        )}
         <div className="grid grid-cols-2 gap-1.5">
           <div className="flex items-center gap-2 bg-slate-50 rounded-lg px-3 py-2">
             <SessionStatusDot status={progress.hasSummary ? 'done' : 'crawling'} />
@@ -565,7 +691,12 @@ export default function WorkspaceDetailPage() {
                 </div>
                 {isExpanded && progress && (
                   <div className="border-t border-slate-100">
-                    <ReportProgressPanel progress={progress} />
+                    <ReportProgressPanel
+                      workspaceId={workspaceId}
+                      reportId={report.id}
+                      reportType={report.type}
+                      progress={progress}
+                    />
                   </div>
                 )}
               </div>
