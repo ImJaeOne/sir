@@ -244,11 +244,11 @@ function FailedPlatformRow({
 function RetryFailedButton({
   workspaceId,
   reportId,
-  failedCount,
+  failedLabels,
 }: {
   workspaceId: string;
   reportId: string;
-  failedCount: number;
+  failedLabels: string[];
 }) {
   const retry = useRetryFailedReport(workspaceId);
   const [open, setOpen] = useState(false);
@@ -262,16 +262,17 @@ function RetryFailedButton({
     }
   };
 
+  const channelText = failedLabels.join(', ');
   return (
     <>
       <button
         onClick={(e) => { e.stopPropagation(); setOpen(true); }}
         disabled={retry.isPending}
-        title="실패한 플랫폼을 순차 재시도 후 자동 재생성"
+        title={`실패한 채널 재시도: ${channelText}`}
         className="flex items-center gap-1 text-[10px] font-semibold text-red-600 bg-white border border-red-200 rounded-md px-2 py-1 hover:bg-red-100 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
       >
         <RefreshCw size={10} className={retry.isPending ? 'animate-spin' : ''} />
-        {retry.isPending ? '재시도 중' : `실패 재시도 (${failedCount})`}
+        {retry.isPending ? '재시도 중' : `실패 재시도 (${failedLabels.length})`}
       </button>
       <ConfirmModal
         open={open}
@@ -282,7 +283,7 @@ function RetryFailedButton({
         confirmLabel="재시도"
         message={
           <>
-            실패한 플랫폼 {failedCount}건을 일괄 재시도합니다.
+            실패한 <b>{channelText}</b> 채널에 대해 수집·분석을 재진행합니다.
             <br />
             성공 시 전략·총평까지 자동으로 재생성됩니다.
           </>
@@ -358,7 +359,8 @@ function ReportProgressPanel({
   const sessionMap = new Map(progress.sessions.map((s) => [s.platform_id, s]));
   const platformsOk = isAllPlatformsDone(progress);
   const isFinalizable = reportType !== 'daily';
-  const failedCount = ALL_PLATFORMS.filter((p) => sessionMap.get(p)?.status === 'failed').length;
+  const failedPlatforms = ALL_PLATFORMS.filter((p) => sessionMap.get(p)?.status === 'failed');
+  const failedLabels = failedPlatforms.map((p) => PLATFORM_LABELS[p] ?? p);
   const hasAnyFinalize = progress.hasSummary || progress.strategyCategories.length > 0;
 
   return (
@@ -367,11 +369,11 @@ function ReportProgressPanel({
       <div className="flex flex-col gap-1.5">
         <div className="flex items-center gap-2">
           <span className="text-xs font-semibold text-slate-500">플랫폼별 수집 현황</span>
-          {isFinalizable && failedCount > 0 && (
+          {isFinalizable && failedLabels.length > 0 && (
             <RetryFailedButton
               workspaceId={workspaceId}
               reportId={reportId}
-              failedCount={failedCount}
+              failedLabels={failedLabels}
             />
           )}
         </div>
@@ -422,7 +424,7 @@ function ReportProgressPanel({
             />
           )}
         </div>
-        {failedCount > 0 && hasAnyFinalize && (
+        {failedLabels.length > 0 && hasAnyFinalize && (
           <div className="flex items-start gap-1.5 text-[10px] text-amber-700 bg-amber-50 border border-amber-100 rounded-md px-2 py-1.5 leading-snug">
             <AlertCircle size={12} className="text-amber-600 shrink-0 mt-0.5" />
             <span>실패한 플랫폼 결과가 빠진 상태로 전략/총평이 생성되었습니다. 위 "실패 재시도" 버튼으로 일괄 복구하세요.</span>
