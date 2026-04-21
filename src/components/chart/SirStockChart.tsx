@@ -8,9 +8,9 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  ResponsiveContainer,
   Bar,
 } from 'recharts';
+import { ChartCanvas } from '@/components/chart/ChartCanvas';
 
 import type { SirStockPoint } from '@/lib/api/reportApi';
 
@@ -94,7 +94,7 @@ export function SirStockChart({
   return (
     <div className="outline-none **:outline-none">
       <div className={pdfMode ? 'h-60' : 'h-80'}>
-        <ResponsiveContainer width="105%" height="100%" minWidth={0}>
+        <ChartCanvas width="105%">
           <ComposedChart data={displayData} margin={{ top: 10, right: 55, bottom: 0, left: 10 }}>
             <CartesianGrid
               yAxisId="sir"
@@ -251,7 +251,7 @@ export function SirStockChart({
               }}
             />
           </ComposedChart>
-        </ResponsiveContainer>
+        </ChartCanvas>
       </div>
     </div>
   );

@@ -8,8 +8,8 @@ import {
   CartesianGrid,
   Cell,
   LabelList,
-  ResponsiveContainer,
 } from 'recharts';
+import { ChartCanvas } from '@/components/chart/ChartCanvas';
 import { ReportCard } from '@/components/report/ReportCard';
 import type { TierItem } from '@/lib/api/reportApi';
 
@@ -34,7 +34,7 @@ export function MobileSirRankingBar({ tiers }: MobileSirRankingBarProps) {
           <span className="text-[10px] text-text-muted">(단위: 기업 수)</span>
         </div>
         <div style={{ height: 320 }}>
-          <ResponsiveContainer width="105%" height="100%" minWidth={0} minHeight={0}>
+          <ChartCanvas width="105%">
             <BarChart
               data={tiers}
               layout="vertical"
@@ -126,7 +126,7 @@ export function MobileSirRankingBar({ tiers }: MobileSirRankingBarProps) {
                 />
               </Bar>
             </BarChart>
-          </ResponsiveContainer>
+          </ChartCanvas>
         </div>
       </ReportCard>
     </div>

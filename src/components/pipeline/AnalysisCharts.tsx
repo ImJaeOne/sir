@@ -10,9 +10,9 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  ResponsiveContainer,
   Legend,
 } from 'recharts';
+import { ChartCanvas } from '@/components/chart/ChartCanvas';
 import { PLATFORMS, PLATFORM_CATEGORIES, CATEGORY_LABELS } from '@/constants/platforms';
 import type { PlatformAnalysis } from '@/types/pipeline';
 
@@ -46,7 +46,7 @@ function SentimentDonut({ data }: { data: PlatformAnalysis[] }) {
   return (
     <div className="flex flex-col items-center gap-2">
       <span className="text-xs font-semibold text-slate-500">종합 감정 분포</span>
-      <ResponsiveContainer width="100%" height={180}>
+      <ChartCanvas height={180}>
         <PieChart>
           <Pie
             data={pieData}
@@ -74,7 +74,7 @@ function SentimentDonut({ data }: { data: PlatformAnalysis[] }) {
             }}
           />
         </PieChart>
-      </ResponsiveContainer>
+      </ChartCanvas>
       <div className="flex items-center gap-4 text-xs">
         {pieData.map((d, i) => (
           <div key={d.name} className="flex items-center gap-1.5">
@@ -102,7 +102,7 @@ function CategoryScoreBar({ data }: { data: PlatformAnalysis[] }) {
   return (
     <div className="flex flex-col gap-2">
       <span className="text-xs font-semibold text-slate-500">카테고리별 SIR 지수</span>
-      <ResponsiveContainer width="100%" height={barData.length * 44 + 20}>
+      <ChartCanvas height={barData.length * 44 + 20}>
         <BarChart data={barData} layout="vertical" margin={{ top: 0, right: 12, bottom: 0, left: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
           <XAxis
@@ -139,7 +139,7 @@ function CategoryScoreBar({ data }: { data: PlatformAnalysis[] }) {
             ))}
           </Bar>
         </BarChart>
-      </ResponsiveContainer>
+      </ChartCanvas>
     </div>
   );
 }
@@ -160,7 +160,7 @@ function PlatformSentimentStack({ data }: { data: PlatformAnalysis[] }) {
   return (
     <div className="flex flex-col gap-2">
       <span className="text-xs font-semibold text-slate-500">플랫폼별 감정 분포</span>
-      <ResponsiveContainer width="100%" height={260}>
+      <ChartCanvas height={260}>
         <BarChart data={stackData} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
           <XAxis
@@ -236,7 +236,7 @@ function PlatformSentimentStack({ data }: { data: PlatformAnalysis[] }) {
           <Bar dataKey="중립" stackId="sentiment" fill={COLORS.neutral} barSize={24} cursor="default" />
           <Bar dataKey="부정" stackId="sentiment" fill={COLORS.negative} radius={[4, 4, 0, 0]} barSize={24} cursor="default" />
         </BarChart>
-      </ResponsiveContainer>
+      </ChartCanvas>
     </div>
   );
 }

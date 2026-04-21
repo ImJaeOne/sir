@@ -1,6 +1,7 @@
 'use client';
 
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
+import { ChartCanvas } from '@/components/chart/ChartCanvas';
 import { ChartLegend } from '@/components/ui/ChartLegend';
 
 const LEGEND_ITEMS = [
@@ -31,7 +32,7 @@ export function SentimentStackedBar({ data, pdfMode }: SentimentStackedBarProps)
         <ChartLegend items={LEGEND_ITEMS} />
       </div>
       <div className={`outline-none **:outline-none ${pdfMode ? 'h-48' : 'h-80'}`}>
-        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+        <ChartCanvas>
           <BarChart data={data} margin={{ top: 10, right: 10, bottom: 0, left: 0 }}>
             <CartesianGrid
               strokeDasharray="3 3"
@@ -122,7 +123,7 @@ export function SentimentStackedBar({ data, pdfMode }: SentimentStackedBarProps)
               isAnimationActive={false}
             />
           </BarChart>
-        </ResponsiveContainer>
+        </ChartCanvas>
       </div>
     </div>
   );

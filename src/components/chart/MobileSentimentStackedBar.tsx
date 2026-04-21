@@ -1,6 +1,7 @@
 'use client';
 
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
+import { ChartCanvas } from '@/components/chart/ChartCanvas';
 import { ChartLegend } from '@/components/ui/ChartLegend';
 
 const LEGEND_ITEMS = [
@@ -30,7 +31,7 @@ export function MobileSentimentStackedBar({ data }: MobileSentimentStackedBarPro
         <ChartLegend items={LEGEND_ITEMS} />
       </div>
       <div className="outline-none **:outline-none" style={{ height: 200 }}>
-        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+        <ChartCanvas>
           <BarChart data={data} margin={{ top: 10, right: 5, bottom: 0, left: -30 }}>
             <CartesianGrid
               strokeDasharray="3 3"
@@ -139,7 +140,7 @@ export function MobileSentimentStackedBar({ data }: MobileSentimentStackedBarPro
               isAnimationActive={false}
             />
           </BarChart>
-        </ResponsiveContainer>
+        </ChartCanvas>
       </div>
     </div>
   );
