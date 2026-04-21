@@ -23,7 +23,20 @@ interface ReportCalendarModalProps {
   onClose: () => void;
 }
 
-type Mode = 'daily' | 'weekly';
+type Mode = 'daily' | 'weekly' | 'monthly';
+
+// UI 모드 → reports.type 매핑. 월간은 백엔드 상 'initial' (온보딩 첫 30일).
+const TYPE_BY_MODE: Record<Mode, string> = {
+  daily: 'daily',
+  weekly: 'weekly',
+  monthly: 'initial',
+};
+
+const MODE_LABELS: Record<Mode, string> = {
+  daily: '일간',
+  weekly: '주간',
+  monthly: '초기 종합',
+};
 
 function parseDate(str: string | null): Date | null {
   if (!str) return null;
@@ -49,15 +62,14 @@ export function ReportCalendarModal({
   // 현재 보고 있는 보고서 type 에 따라 초기 모드 결정
   const [mode, setMode] = useState<Mode>(() => {
     const current = reports.find((r) => r.id === currentReportId);
-    return current?.type === 'daily' ? 'daily' : 'weekly';
+    if (current?.type === 'daily') return 'daily';
+    if (current?.type === 'initial') return 'monthly';
+    return 'weekly';
   });
 
   // 모드에 해당하는 보고서만 필터
   const visibleReports = useMemo(
-    () =>
-      mode === 'daily'
-        ? reports.filter((r) => r.type === 'daily')
-        : reports.filter((r) => r.type !== 'daily'),
+    () => reports.filter((r) => r.type === TYPE_BY_MODE[mode]),
     [reports, mode],
   );
 
@@ -101,9 +113,7 @@ export function ReportCalendarModal({
   const currentHighlight = useMemo(() => {
     if (!currentReportId) return { dates: [], starts: [], ends: [] };
     const target = reports.find((r) => r.id === currentReportId);
-    if (!target) return { dates: [], starts: [], ends: [] };
-    const isCurrentDaily = target.type === 'daily';
-    if ((mode === 'daily') !== isCurrentDaily) {
+    if (!target || target.type !== TYPE_BY_MODE[mode]) {
       return { dates: [], starts: [], ends: [] };
     }
     const s = parseDate(target.period_start);
@@ -117,9 +127,7 @@ export function ReportCalendarModal({
     if (!selectedReportId || selectedReportId === currentReportId)
       return { dates: [], start: null as Date | null, end: null as Date | null };
     const target = reports.find((r) => r.id === selectedReportId);
-    if (!target) return { dates: [], start: null, end: null };
-    const isSelectedDaily = target.type === 'daily';
-    if ((mode === 'daily') !== isSelectedDaily) {
+    if (!target || target.type !== TYPE_BY_MODE[mode]) {
       return { dates: [], start: null, end: null };
     }
     const s = parseDate(target.period_start);
@@ -180,7 +188,7 @@ export function ReportCalendarModal({
       <div className="flex flex-col gap-4 items-center">
         {/* 모드 토글 */}
         <div className="flex gap-1 bg-slate-100 rounded-full p-1">
-          {(['weekly', 'daily'] as const).map((m) => {
+          {(['weekly', 'daily', 'monthly'] as const).map((m) => {
             const active = mode === m;
             return (
               <button
@@ -194,7 +202,7 @@ export function ReportCalendarModal({
                   active ? 'bg-white text-text-dark shadow-sm' : 'text-text-muted hover:text-text-dark'
                 }`}
               >
-                {m === 'weekly' ? '주간' : '일간'}
+                {MODE_LABELS[m]}
               </button>
             );
           })}
@@ -287,75 +295,144 @@ export function ReportCalendarModal({
             border-radius: 9999px;
           }
         `}</style>
-        <div className="inline-flex flex-col gap-2">
-          <div className="flex items-center justify-between">
-            <button
-              onClick={goToPrevMonth}
-              className="text-text-muted hover:text-text-dark transition-colors cursor-pointer p-1"
-            >
-              <ChevronLeft size={18} />
-            </button>
-            <span className="text-sm font-semibold text-text-dark">{monthLabel}</span>
-            <button
-              onClick={goToNextMonth}
-              className="text-text-muted hover:text-text-dark transition-colors cursor-pointer p-1"
-            >
-              <ChevronRight size={18} />
-            </button>
-          </div>
-
-          <DayPicker
-            className={`report-calendar mode-${mode}`}
-            locale={ko}
-            weekStartsOn={1}
-            month={month}
-            onMonthChange={setMonth}
-            disabled={latestEnd ? { after: latestEnd } : undefined}
-            modifiers={{
-              hasReport: allReportDates.dates,
-              current: currentHighlight.dates,
-              currentStart: currentHighlight.starts,
-              currentEnd: currentHighlight.ends,
-              selected: selectedHighlight.dates,
-              selectedStart: selectedHighlight.start ? [selectedHighlight.start] : [],
-              selectedEnd: selectedHighlight.end ? [selectedHighlight.end] : [],
-            }}
-            modifiersClassNames={{
-              hasReport: 'day-has-report',
-              current: 'day-current',
-              currentStart: 'day-range-start',
-              currentEnd: 'day-range-end',
-              selected: 'day-selected',
-              selectedStart: 'day-range-start',
-              selectedEnd: 'day-range-end',
-            }}
-            onDayClick={handleDayClick}
-            showOutsideDays
+        {mode === 'monthly' ? (
+          <MonthlyList
+            reports={visibleReports}
+            currentReportId={currentReportId}
+            selectedReportId={selectedReportId}
+            onSelect={setSelectedReportId}
           />
-        </div>
+        ) : (
+          <>
+            <div className="inline-flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <button
+                  onClick={goToPrevMonth}
+                  className="text-text-muted hover:text-text-dark transition-colors cursor-pointer p-1"
+                >
+                  <ChevronLeft size={18} />
+                </button>
+                <span className="text-sm font-semibold text-text-dark">{monthLabel}</span>
+                <button
+                  onClick={goToNextMonth}
+                  className="text-text-muted hover:text-text-dark transition-colors cursor-pointer p-1"
+                >
+                  <ChevronRight size={18} />
+                </button>
+              </div>
 
-        {/* 범례 */}
-        <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-2">
-          <div className="flex items-center gap-1.5">
-            <div className={`w-2.5 h-2.5 ${mode === 'daily' ? 'rounded-full' : ''}`} style={{ backgroundColor: mode === 'daily' ? 'rgba(151, 71, 255, 0.35)' : 'rgba(54, 44, 255, 0.2)' }} />
-            <span className="text-xs text-text-muted">{mode === 'daily' ? '일간 보고서' : '주간 보고서'}</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-2.5 h-2.5 rounded-full bg-bg-blue" />
-            <span className="text-xs text-text-muted">현재 보고서</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-2.5 h-2.5 rounded-full bg-bg-pupple-calendar" />
-            <span className="text-xs text-text-muted">선택된 보고서</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className="relative w-2.5 h-2.5">
-              <div className="absolute left-1/2 -translate-x-1/2 bottom-0 w-1 h-1 rounded-full bg-bg-accent" />
+              <DayPicker
+                className={`report-calendar mode-${mode}`}
+                locale={ko}
+                weekStartsOn={1}
+                month={month}
+                onMonthChange={setMonth}
+                disabled={latestEnd ? { after: latestEnd } : undefined}
+                modifiers={{
+                  hasReport: allReportDates.dates,
+                  current: currentHighlight.dates,
+                  currentStart: currentHighlight.starts,
+                  currentEnd: currentHighlight.ends,
+                  selected: selectedHighlight.dates,
+                  selectedStart: selectedHighlight.start ? [selectedHighlight.start] : [],
+                  selectedEnd: selectedHighlight.end ? [selectedHighlight.end] : [],
+                }}
+                modifiersClassNames={{
+                  hasReport: 'day-has-report',
+                  current: 'day-current',
+                  currentStart: 'day-range-start',
+                  currentEnd: 'day-range-end',
+                  selected: 'day-selected',
+                  selectedStart: 'day-range-start',
+                  selectedEnd: 'day-range-end',
+                }}
+                onDayClick={handleDayClick}
+                showOutsideDays
+              />
             </div>
-            <span className="text-xs text-text-muted">오늘</span>
-          </div>
-        </div>
+
+            {/* 범례 */}
+            <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-2">
+              <div className="flex items-center gap-1.5">
+                <div className={`w-2.5 h-2.5 ${mode === 'daily' ? 'rounded-full' : ''}`} style={{ backgroundColor: mode === 'daily' ? 'rgba(151, 71, 255, 0.35)' : 'rgba(54, 44, 255, 0.2)' }} />
+                <span className="text-xs text-text-muted">{mode === 'daily' ? '일간 보고서' : '주간 보고서'}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-full bg-bg-blue" />
+                <span className="text-xs text-text-muted">현재 보고서</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-full bg-bg-pupple-calendar" />
+                <span className="text-xs text-text-muted">선택된 보고서</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="relative w-2.5 h-2.5">
+                  <div className="absolute left-1/2 -translate-x-1/2 bottom-0 w-1 h-1 rounded-full bg-bg-accent" />
+                </div>
+                <span className="text-xs text-text-muted">오늘</span>
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </Modal>
+  );
+}
+
+function MonthlyList({
+  reports,
+  currentReportId,
+  selectedReportId,
+  onSelect,
+}: {
+  reports: Report[];
+  currentReportId?: string;
+  selectedReportId?: string;
+  onSelect: (reportId: string) => void;
+}) {
+  if (reports.length === 0) {
+    return (
+      <div className="py-10 text-center text-sm text-text-muted">
+        생성된 초기 종합 보고서가 없습니다.
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-2 w-full min-w-[280px] max-w-[360px]">
+      {reports
+        .slice()
+        .sort((a, b) => (b.period_end ?? '').localeCompare(a.period_end ?? ''))
+        .map((r) => {
+          const isCurrent = r.id === currentReportId;
+          const isSelected = r.id === selectedReportId && !isCurrent;
+          return (
+            <button
+              key={r.id}
+              type="button"
+              onClick={() => onSelect(r.id)}
+              className={`text-left rounded-lg border px-3.5 py-3 transition-colors cursor-pointer ${
+                isSelected
+                  ? 'border-text-pupple bg-bg-pupple-calendar'
+                  : isCurrent
+                    ? 'border-text-accent bg-bg-blue'
+                    : 'border-slate-200 bg-white hover:bg-slate-50'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-sm font-semibold text-text-dark">초기 종합 보고서</span>
+                {isCurrent && (
+                  <span className="text-[10px] font-semibold text-text-accent bg-white rounded-full px-2 py-0.5">
+                    현재
+                  </span>
+                )}
+              </div>
+              <div className="text-xs text-text-muted tabular-nums">
+                {r.period_start} ~ {r.period_end}
+              </div>
+            </button>
+          );
+        })}
+    </div>
   );
 }
