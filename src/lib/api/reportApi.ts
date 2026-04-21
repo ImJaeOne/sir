@@ -94,6 +94,22 @@ export async function regenerateReport(reportId: string): Promise<void> {
   }
 }
 
+/** 보고서 내 failed 플랫폼 일괄 재시도 + 성공 시 자동 regenerate.
+ *  백엔드: POST /api/reports/{id}/retry-failed — 순차 retry 후 전 플랫폼 done 되면 finalize. */
+export async function retryFailedReport(reportId: string): Promise<void> {
+  const { data: { session: auth } } = await supabase.auth.getSession();
+  if (!auth) throw new Error('로그인이 필요합니다.');
+
+  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/reports/${reportId}/retry-failed`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${auth.access_token}` },
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail ?? '재시도 요청 실패');
+  }
+}
+
 // ── 주간 총평 ──
 
 export async function getWeeklySummary(workspaceId: string, reportId?: string): Promise<SummarySection[]> {

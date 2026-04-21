@@ -8,7 +8,7 @@ import { Tooltip } from '@/components/ui/Tooltip';
 import { TickerBadge } from '@/components/ui/Badge';
 import { BlacklistEditor } from '@/components/ui/BlacklistEditor';
 import { useWorkspace, useWorkspaceProfile, useReports, useReportProgress, useReportRealtimeSync, workspaceKeys } from '@/hooks/workspace/useWorkspaceQuery';
-import { useUpdateWorkspaceProfile, useRetrySession, useRegenerateReport } from '@/hooks/workspace/useWorkspaceMutation';
+import { useUpdateWorkspaceProfile, useRegenerateReport, useRetryFailedReport } from '@/hooks/workspace/useWorkspaceMutation';
 import { createClient } from '@/lib/supabase/client';
 import type { Report, ReportProgress } from '@/lib/api/workspaceApi';
 import { ACTIVE_PLATFORMS, isAllPlatformsDone } from '@/lib/api/workspaceApi';
@@ -214,26 +214,14 @@ function SessionStatusDot({ status }: { status: string }) {
 const ALL_PLATFORMS = ['naver_news', 'naver_blog', 'youtube', 'naver_stock'];
 
 function FailedPlatformRow({
-  workspaceId,
   platformId,
   session,
   cfg,
 }: {
-  workspaceId: string;
   platformId: string;
   session: ReportProgress['sessions'][number];
   cfg: { label: string; color: string };
 }) {
-  const retry = useRetrySession(workspaceId);
-  const handleRetry = async () => {
-    try {
-      await retry.mutateAsync(session.id);
-      toast.success(`${PLATFORM_LABELS[platformId] ?? platformId} 재시도를 시작했습니다.`);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : '재시도 실패');
-    }
-  };
-
   return (
     <div className="flex flex-col gap-1 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
       <div className="flex items-center gap-2">
@@ -242,15 +230,6 @@ function FailedPlatformRow({
         <span className={`text-xs font-semibold ml-auto ${cfg.color}`}>
           {session.failed_reason ? `${cfg.label} (${session.failed_reason})` : cfg.label}
         </span>
-        <button
-          onClick={(e) => { e.stopPropagation(); handleRetry(); }}
-          disabled={retry.isPending}
-          className="flex items-center gap-1 text-[10px] font-semibold text-red-600 bg-white border border-red-200 rounded-md px-2 py-1 hover:bg-red-100 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-          title="이 플랫폼 재시도"
-        >
-          <RefreshCw size={10} className={retry.isPending ? 'animate-spin' : ''} />
-          {retry.isPending ? '재시도 중' : '재시도'}
-        </button>
       </div>
       {session.error_message && (
         <p className="text-[10px] text-red-700/80 leading-snug pl-3.5 whitespace-pre-wrap break-words">
@@ -258,6 +237,39 @@ function FailedPlatformRow({
         </p>
       )}
     </div>
+  );
+}
+
+function RetryFailedButton({
+  workspaceId,
+  reportId,
+  failedCount,
+}: {
+  workspaceId: string;
+  reportId: string;
+  failedCount: number;
+}) {
+  const retry = useRetryFailedReport(workspaceId);
+  const handleClick = async () => {
+    if (!confirm(`실패 ${failedCount}건을 일괄 재시도합니다. 성공 시 전략·총평까지 자동으로 재생성됩니다. 계속할까요?`)) return;
+    try {
+      await retry.mutateAsync(reportId);
+      toast.success('일괄 재시도를 시작했습니다. 수 분 후 새로고침하세요.');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : '재시도 실패');
+    }
+  };
+
+  return (
+    <button
+      onClick={(e) => { e.stopPropagation(); handleClick(); }}
+      disabled={retry.isPending}
+      title="실패한 플랫폼을 순차 재시도 후 자동 재생성"
+      className="flex items-center gap-1 text-[10px] font-semibold text-red-600 bg-white border border-red-200 rounded-md px-2 py-1 hover:bg-red-100 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+    >
+      <RefreshCw size={10} className={retry.isPending ? 'animate-spin' : ''} />
+      {retry.isPending ? '재시도 중' : `실패 재시도 (${failedCount})`}
+    </button>
   );
 }
 
@@ -310,12 +322,23 @@ function ReportProgressPanel({
   const sessionMap = new Map(progress.sessions.map((s) => [s.platform_id, s]));
   const platformsOk = isAllPlatformsDone(progress);
   const isFinalizable = reportType !== 'daily';
+  const failedCount = ALL_PLATFORMS.filter((p) => sessionMap.get(p)?.status === 'failed').length;
+  const hasAnyFinalize = progress.hasSummary || progress.strategyCategories.length > 0;
 
   return (
     <div className="px-5 pb-4 flex flex-col gap-3">
       {/* 플랫폼별 세션 상태 */}
       <div className="flex flex-col gap-1.5">
-        <span className="text-xs font-semibold text-slate-500">플랫폼별 수집 현황</span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold text-slate-500">플랫폼별 수집 현황</span>
+          {isFinalizable && failedCount > 0 && (
+            <RetryFailedButton
+              workspaceId={workspaceId}
+              reportId={reportId}
+              failedCount={failedCount}
+            />
+          )}
+        </div>
         <div className="grid grid-cols-2 gap-1.5">
           {ALL_PLATFORMS.map((platformId) => {
             const s = sessionMap.get(platformId);
@@ -326,7 +349,6 @@ function ReportProgressPanel({
               return (
                 <FailedPlatformRow
                   key={platformId}
-                  workspaceId={workspaceId}
                   platformId={platformId}
                   session={s}
                   cfg={cfg}
@@ -354,19 +376,20 @@ function ReportProgressPanel({
       <div className="flex flex-col gap-1.5">
         <div className="flex items-center gap-2">
           <span className="text-xs font-semibold text-slate-500">보고서 생성 현황</span>
-          {isFinalizable && (progress.hasSummary || progress.strategyCategories.length > 0) && (
+          {/* 자동 재생성이 실패했을 때만 수동 fallback 버튼 노출 (전 플랫폼 done 인데 총평 없음) */}
+          {isFinalizable && platformsOk && !progress.hasSummary && (
             <RegenerateButton
               workspaceId={workspaceId}
               reportId={reportId}
-              disabled={!platformsOk}
-              reason={!platformsOk ? '실패/미완료 플랫폼이 있습니다 — 재시도로 완료하세요' : ''}
+              disabled={false}
+              reason=""
             />
           )}
         </div>
-        {!platformsOk && (progress.hasSummary || progress.strategyCategories.length > 0) && (
+        {failedCount > 0 && hasAnyFinalize && (
           <div className="flex items-start gap-1.5 text-[10px] text-amber-700 bg-amber-50 border border-amber-100 rounded-md px-2 py-1.5 leading-snug">
             <AlertCircle size={12} className="text-amber-600 shrink-0 mt-0.5" />
-            <span>실패한 플랫폼 결과가 빠진 상태로 전략/총평이 생성되었습니다. 재시도 완료 후 재생성 권장.</span>
+            <span>실패한 플랫폼 결과가 빠진 상태로 전략/총평이 생성되었습니다. 위 "실패 재시도" 버튼으로 일괄 복구하세요.</span>
           </div>
         )}
         <div className="grid grid-cols-2 gap-1.5">
