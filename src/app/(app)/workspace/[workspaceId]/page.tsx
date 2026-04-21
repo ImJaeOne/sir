@@ -194,7 +194,7 @@ const PLATFORM_LABELS: Record<string, string> = {
 };
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
-  pending: { label: '대기', color: 'text-slate-400' },
+  pending: { label: '작업 전', color: 'text-slate-400' },
   crawling: { label: '크롤링 중', color: 'text-blue-500' },
   analyzing: { label: '분석 중', color: 'text-amber-500' },
   clustering: { label: '클러스터링 중', color: 'text-violet-500' },
@@ -321,7 +321,7 @@ function ReportProgressPanel({
           {ALL_PLATFORMS.map((platformId) => {
             const s = sessionMap.get(platformId);
             const status = s?.status ?? 'pending';
-            const cfg = STATUS_CONFIG[status] ?? { label: '대기', color: 'text-slate-400' };
+            const cfg = STATUS_CONFIG[status] ?? { label: '작업 전', color: 'text-slate-400' };
 
             if (status === 'failed' && s) {
               return (
@@ -375,14 +375,14 @@ function ReportProgressPanel({
             <SessionStatusDot status={progress.hasSummary ? 'done' : 'crawling'} />
             <span className="text-xs text-slate-600 font-medium">총평</span>
             <span className={`text-xs font-semibold ml-auto ${progress.hasSummary ? 'text-emerald-500' : 'text-slate-400'}`}>
-              {progress.hasSummary ? '완료' : '대기'}
+              {progress.hasSummary ? '완료' : '작업 전'}
             </span>
           </div>
           <div className="flex items-center gap-2 bg-slate-50 rounded-lg px-3 py-2">
             <SessionStatusDot status={progress.strategyCategories.length > 0 ? 'done' : 'crawling'} />
             <span className="text-xs text-slate-600 font-medium">대응 전략</span>
             <span className={`text-xs font-semibold ml-auto ${progress.strategyCategories.length > 0 ? 'text-emerald-500' : 'text-slate-400'}`}>
-              {progress.strategyCategories.length > 0 ? `${progress.strategyCategories.length}개 채널` : '대기'}
+              {progress.strategyCategories.length > 0 ? `${progress.strategyCategories.length}개 채널` : '작업 전'}
             </span>
           </div>
         </div>
