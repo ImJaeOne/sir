@@ -283,7 +283,7 @@ function RetryFailedButton({
         confirmLabel="재시도"
         message={
           <>
-            실패한 <b>{channelText}</b> 채널에 대해 수집·분석을 재진행합니다.
+            실패한 채널(<b>{channelText}</b>)에 대해 수집·분석을 재진행합니다.
             <br />
             성공 시 전략·총평까지 자동으로 재생성됩니다.
           </>
