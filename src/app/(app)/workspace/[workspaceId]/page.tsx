@@ -7,6 +7,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { TickerBadge } from '@/components/ui/Badge';
 import { BlacklistEditor } from '@/components/ui/BlacklistEditor';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { useWorkspace, useWorkspaceProfile, useReports, useReportProgress, useReportRealtimeSync, workspaceKeys } from '@/hooks/workspace/useWorkspaceQuery';
 import { useUpdateWorkspaceProfile, useRegenerateReport, useRetryFailedReport } from '@/hooks/workspace/useWorkspaceMutation';
 import { createClient } from '@/lib/supabase/client';
@@ -250,8 +251,9 @@ function RetryFailedButton({
   failedCount: number;
 }) {
   const retry = useRetryFailedReport(workspaceId);
-  const handleClick = async () => {
-    if (!confirm(`실패 ${failedCount}건을 일괄 재시도합니다. 성공 시 전략·총평까지 자동으로 재생성됩니다. 계속할까요?`)) return;
+  const [open, setOpen] = useState(false);
+  const handleConfirm = async () => {
+    setOpen(false);
     try {
       await retry.mutateAsync(reportId);
       toast.success('일괄 재시도를 시작했습니다. 수 분 후 새로고침하세요.');
@@ -261,15 +263,32 @@ function RetryFailedButton({
   };
 
   return (
-    <button
-      onClick={(e) => { e.stopPropagation(); handleClick(); }}
-      disabled={retry.isPending}
-      title="실패한 플랫폼을 순차 재시도 후 자동 재생성"
-      className="flex items-center gap-1 text-[10px] font-semibold text-red-600 bg-white border border-red-200 rounded-md px-2 py-1 hover:bg-red-100 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-    >
-      <RefreshCw size={10} className={retry.isPending ? 'animate-spin' : ''} />
-      {retry.isPending ? '재시도 중' : `실패 재시도 (${failedCount})`}
-    </button>
+    <>
+      <button
+        onClick={(e) => { e.stopPropagation(); setOpen(true); }}
+        disabled={retry.isPending}
+        title="실패한 플랫폼을 순차 재시도 후 자동 재생성"
+        className="flex items-center gap-1 text-[10px] font-semibold text-red-600 bg-white border border-red-200 rounded-md px-2 py-1 hover:bg-red-100 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        <RefreshCw size={10} className={retry.isPending ? 'animate-spin' : ''} />
+        {retry.isPending ? '재시도 중' : `실패 재시도 (${failedCount})`}
+      </button>
+      <ConfirmModal
+        open={open}
+        onClose={() => setOpen(false)}
+        onConfirm={handleConfirm}
+        title="실패 재시도"
+        confirmVariant="danger"
+        confirmLabel="재시도"
+        message={
+          <>
+            실패한 플랫폼 {failedCount}건을 일괄 재시도합니다.
+            <br />
+            성공 시 전략·총평까지 자동으로 재생성됩니다.
+          </>
+        }
+      />
+    </>
   );
 }
 
@@ -285,8 +304,9 @@ function RegenerateButton({
   reason: string;
 }) {
   const regen = useRegenerateReport(workspaceId);
-  const handleClick = async () => {
-    if (!confirm('전략·총평·검색트렌드·SIR을 재생성합니다. 기존 전략·총평은 삭제됩니다. 계속할까요?')) return;
+  const [open, setOpen] = useState(false);
+  const handleConfirm = async () => {
+    setOpen(false);
     try {
       await regen.mutateAsync(reportId);
       toast.success('재생성을 시작했습니다. 수 분 후 새로고침하세요.');
@@ -296,15 +316,31 @@ function RegenerateButton({
   };
 
   return (
-    <button
-      onClick={(e) => { e.stopPropagation(); handleClick(); }}
-      disabled={disabled || regen.isPending}
-      title={disabled ? reason : '전략·총평·SIR 재생성'}
-      className="flex items-center gap-1 text-[10px] font-semibold text-blue-600 bg-white border border-blue-200 rounded-md px-2 py-1 hover:bg-blue-50 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-    >
-      <RefreshCw size={10} className={regen.isPending ? 'animate-spin' : ''} />
-      {regen.isPending ? '재생성 중' : '재생성'}
-    </button>
+    <>
+      <button
+        onClick={(e) => { e.stopPropagation(); setOpen(true); }}
+        disabled={disabled || regen.isPending}
+        title={disabled ? reason : '전략·총평·SIR 재생성'}
+        className="flex items-center gap-1 text-[10px] font-semibold text-blue-600 bg-white border border-blue-200 rounded-md px-2 py-1 hover:bg-blue-50 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+      >
+        <RefreshCw size={10} className={regen.isPending ? 'animate-spin' : ''} />
+        {regen.isPending ? '재생성 중' : '재생성'}
+      </button>
+      <ConfirmModal
+        open={open}
+        onClose={() => setOpen(false)}
+        onConfirm={handleConfirm}
+        title="보고서 재생성"
+        confirmLabel="재생성"
+        message={
+          <>
+            전략·총평·검색트렌드·SIR 을 재생성합니다.
+            <br />
+            기존 전략·총평 행은 삭제됩니다.
+          </>
+        }
+      />
+    </>
   );
 }
 
