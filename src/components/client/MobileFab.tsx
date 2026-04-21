@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useCallback, useMemo } from 'react';
+import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { X } from 'lucide-react';
 import { useReportInfo } from '@/hooks/report/useReportQuery';
@@ -22,12 +22,14 @@ export function MobileFab() {
   const activeId = searchParams?.get('section') ?? sections[0]?.id;
 
   const [isOpen, setIsOpen] = useState(false);
-  const [pos, setPos] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return { x: window.innerWidth - FAB_SIZE - 20, y: window.innerHeight - FAB_SIZE - 24 };
-    }
-    return { x: 0, y: 0 };
-  });
+  // SSR 과 CSR 모두 동일한 초기값 ({x:0, y:0}) 으로 hydration mismatch 방지.
+  // mount 후 useEffect 에서 실제 뷰포트 기준으로 위치 재계산.
+  const [pos, setPos] = useState({ x: 0, y: 0 });
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setPos({ x: window.innerWidth - FAB_SIZE - 20, y: window.innerHeight - FAB_SIZE - 24 });
+    setMounted(true);
+  }, []);
   const dragRef = useRef<{ startX: number; startY: number; startPosX: number; startPosY: number; moved: boolean } | null>(null);
   const fabRef = useRef<HTMLButtonElement>(null);
 
@@ -104,13 +106,15 @@ export function MobileFab() {
         </>
       )}
 
-      {/* FAB 버튼 — 드래그 가능 */}
+      {/* FAB 버튼 — 드래그 가능. mount 전엔 숨겨서 hydration mismatch 방지. */}
       <button
         ref={fabRef}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        className="fixed z-50 w-14 h-14 rounded-full bg-white shadow-xl border border-slate-100 flex items-center justify-center cursor-pointer lg:hidden touch-none"
+        className={`fixed z-50 w-14 h-14 rounded-full bg-white shadow-xl border border-slate-100 flex items-center justify-center cursor-pointer lg:hidden touch-none ${
+          mounted ? '' : 'opacity-0 pointer-events-none'
+        }`}
         style={{ left: pos.x, top: pos.y }}
       >
         {isOpen ? (

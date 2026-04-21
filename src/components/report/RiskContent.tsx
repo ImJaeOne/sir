@@ -12,9 +12,11 @@ interface RiskContentProps {
   workspaceId: string;
   reportId: string;
   editable?: boolean;
+  /** 신고 대행 요청 버튼 노출 여부. 보고서 내부에선 false, 위기 대응 센터에선 true */
+  allowReport?: boolean;
 }
 
-export function RiskContent({ workspaceId, reportId, editable = false }: RiskContentProps) {
+export function RiskContent({ workspaceId, reportId, editable = false, allowReport = false }: RiskContentProps) {
   const { data: report } = useReportInfo(reportId);
   const { data: riskItems } = useRiskItems(workspaceId, reportId);
   const { data: riskReports } = useRiskReports(workspaceId, reportId);
@@ -43,6 +45,7 @@ export function RiskContent({ workspaceId, reportId, editable = false }: RiskCon
           riskReportBySourceId={riskReportBySourceId}
           onCancelReport={deleteMutation.mutate}
           editable={editable}
+          allowReport={allowReport}
         />
         {report?.period_start && report?.period_end && (
           <RiskResultTable

@@ -159,6 +159,9 @@ export const riskItemSchema = z.object({
   critical_type: z.string(),
   critical_reason: z.string().nullable(),
   published_at: z.string().nullable(),
+  /** 위기 대응 센터에서 여러 report 간 items 를 한꺼번에 표시할 때, 신고 대행 요청
+   *  submit 시 올바른 report_id 를 역추적하기 위한 필드. */
+  session_id: z.string().nullable().optional(),
 });
 
 export type RiskItem = z.infer<typeof riskItemSchema>;

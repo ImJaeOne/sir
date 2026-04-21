@@ -461,26 +461,27 @@ export async function getRiskItems(workspaceId: string, reportId?: string): Prom
     if (meta.sessionIds.length === 0) return [];
     const [communityRes, snsRes] = await Promise.all([
       supabase.from('community_items')
-        .select('id, platform_id, title, link, critical_type, critical_reason, published_at')
+        .select('id, platform_id, title, link, critical_type, critical_reason, published_at, session_id')
         .eq('workspace_id', workspaceId).not('critical_type', 'is', null).in('session_id', meta.sessionIds),
       supabase.from('sns_items')
-        .select('id, platform_id, title, link, critical_type, critical_reason, published_at')
+        .select('id, platform_id, title, link, critical_type, critical_reason, published_at, session_id')
         .eq('workspace_id', workspaceId).not('critical_type', 'is', null).in('session_id', meta.sessionIds),
     ]);
     return [...(communityRes.data ?? []), ...(snsRes.data ?? [])]
       .map(r => ({
         id: r.id, platform_id: r.platform_id, title: r.title ?? '', link: r.link ?? '#',
         critical_type: r.critical_type, critical_reason: r.critical_reason ?? null, published_at: r.published_at ?? null,
+        session_id: r.session_id ?? null,
       }))
       .sort((a, b) => (b.published_at ?? '').localeCompare(a.published_at ?? ''));
   }
 
   const [communityRes, snsRes] = await Promise.all([
     supabase.from('community_items')
-      .select('id, platform_id, title, link, critical_type, critical_reason, published_at')
+      .select('id, platform_id, title, link, critical_type, critical_reason, published_at, session_id')
       .eq('workspace_id', workspaceId).not('critical_type', 'is', null),
     supabase.from('sns_items')
-      .select('id, platform_id, title, link, critical_type, critical_reason, published_at')
+      .select('id, platform_id, title, link, critical_type, critical_reason, published_at, session_id')
       .eq('workspace_id', workspaceId).not('critical_type', 'is', null),
   ]);
 
@@ -493,6 +494,7 @@ export async function getRiskItems(workspaceId: string, reportId?: string): Prom
       critical_type: r.critical_type,
       critical_reason: r.critical_reason ?? null,
       published_at: r.published_at ?? null,
+      session_id: r.session_id ?? null,
     }))
     .sort((a, b) => (b.published_at ?? '').localeCompare(a.published_at ?? ''));
 }

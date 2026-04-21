@@ -2,7 +2,7 @@
 'use no memo';
 
 import { useEffect, useRef, useState } from 'react';
-import { useParams, useSearchParams } from 'next/navigation';
+import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useIsFetching } from '@tanstack/react-query';
 import { ReportHeader } from '@/components/report/ReportHeader';
 import { Highlight } from '@/components/report/Highlight';
@@ -56,6 +56,8 @@ function SectionBg({
 export default function ClientReportPage() {
   const params = useParams();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const router = useRouter();
   const workspaceId = params?.workspaceId as string;
   const reportId = params?.reportId as string;
   const isFetching = useIsFetching();
@@ -63,9 +65,16 @@ export default function ClientReportPage() {
   const isDaily = report?.type === 'daily';
   const pdfMode = searchParams?.get('pdf') === '1';
 
-  const allowedIds = new Set(getClientReportSections(isDaily).map((s) => s.id));
+  const sections = getClientReportSections(isDaily);
+  const allowedIds = new Set(sections.map((s) => s.id));
   const sectionParam = searchParams?.get('section');
   const activeSection = sectionParam && allowedIds.has(sectionParam) ? sectionParam : 'section-highlight';
+
+  const handleTabClick = (id: string) => {
+    const next = new URLSearchParams(searchParams?.toString() ?? '');
+    next.set('section', id);
+    router.replace(`${pathname}?${next.toString()}`, { scroll: false });
+  };
 
   // 첫 fetch 완료 여부 추적 — 섹션 스위칭 전에 데이터 prefetch
   const startedRef = useRef(false);
@@ -129,8 +138,31 @@ export default function ClientReportPage() {
       )}
       <div className={`lg:min-w-fit ${ready ? '' : 'invisible'}`}>
         <SectionBg color="bg-light">
-          <div className="flex flex-col lg:gap-10">
+          <div className="flex flex-col lg:gap-6">
             <ReportHeader workspaceId={workspaceId} reportId={reportId} showPdfButton={false} />
+
+            {/* 섹션 탭 — 월간/주간 전용. 사이드바 섹션 아이콘/라벨 그대로 재사용 */}
+            <div className="flex gap-1 border-b border-slate-200 overflow-x-auto">
+              {sections.map((s) => {
+                const active = activeSection === s.id;
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => handleTabClick(s.id)}
+                    className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold border-b-2 -mb-px transition-colors cursor-pointer whitespace-nowrap ${
+                      active
+                        ? 'border-slate-700 text-slate-800'
+                        : 'border-transparent text-slate-400 hover:text-slate-600'
+                    }`}
+                  >
+                    <s.Icon size={16} color={active ? '#1E293B' : '#828EA6'} />
+                    {s.label}
+                  </button>
+                );
+              })}
+            </div>
+
             {activeSection === 'section-highlight' && (
               <Highlight workspaceId={workspaceId} reportId={reportId} />
             )}
