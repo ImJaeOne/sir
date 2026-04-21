@@ -25,10 +25,12 @@ function SectionBg({
   color,
   gradient,
   children,
+  id,
 }: {
   color: keyof typeof BG_COLORS;
   gradient?: 'from-light' | 'from-blue';
   children: React.ReactNode;
+  id?: string;
 }) {
   const bg = BG_COLORS[color];
   const gradientFrom =
@@ -39,7 +41,7 @@ function SectionBg({
         : null;
 
   return (
-    <div style={{ backgroundColor: bg }}>
+    <div id={id} style={{ backgroundColor: bg }}>
       {gradientFrom && (
         <div
           className="h-6 lg:h-20"
@@ -75,8 +77,9 @@ export default function ClientReportPage() {
     if (isFetching === 0 && startedRef.current) setReady(true);
   }, [isFetching]);
 
-  // PDF 모드: 모든 섹션을 수직 나열 (기존 single-scroll 레이아웃 유지)
-  if (pdfMode) {
+  // PDF 모드 또는 daily: 모든 섹션을 수직 나열 (탭 없이 하나의 페이지)
+  // daily 는 섹션 자체가 적어 탭으로 분리할 이유 없음 — 스크롤 기반 one-page 로 일원화.
+  if (pdfMode || isDaily) {
     return (
       <div className="relative">
         {!ready && (
@@ -85,25 +88,25 @@ export default function ClientReportPage() {
           </div>
         )}
         <div className={`lg:min-w-fit ${ready ? '' : 'invisible'}`}>
-          <SectionBg color="bg-light">
+          <SectionBg color="bg-light" id="section-highlight">
             <div className="flex flex-col lg:gap-10">
               <ReportHeader workspaceId={workspaceId} reportId={reportId} showPdfButton={false} />
-              <Highlight workspaceId={workspaceId} reportId={reportId} pdfMode />
+              <Highlight workspaceId={workspaceId} reportId={reportId} pdfMode={pdfMode} />
             </div>
           </SectionBg>
-          <SectionBg color="blue" gradient="from-light">
-            <OnlineReputation workspaceId={workspaceId} reportId={reportId} pdfMode />
+          <SectionBg color="blue" gradient="from-light" id="section-reputation">
+            <OnlineReputation workspaceId={workspaceId} reportId={reportId} pdfMode={pdfMode} />
           </SectionBg>
           {!isDaily && (
-            <SectionBg color="bg-light" gradient="from-blue">
+            <SectionBg color="bg-light" gradient="from-blue" id="section-top-content">
               <TopContent workspaceId={workspaceId} reportId={reportId} />
             </SectionBg>
           )}
-          <SectionBg color="blue" gradient={isDaily ? undefined : 'from-light'}>
+          <SectionBg color="blue" gradient={isDaily ? undefined : 'from-light'} id="section-risk">
             <RiskContent workspaceId={workspaceId} reportId={reportId} />
           </SectionBg>
           {!isDaily && (
-            <SectionBg color="bg-light" gradient="from-blue">
+            <SectionBg color="bg-light" gradient="from-blue" id="section-strategy">
               <Strategy workspaceId={workspaceId} reportId={reportId} />
             </SectionBg>
           )}
@@ -116,7 +119,7 @@ export default function ClientReportPage() {
     );
   }
 
-  // 탭 모드: ReportHeader 고정 + 선택 섹션만 렌더
+  // 탭 모드: ReportHeader 고정 + 선택 섹션만 렌더 (weekly / initial)
   return (
     <div className="relative">
       {!ready && (

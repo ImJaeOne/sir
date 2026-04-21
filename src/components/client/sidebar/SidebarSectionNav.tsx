@@ -22,6 +22,12 @@ export function SidebarSectionNav({ isOpen }: SidebarSectionNavProps) {
   const activeId = searchParams?.get('section') ?? sections[0]?.id;
 
   const handleClick = (id: string) => {
+    // daily 는 one-page 스크롤 레이아웃 — DOM anchor 로 이동, URL 은 건드리지 않음
+    if (isDaily) {
+      const el = document.getElementById(id);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
     const next = new URLSearchParams(searchParams?.toString() ?? '');
     next.set('section', id);
     router.replace(`${pathname}?${next.toString()}`, { scroll: false });

@@ -7,16 +7,12 @@ import { X, Plus } from 'lucide-react';
 import { AdminButton } from '@/components/ui/AdminButton';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
-import { DatePicker } from '@/components/ui/DatePicker';
+import { ContractPeriodPicker } from '@/components/ui/ContractPeriodPicker';
 import { useUpdateUser } from '@/hooks/user/useUserMutation';
 import { useActiveSubscription } from '@/hooks/subscription/useSubscriptionQuery';
 import { useUpdateSubscriptionPeriod } from '@/hooks/subscription/useSubscriptionMutation';
 import { ROLE_LABEL } from '@/constants/role';
-import {
-  DURATION_OPTIONS,
-  TIER_LABELS,
-  type SubscriptionDuration,
-} from '@/types/subscription';
+import { TIER_LABELS } from '@/types/subscription';
 import type { UserProfile, WorkspaceMember } from '@/lib/api/userApi';
 import type { Subscription } from '@/lib/api/subscriptionApi';
 import type { ProfileRole } from '@/types/auth';
@@ -43,10 +39,10 @@ export function UserDetailModal({
   const [pendingRole, setPendingRole] = useState<ProfileRole>('user');
   const [pendingWs, setPendingWs] = useState<string[]>([]);
 
-  // subscription 편집 state
+  // subscription 편집 state — 실제 값은 beginEditSub 에서 activeSub 기준으로 초기화
   const [editingSub, setEditingSub] = useState(false);
-  const [newStartDate, setNewStartDate] = useState<Date | undefined>(new Date());
-  const [duration, setDuration] = useState<SubscriptionDuration>(1);
+  const [newStartDate, setNewStartDate] = useState<Date | undefined>(undefined);
+  const [newEndDate, setNewEndDate] = useState<Date | undefined>(undefined);
 
   // workspace 검색 state
   const [wsSearch, setWsSearch] = useState('');
@@ -72,12 +68,22 @@ export function UserDetailModal({
         members.filter((m) => m.profile_id === user.id).map((m) => m.workspace_id),
       );
       setEditingSub(false);
-      setNewStartDate(new Date());
-      setDuration(1);
+      setNewStartDate(undefined);
+      setNewEndDate(undefined);
       setWsSearch('');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
+
+  // "계약 기간 변경" 진입 시 현재 계약 값으로 초기화 (+ 무기한인 경우 1년 뒤로 가정)
+  const beginEditSub = () => {
+    if (!activeSub) return;
+    const started = parseISO(activeSub.started_at);
+    const ended = activeSub.ended_at ? parseISO(activeSub.ended_at) : addMonths(started, 12);
+    setNewStartDate(started);
+    setNewEndDate(ended);
+    setEditingSub(true);
+  };
 
   const filteredWs = useMemo(() => {
     if (!wsSearch.trim()) return workspaces;
@@ -102,15 +108,18 @@ export function UserDetailModal({
     .filter((m) => m.profile_id === user.id)
     .map((m) => m.workspace_id);
 
-  const newEndDate = newStartDate ? addMonths(newStartDate, duration) : null;
-
   const roleChanged = pendingRole !== user.role;
   const wsChanged =
     JSON.stringify([...pendingWs].sort()) !==
     JSON.stringify([...currentWs].sort());
   const subChanged = Boolean(
-    editingSub && newStartDate && newEndDate && activeSub,
+    editingSub && newStartDate && newEndDate && newEndDate > newStartDate && activeSub,
   );
+
+  const handlePeriodChange = ({ start, end }: { start: Date | undefined; end: Date | undefined }) => {
+    setNewStartDate(start);
+    setNewEndDate(end);
+  };
 
   const hasChanges = isUserRole
     ? roleChanged || subChanged
@@ -251,7 +260,7 @@ export function UserDetailModal({
               <AdminButton
                 variant="secondary"
                 size="sm"
-                onClick={() => setEditingSub(true)}
+                onClick={beginEditSub}
                 disabled={saving}
               >
                 계약 기간 변경
@@ -266,8 +275,8 @@ export function UserDetailModal({
                     type="button"
                     onClick={() => {
                       setEditingSub(false);
-                      setNewStartDate(new Date());
-                      setDuration(1);
+                      setNewStartDate(undefined);
+                      setNewEndDate(undefined);
                     }}
                     className="text-xs text-slate-500 hover:text-slate-700 cursor-pointer"
                   >
@@ -276,39 +285,14 @@ export function UserDetailModal({
                 </div>
 
                 <div>
-                  <label className="text-xs text-slate-500 mb-1 block">새 시작일</label>
-                  <DatePicker
-                    value={newStartDate}
-                    onChange={setNewStartDate}
-                    placeholder="새 시작일 선택"
+                  <label className="text-xs text-slate-500 mb-1 block">새 계약 기간</label>
+                  <ContractPeriodPicker
+                    startDate={newStartDate}
+                    endDate={newEndDate}
+                    onChange={handlePeriodChange}
+                    placeholder="시작일 ~ 종료일"
                   />
                 </div>
-
-                <div>
-                  <label className="text-xs text-slate-500 mb-1 block">기간</label>
-                  <select
-                    value={duration}
-                    onChange={(e) =>
-                      setDuration(Number(e.target.value) as SubscriptionDuration)
-                    }
-                    className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2.5 outline-none bg-white"
-                  >
-                    {DURATION_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {newEndDate && (
-                  <div className="text-xs text-slate-500">
-                    예상 종료일:{' '}
-                    <span className="text-slate-700 font-medium">
-                      {format(newEndDate, 'yyyy-MM-dd')}
-                    </span>
-                  </div>
-                )}
               </div>
             )}
           </div>
