@@ -1,50 +1,44 @@
 'use client';
-'use no memo';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { useIsFetching } from '@tanstack/react-query';
+import { useState, useRef, useCallback, useMemo, useSyncExternalStore } from 'react';
+import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { X } from 'lucide-react';
-import { useActiveSection } from '@/hooks/client/useActiveSection';
+import { useReportInfo } from '@/hooks/report/useReportQuery';
 import { SirSymbol } from '@/components/icons/SirSymbol';
-import { HighlightSidebarIcon } from '@/components/icons/HighlightSidebarIcon';
-import { OnlineReputationSidebarIcon } from '@/components/icons/OnlineReputationSidebarIcon';
-import { TopContentSidebarIcon } from '@/components/icons/TopContentSidebarIcon';
-import { RiskContentSidebarIcon } from '@/components/icons/RiskContentSidebarIcon';
-import { StrategySidebarIcon } from '@/components/icons/StrategySidebarIcon';
-
-const SECTIONS = [
-  { id: 'section-highlight', label: '주간 하이라이트', Icon: HighlightSidebarIcon },
-  { id: 'section-reputation', label: '온라인 평판 종합', Icon: OnlineReputationSidebarIcon },
-  { id: 'section-top-content', label: '채널별 상위 콘텐츠', Icon: TopContentSidebarIcon },
-  { id: 'section-risk', label: '리스크 콘텐츠 관리', Icon: RiskContentSidebarIcon },
-  { id: 'section-strategy', label: '대응 전략 제안', Icon: StrategySidebarIcon },
-] as const;
-
-const SECTION_IDS = SECTIONS.map((s) => s.id);
+import { getClientReportSections } from '@/components/client/sidebar/sections';
 
 const FAB_SIZE = 56;
 
+function subscribeResize(cb: () => void) {
+  window.addEventListener('resize', cb);
+  return () => window.removeEventListener('resize', cb);
+}
+
 export function MobileFab() {
+  const params = useParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const reportId = (params?.reportId as string | undefined) ?? '';
+  const { data: report } = useReportInfo(reportId);
+  const isDaily = report?.type === 'daily';
+
+  const sections = useMemo(() => getClientReportSections(isDaily), [isDaily]);
+  const activeId = searchParams?.get('section') ?? sections[0]?.id;
+
   const [isOpen, setIsOpen] = useState(false);
-  const [pos, setPos] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return { x: window.innerWidth - FAB_SIZE - 20, y: window.innerHeight - FAB_SIZE - 24 };
-    }
-    return { x: 0, y: 0 };
-  });
+  // SSR 은 '0x0' 을 반환해 초기 렌더를 (0,0) 로 고정하고, 클라이언트 마운트 후 실제 뷰포트로 동기화.
+  const viewport = useSyncExternalStore(
+    subscribeResize,
+    () => `${window.innerWidth}x${window.innerHeight}`,
+    () => '0x0',
+  );
+  const [vw, vh] = viewport.split('x').map(Number);
+  const mounted = vw > 0;
+  const [dragPos, setDragPos] = useState<{ x: number; y: number } | null>(null);
+  const pos = dragPos ?? { x: vw - FAB_SIZE - 20, y: vh - FAB_SIZE - 24 };
   const dragRef = useRef<{ startX: number; startY: number; startPosX: number; startPosY: number; moved: boolean } | null>(null);
   const fabRef = useRef<HTMLButtonElement>(null);
-  const activeId = useActiveSection(SECTION_IDS, 'client-main');
-
-  const isFetching = useIsFetching();
-  const startedRef = useRef(false);
-  const [ready, setReady] = useState(false);
-  useEffect(() => {
-    if (isFetching > 0) startedRef.current = true;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (isFetching === 0 && startedRef.current) setReady(true);
-  }, [isFetching]);
-
 
   const clamp = useCallback((x: number, y: number) => ({
     x: Math.max(8, Math.min(x, window.innerWidth - FAB_SIZE - 8)),
@@ -63,7 +57,7 @@ export function MobileFab() {
     const dy = touch.clientY - dragRef.current.startY;
     if (Math.abs(dx) > 3 || Math.abs(dy) > 3) dragRef.current.moved = true;
     const next = clamp(dragRef.current.startPosX + dx, dragRef.current.startPosY + dy);
-    setPos(next);
+    setDragPos(next);
   }, [clamp]);
 
   const handleTouchEnd = useCallback(() => {
@@ -74,14 +68,13 @@ export function MobileFab() {
   }, []);
 
   const handleClick = (id: string) => {
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    window.history.replaceState(null, '', `#${id}`);
+    const next = new URLSearchParams(searchParams?.toString() ?? '');
+    next.set('section', id);
+    router.replace(`${pathname}?${next.toString()}`, { scroll: false });
     setIsOpen(false);
   };
 
-  if (!ready) return null;
-
-  const activeIdx = SECTIONS.findIndex((s) => s.id === activeId);
+  const activeIdx = sections.findIndex((s) => s.id === activeId);
 
   return (
     <>
@@ -95,10 +88,10 @@ export function MobileFab() {
               left: Math.min(pos.x, window.innerWidth - 200),
               ...(pos.y < window.innerHeight / 2
                 ? { top: pos.y + FAB_SIZE + 8 }
-                : { top: pos.y - 8 - SECTIONS.length * 42 }),
+                : { top: pos.y - 8 - sections.length * 42 }),
             }}
           >
-            {SECTIONS.map(({ id, label, Icon }, i) => {
+            {sections.map(({ id, label, Icon }, i) => {
               const active = activeIdx === i;
               return (
                 <button
@@ -120,13 +113,15 @@ export function MobileFab() {
         </>
       )}
 
-      {/* FAB 버튼 — 드래그 가능 */}
+      {/* FAB 버튼 — 드래그 가능. mount 전엔 숨겨서 hydration mismatch 방지. */}
       <button
         ref={fabRef}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        className="fixed z-50 w-14 h-14 rounded-full bg-white shadow-xl border border-slate-100 flex items-center justify-center cursor-pointer lg:hidden touch-none"
+        className={`fixed z-50 w-14 h-14 rounded-full bg-white shadow-xl border border-slate-100 flex items-center justify-center cursor-pointer lg:hidden touch-none ${
+          mounted ? '' : 'opacity-0 pointer-events-none'
+        }`}
         style={{ left: pos.x, top: pos.y }}
       >
         {isOpen ? (

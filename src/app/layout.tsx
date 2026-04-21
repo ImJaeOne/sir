@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import localFont from 'next/font/local';
 import { QueryProvider } from '@/providers/QueryProvider';
 import { Toaster } from 'sonner';
@@ -15,7 +15,6 @@ export const metadata: Metadata = {
   title: 'InnoPlan SIR',
   description: 'AI 기반 디지털 평판 관리 플랫폼',
   manifest: '/manifest.json',
-  themeColor: '#362CFF',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
@@ -24,6 +23,10 @@ export const metadata: Metadata = {
   other: {
     'mobile-web-app-capable': 'yes',
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: '#362CFF',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

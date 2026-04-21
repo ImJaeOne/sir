@@ -8,10 +8,11 @@ interface ChannelSirPanelProps {
   channelStats: ChannelStat[];
   isInitial: boolean;
   prevIsInitial: boolean;
+  isDaily?: boolean;
   prevChannelSirMap: Record<string, number>;
 }
 
-export function ChannelSirPanel({ channelStats, isInitial, prevIsInitial, prevChannelSirMap }: ChannelSirPanelProps) {
+export function ChannelSirPanel({ channelStats, isInitial, prevIsInitial, isDaily = false, prevChannelSirMap }: ChannelSirPanelProps) {
   return (
     <ReportSubSection
       title="데이터 수집 채널별 SIR 감정 지수"
@@ -19,7 +20,7 @@ export function ChannelSirPanel({ channelStats, isInitial, prevIsInitial, prevCh
     >
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {channelStats.map((ch) => (
-          <SirCard key={ch.id} stat={ch} isInitial={isInitial} prevIsInitial={prevIsInitial} prevSir={prevChannelSirMap[ch.id]} />
+          <SirCard key={ch.id} stat={ch} isInitial={isInitial} prevIsInitial={prevIsInitial} isDaily={isDaily} prevSir={prevChannelSirMap[ch.id]} />
         ))}
       </div>
     </ReportSubSection>

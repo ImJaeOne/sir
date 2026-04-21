@@ -1,7 +1,6 @@
 'use client';
 
 import {
-  ResponsiveContainer,
   LineChart,
   Line,
   XAxis,
@@ -9,6 +8,7 @@ import {
   CartesianGrid,
   Tooltip,
 } from 'recharts';
+import { ChartCanvas } from '@/components/chart/ChartCanvas';
 
 interface SearchTrendChartProps {
   data: { date: string; label: string; 네이버: number; 구글: number | null }[];
@@ -18,7 +18,7 @@ interface SearchTrendChartProps {
 export function SearchTrendChart({ data, pdfMode }: SearchTrendChartProps) {
   return (
     <div className={`outline-none **:outline-none ${pdfMode ? 'h-48' : 'h-64'}`}>
-      <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+      <ChartCanvas>
         <LineChart data={data} margin={{ top: 10, right: 20, bottom: 0, left: -10 }}>
           <CartesianGrid
             strokeDasharray="3 3"
@@ -96,7 +96,7 @@ export function SearchTrendChart({ data, pdfMode }: SearchTrendChartProps) {
             connectNulls
           />
         </LineChart>
-      </ResponsiveContainer>
+      </ChartCanvas>
     </div>
   );
 }

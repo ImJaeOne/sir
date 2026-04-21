@@ -19,6 +19,27 @@ import type {
 
 const supabase = createClient();
 
+// ── PostgREST 페이지네이션 헬퍼 ──
+// PostgREST 기본 Range 는 0-999 (1000건 상한). 대용량 워크스페이스 initial 등에서
+// 잘리지 않도록 range + while 루프로 전체 조회.
+
+const _PAGE = 1000;
+
+async function fetchAllPaged<T>(
+  build: (from: number, to: number) => PromiseLike<{ data: T[] | null }>,
+): Promise<T[]> {
+  const all: T[] = [];
+  let off = 0;
+  while (true) {
+    const { data } = await build(off, off + _PAGE - 1);
+    const chunk = data ?? [];
+    all.push(...chunk);
+    if (chunk.length < _PAGE) break;
+    off += _PAGE;
+  }
+  return all;
+}
+
 // ── Report Meta 캐시 (session IDs + period) ──
 
 interface ReportMeta {
@@ -64,14 +85,34 @@ export async function getReportInfo(reportId: string) {
   return data;
 }
 
-// ── 리포트 발행 ──
+// ── 리포트 발행 (관리자 전용) ──
 
 export async function publishReport(reportId: string): Promise<void> {
-  const { error } = await supabase
-    .from('reports')
-    .update({ status: 'published' })
-    .eq('id', reportId);
-  if (error) throw error;
+  const res = await fetch('/api/admin/publish-report', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ report_id: reportId }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail ?? '발행 실패');
+  }
+}
+
+/** 보고서 내 failed 플랫폼 일괄 재시도 + 성공 시 자동 regenerate.
+ *  백엔드: POST /api/reports/{id}/retry-failed — 순차 retry 후 전 플랫폼 done 되면 finalize. */
+export async function retryFailedReport(reportId: string): Promise<void> {
+  const { data: { session: auth } } = await supabase.auth.getSession();
+  if (!auth) throw new Error('로그인이 필요합니다.');
+
+  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/reports/${reportId}/retry-failed`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${auth.access_token}` },
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail ?? '재시도 요청 실패');
+  }
 }
 
 // ── 주간 총평 ──
@@ -190,16 +231,17 @@ const TIER_RANGES = [
 ];
 
 export async function getSirRanking(workspaceId: string, reportId?: string): Promise<SirRanking> {
-  // 각 워크스페이스의 최신 report sir_score 조회
-  const { data: reports } = await supabase
-    .from('reports')
-    .select('workspace_id, sir_score')
-    .not('sir_score', 'is', null)
-    .order('created_at', { ascending: false });
+  // 각 워크스페이스의 최신 report sir_score 조회 — 기업 × 보고서 누적이 1000 넘을 수 있어 페이지네이션
+  const reports = await fetchAllPaged<{ workspace_id: string; sir_score: number }>((from, to) =>
+    supabase.from('reports')
+      .select('workspace_id, sir_score')
+      .not('sir_score', 'is', null)
+      .order('created_at', { ascending: false })
+      .range(from, to));
 
   // 워크스페이스별 최신 report sir_score만 추출
   const latestByWs = new Map<string, number>();
-  for (const r of reports ?? []) {
+  for (const r of reports) {
     if (!latestByWs.has(r.workspace_id)) {
       latestByWs.set(r.workspace_id, r.sir_score);
     }
@@ -309,47 +351,55 @@ export async function getNewsClusters(workspaceId: string, reportId?: string): P
     const meta = await getReportMeta(reportId);
     if (meta.sessionIds.length === 0) return [];
 
-    const [clusterRes, itemsRes] = await Promise.all([
-      supabase.from('news_clusters')
-        .select('id, representative_title, sentiment, summary')
-        .eq('workspace_id', workspaceId).eq('is_relevant', true)
-        .in('session_id', meta.sessionIds)
-        .order('created_at', { ascending: false }),
-      supabase.from('news_items')
-        .select('cluster_id, title, source, link')
-        .eq('workspace_id', workspaceId).not('cluster_id', 'is', null)
-        .in('session_id', meta.sessionIds),
+    const [clusters, items] = await Promise.all([
+      fetchAllPaged<any>((from, to) =>
+        supabase.from('news_clusters')
+          .select('id, representative_title, sentiment, summary')
+          .eq('workspace_id', workspaceId).eq('is_relevant', true)
+          .in('session_id', meta.sessionIds)
+          .order('created_at', { ascending: false })
+          .range(from, to)),
+      fetchAllPaged<any>((from, to) =>
+        supabase.from('news_items')
+          .select('cluster_id, title, source, link')
+          .eq('workspace_id', workspaceId).not('cluster_id', 'is', null)
+          .in('session_id', meta.sessionIds)
+          .range(from, to)),
     ]);
 
     const itemsByCluster = new Map<string, { title: string; source: string; link: string }[]>();
-    for (const item of itemsRes.data ?? []) {
+    for (const item of items) {
       if (!itemsByCluster.has(item.cluster_id)) itemsByCluster.set(item.cluster_id, []);
       itemsByCluster.get(item.cluster_id)!.push({ title: item.title, source: item.source ?? '', link: item.link ?? '#' });
     }
 
-    return (clusterRes.data ?? []).map(c => ({
+    return clusters.map(c => ({
       id: c.id, representative_title: c.representative_title, sentiment: c.sentiment,
       summary: c.summary, items: itemsByCluster.get(c.id) ?? [],
     }));
   }
 
-  const [clusterRes, itemsRes] = await Promise.all([
-    supabase.from('news_clusters')
-      .select('id, representative_title, sentiment, summary')
-      .eq('workspace_id', workspaceId).eq('is_relevant', true)
-      .order('created_at', { ascending: false }),
-    supabase.from('news_items')
-      .select('cluster_id, title, source, link')
-      .eq('workspace_id', workspaceId).not('cluster_id', 'is', null),
+  const [clusters, items] = await Promise.all([
+    fetchAllPaged<any>((from, to) =>
+      supabase.from('news_clusters')
+        .select('id, representative_title, sentiment, summary')
+        .eq('workspace_id', workspaceId).eq('is_relevant', true)
+        .order('created_at', { ascending: false })
+        .range(from, to)),
+    fetchAllPaged<any>((from, to) =>
+      supabase.from('news_items')
+        .select('cluster_id, title, source, link')
+        .eq('workspace_id', workspaceId).not('cluster_id', 'is', null)
+        .range(from, to)),
   ]);
 
   const itemsByCluster = new Map<string, { title: string; source: string; link: string }[]>();
-  for (const item of itemsRes.data ?? []) {
+  for (const item of items) {
     if (!itemsByCluster.has(item.cluster_id)) itemsByCluster.set(item.cluster_id, []);
     itemsByCluster.get(item.cluster_id)!.push({ title: item.title, source: item.source ?? '', link: item.link ?? '#' });
   }
 
-  return (clusterRes.data ?? []).map(c => ({
+  return clusters.map(c => ({
     id: c.id,
     representative_title: c.representative_title,
     sentiment: c.sentiment,
@@ -361,47 +411,8 @@ export async function getNewsClusters(workspaceId: string, reportId?: string): P
 // ── 채널별 아이템 (감정 상세 + 상위 콘텐츠 공유) ──
 
 export async function getChannelItems(workspaceId: string, reportId?: string): Promise<ChannelItem[]> {
-  if (reportId) {
-    const meta = await getReportMeta(reportId);
-    if (meta.sessionIds.length === 0) return [];
-    const [newsRes, communityRes, snsRes] = await Promise.all([
-      supabase.from('news_items')
-        .select('id, platform_id, title, summary, sentiment, link, source, published_at, critical_type, cluster_id')
-        .eq('workspace_id', workspaceId).eq('is_relevant', true).in('session_id', meta.sessionIds),
-      supabase.from('community_items')
-        .select('id, platform_id, title, content, sentiment, link, views, published_at, critical_type')
-        .eq('workspace_id', workspaceId).eq('is_relevant', true).in('session_id', meta.sessionIds),
-      supabase.from('sns_items')
-        .select('id, platform_id, title, content, summary, sentiment, link, author, views, published_at, critical_type, impact_score')
-        .eq('workspace_id', workspaceId).eq('is_relevant', true).in('session_id', meta.sessionIds),
-    ]);
-
-    const normalize = (rows: any[], defaults: Partial<ChannelItem> = {}): ChannelItem[] =>
-      (rows ?? []).map(r => ({
-        id: r.id, platform_id: r.platform_id, title: r.title ?? '', content: r.content ?? null,
-        summary: r.summary ?? null, sentiment: r.sentiment ?? 'neutral', link: r.link ?? '#',
-        source: r.source ?? r.author ?? null, views: r.views ?? null, published_at: r.published_at ?? null,
-        critical_type: r.critical_type ?? null, cluster_id: r.cluster_id ?? null, impact_score: r.impact_score ?? null,
-        ...defaults,
-      }));
-
-    return [...normalize(newsRes.data ?? []), ...normalize(communityRes.data ?? []), ...normalize(snsRes.data ?? [])];
-  }
-
-  const [newsRes, communityRes, snsRes] = await Promise.all([
-    supabase.from('news_items')
-      .select('id, platform_id, title, summary, sentiment, link, source, published_at, critical_type, cluster_id')
-      .eq('workspace_id', workspaceId).eq('is_relevant', true),
-    supabase.from('community_items')
-      .select('id, platform_id, title, content, sentiment, link, views, published_at, critical_type')
-      .eq('workspace_id', workspaceId).eq('is_relevant', true),
-    supabase.from('sns_items')
-      .select('id, platform_id, title, content, summary, sentiment, link, author, views, published_at, critical_type, impact_score')
-      .eq('workspace_id', workspaceId).eq('is_relevant', true),
-  ]);
-
   const normalize = (rows: any[], defaults: Partial<ChannelItem> = {}): ChannelItem[] =>
-    (rows ?? []).map(r => ({
+    rows.map(r => ({
       id: r.id,
       platform_id: r.platform_id,
       title: r.title ?? '',
@@ -418,11 +429,47 @@ export async function getChannelItems(workspaceId: string, reportId?: string): P
       ...defaults,
     }));
 
-  return [
-    ...normalize(newsRes.data ?? []),
-    ...normalize(communityRes.data ?? []),
-    ...normalize(snsRes.data ?? []),
-  ];
+  if (reportId) {
+    const meta = await getReportMeta(reportId);
+    if (meta.sessionIds.length === 0) return [];
+    const [news, community, sns] = await Promise.all([
+      fetchAllPaged<any>((from, to) =>
+        supabase.from('news_items')
+          .select('id, platform_id, title, summary, sentiment, link, source, published_at, critical_type, cluster_id')
+          .eq('workspace_id', workspaceId).eq('is_relevant', true).in('session_id', meta.sessionIds)
+          .range(from, to)),
+      fetchAllPaged<any>((from, to) =>
+        supabase.from('community_items')
+          .select('id, platform_id, title, content, sentiment, link, views, published_at, critical_type')
+          .eq('workspace_id', workspaceId).eq('is_relevant', true).in('session_id', meta.sessionIds)
+          .range(from, to)),
+      fetchAllPaged<any>((from, to) =>
+        supabase.from('sns_items')
+          .select('id, platform_id, title, content, summary, sentiment, link, author, views, published_at, critical_type, impact_score')
+          .eq('workspace_id', workspaceId).eq('is_relevant', true).in('session_id', meta.sessionIds)
+          .range(from, to)),
+    ]);
+    return [...normalize(news), ...normalize(community), ...normalize(sns)];
+  }
+
+  const [news, community, sns] = await Promise.all([
+    fetchAllPaged<any>((from, to) =>
+      supabase.from('news_items')
+        .select('id, platform_id, title, summary, sentiment, link, source, published_at, critical_type, cluster_id')
+        .eq('workspace_id', workspaceId).eq('is_relevant', true)
+        .range(from, to)),
+    fetchAllPaged<any>((from, to) =>
+      supabase.from('community_items')
+        .select('id, platform_id, title, content, sentiment, link, views, published_at, critical_type')
+        .eq('workspace_id', workspaceId).eq('is_relevant', true)
+        .range(from, to)),
+    fetchAllPaged<any>((from, to) =>
+      supabase.from('sns_items')
+        .select('id, platform_id, title, content, summary, sentiment, link, author, views, published_at, critical_type, impact_score')
+        .eq('workspace_id', workspaceId).eq('is_relevant', true)
+        .range(from, to)),
+  ]);
+  return [...normalize(news), ...normalize(community), ...normalize(sns)];
 }
 
 // ── 리스크 콘텐츠 ──
@@ -436,36 +483,8 @@ const PLATFORM_LABELS: Record<string, string> = {
 };
 
 export async function getRiskItems(workspaceId: string, reportId?: string): Promise<RiskItem[]> {
-  if (reportId) {
-    const meta = await getReportMeta(reportId);
-    if (meta.sessionIds.length === 0) return [];
-    const [communityRes, snsRes] = await Promise.all([
-      supabase.from('community_items')
-        .select('id, platform_id, title, link, critical_type, critical_reason, published_at')
-        .eq('workspace_id', workspaceId).not('critical_type', 'is', null).in('session_id', meta.sessionIds),
-      supabase.from('sns_items')
-        .select('id, platform_id, title, link, critical_type, critical_reason, published_at')
-        .eq('workspace_id', workspaceId).not('critical_type', 'is', null).in('session_id', meta.sessionIds),
-    ]);
-    return [...(communityRes.data ?? []), ...(snsRes.data ?? [])]
-      .map(r => ({
-        id: r.id, platform_id: r.platform_id, title: r.title ?? '', link: r.link ?? '#',
-        critical_type: r.critical_type, critical_reason: r.critical_reason ?? null, published_at: r.published_at ?? null,
-      }))
-      .sort((a, b) => (b.published_at ?? '').localeCompare(a.published_at ?? ''));
-  }
-
-  const [communityRes, snsRes] = await Promise.all([
-    supabase.from('community_items')
-      .select('id, platform_id, title, link, critical_type, critical_reason, published_at')
-      .eq('workspace_id', workspaceId).not('critical_type', 'is', null),
-    supabase.from('sns_items')
-      .select('id, platform_id, title, link, critical_type, critical_reason, published_at')
-      .eq('workspace_id', workspaceId).not('critical_type', 'is', null),
-  ]);
-
-  return [...(communityRes.data ?? []), ...(snsRes.data ?? [])]
-    .map(r => ({
+  const normalize = (rows: any[]): RiskItem[] =>
+    rows.map(r => ({
       id: r.id,
       platform_id: r.platform_id,
       title: r.title ?? '',
@@ -473,7 +492,43 @@ export async function getRiskItems(workspaceId: string, reportId?: string): Prom
       critical_type: r.critical_type,
       critical_reason: r.critical_reason ?? null,
       published_at: r.published_at ?? null,
-    }))
+      session_id: r.session_id ?? null,
+    }));
+
+  if (reportId) {
+    const meta = await getReportMeta(reportId);
+    if (meta.sessionIds.length === 0) return [];
+    const [community, sns] = await Promise.all([
+      fetchAllPaged<any>((from, to) =>
+        supabase.from('community_items')
+          .select('id, platform_id, title, link, critical_type, critical_reason, published_at, session_id')
+          .eq('workspace_id', workspaceId).eq('is_relevant', true).not('critical_type', 'is', null)
+          .in('session_id', meta.sessionIds)
+          .range(from, to)),
+      fetchAllPaged<any>((from, to) =>
+        supabase.from('sns_items')
+          .select('id, platform_id, title, link, critical_type, critical_reason, published_at, session_id')
+          .eq('workspace_id', workspaceId).eq('is_relevant', true).not('critical_type', 'is', null)
+          .in('session_id', meta.sessionIds)
+          .range(from, to)),
+    ]);
+    return normalize([...community, ...sns])
+      .sort((a, b) => (b.published_at ?? '').localeCompare(a.published_at ?? ''));
+  }
+
+  const [community, sns] = await Promise.all([
+    fetchAllPaged<any>((from, to) =>
+      supabase.from('community_items')
+        .select('id, platform_id, title, link, critical_type, critical_reason, published_at, session_id')
+        .eq('workspace_id', workspaceId).eq('is_relevant', true).not('critical_type', 'is', null)
+        .range(from, to)),
+    fetchAllPaged<any>((from, to) =>
+      supabase.from('sns_items')
+        .select('id, platform_id, title, link, critical_type, critical_reason, published_at, session_id')
+        .eq('workspace_id', workspaceId).eq('is_relevant', true).not('critical_type', 'is', null)
+        .range(from, to)),
+  ]);
+  return normalize([...community, ...sns])
     .sort((a, b) => (b.published_at ?? '').localeCompare(a.published_at ?? ''));
 }
 
@@ -512,6 +567,10 @@ export async function getStrategies(workspaceId: string, reportId?: string): Pro
 
 // ── 이전 리포트 비교 ──
 
+/**
+ * daily ↔ daily, weekly ↔ weekly|initial 로 매칭해서 비교할 이전 보고서를 찾는다.
+ * daily 가 있는 워크스페이스에서 daily 와 weekly 가 혼재해도 비교 기준 기간이 일관되도록.
+ */
 export async function getPrevReport(workspaceId: string, currentReportId: string): Promise<PrevReport | null> {
   const { data } = await supabase
     .from('reports')
@@ -522,9 +581,13 @@ export async function getPrevReport(workspaceId: string, currentReportId: string
   if (!data || data.length < 2) return null;
 
   const currIdx = data.findIndex(r => r.id === currentReportId);
-  if (currIdx === -1 || currIdx + 1 >= data.length) return null;
+  if (currIdx === -1) return null;
 
-  const prev = data[currIdx + 1];
+  const currType = data[currIdx].type;
+  const compatibleTypes = currType === 'daily' ? ['daily'] : ['weekly', 'initial'];
+
+  const prev = data.slice(currIdx + 1).find(r => compatibleTypes.includes(r.type));
+  if (!prev) return null;
 
   // 이전 report의 아이템/리스크 건수 조회 (session 기반)
   const meta = await getReportMeta(prev.id);
@@ -567,6 +630,83 @@ export async function getPrevReport(workspaceId: string, currentReportId: string
   return { id: prev.id, type: prev.type as string, sirScore: prev.sir_score ?? 0, createdAt: prev.created_at, totalItems, riskCount, channelSirMap };
 }
 
+// ── 전일 스냅샷 (daily 보고서 전용 비교) ──
+// daily 보고서는 이전 daily report 가 없어도 (첫 daily) daily_snapshots 테이블에
+// 매일 점수가 쌓여있으므로 그걸 기준으로 "전일 대비" 비교.
+
+export interface PrevDailySnapshot {
+  date: string;
+  sirScore: number;
+  totalItems: number;
+  riskCount: number;
+  /** 채널(news/blog/youtube/community) 별 전일 SIR 평균 */
+  channelSirMap: Record<string, number>;
+}
+
+export async function getPrevDailySnapshot(
+  workspaceId: string,
+  periodEnd: string,
+): Promise<PrevDailySnapshot | null> {
+  // 1. 전날 snapshot — date < periodEnd 중 가장 최근
+  const { data: snap } = await supabase
+    .from('daily_snapshots')
+    .select('id, date, sir_score')
+    .eq('workspace_id', workspaceId)
+    .lt('date', periodEnd)
+    .not('sir_score', 'is', null)
+    .order('date', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!snap) return null;
+
+  // 2. 해당 snapshot 의 platform_stats — content_count 합 + channel 별 SIR 평균
+  const { data: stats } = await supabase
+    .from('daily_platform_stats')
+    .select('platform_id, content_count, sir_score')
+    .eq('daily_snapshot_id', snap.id);
+  const statsRows = stats ?? [];
+  const totalItems = statsRows.reduce((sum, s) => sum + (s.content_count ?? 0), 0);
+
+  const sirByChannel = new Map<string, number[]>();
+  for (const s of statsRows) {
+    if (s.sir_score == null) continue;
+    const ch = PLATFORM_TO_CHANNEL[s.platform_id] ?? s.platform_id;
+    if (!sirByChannel.has(ch)) sirByChannel.set(ch, []);
+    sirByChannel.get(ch)!.push(s.sir_score);
+  }
+  const channelSirMap: Record<string, number> = {};
+  for (const [ch, scores] of sirByChannel) {
+    channelSirMap[ch] = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
+  }
+
+  // 3. riskCount: items 테이블에서 해당 날짜 KST 범위 + critical_type NOT NULL + is_relevant=true
+  const dayStart = new Date(`${snap.date}T00:00:00+09:00`).toISOString();
+  const nextDay = new Date(`${snap.date}T00:00:00+09:00`);
+  nextDay.setDate(nextDay.getDate() + 1);
+  const dayEnd = nextDay.toISOString();
+
+  const [newsRisk, communityRisk, snsRisk] = await Promise.all([
+    supabase.from('news_items').select('id', { count: 'exact', head: true })
+      .eq('workspace_id', workspaceId).eq('is_relevant', true).not('critical_type', 'is', null)
+      .gte('published_at', dayStart).lt('published_at', dayEnd),
+    supabase.from('community_items').select('id', { count: 'exact', head: true })
+      .eq('workspace_id', workspaceId).eq('is_relevant', true).not('critical_type', 'is', null)
+      .gte('published_at', dayStart).lt('published_at', dayEnd),
+    supabase.from('sns_items').select('id', { count: 'exact', head: true })
+      .eq('workspace_id', workspaceId).eq('is_relevant', true).not('critical_type', 'is', null)
+      .gte('published_at', dayStart).lt('published_at', dayEnd),
+  ]);
+  const riskCount = (newsRisk.count ?? 0) + (communityRisk.count ?? 0) + (snsRisk.count ?? 0);
+
+  return {
+    date: snap.date,
+    sirScore: snap.sir_score ?? 0,
+    totalItems,
+    riskCount,
+    channelSirMap,
+  };
+}
+
 // ── 검색 트렌드 ──
 
 export async function getSearchTrend(workspaceId: string, reportId?: string): Promise<SearchTrendResult> {
@@ -595,6 +735,24 @@ export async function getRiskReports(workspaceId: string, reportId?: string): Pr
   return data ?? [];
 }
 
+/**
+ * 보고서 기간 내에 "처리 완료" 또는 "반려" 로 결과가 확정된 신고 건만 반환.
+ * 접수 시점이 아닌 resolved_at 기준 → 처리 결과가 확정된 날의 익일 보고서에 반영됨.
+ */
+export async function getResolvedRiskReports(workspaceId: string, periodStart: string, periodEnd: string): Promise<RiskReport[]> {
+  const startIso = `${periodStart}T00:00:00`;
+  const endIso = `${periodEnd}T23:59:59.999`;
+  const { data } = await supabase
+    .from('risk_reports')
+    .select('*')
+    .eq('workspace_id', workspaceId)
+    .in('status', ['resolved', 'rejected'])
+    .gte('resolved_at', startIso)
+    .lte('resolved_at', endIso)
+    .order('resolved_at', { ascending: false });
+  return data ?? [];
+}
+
 export async function deleteRiskReport(id: string): Promise<void> {
   // Storage 파일 삭제 후 DB row 삭제
   const { data } = await supabase.from('risk_reports').select('file_urls').eq('id', id).single();
@@ -603,6 +761,53 @@ export async function deleteRiskReport(id: string): Promise<void> {
     await supabase.storage.from('risk-attachments').remove(fileUrls);
   }
   const { error } = await supabase.from('risk_reports').delete().eq('id', id);
+  if (error) throw error;
+}
+
+// 신고 대상 아이템의 platform_id → risk_reports.source_table
+const RISK_SOURCE_TABLE: Record<string, string> = {
+  naver_news: 'news_items',
+  naver_blog: 'sns_items',
+  youtube: 'sns_items',
+  naver_stock: 'community_items',
+  dcinside: 'community_items',
+};
+
+export interface SubmitRiskReportInput {
+  workspaceId: string;
+  reportId: string;
+  item: RiskItem;
+  reason: string;
+  evidence: string;
+  files: File[];
+}
+
+export async function submitRiskReport(input: SubmitRiskReportInput): Promise<void> {
+  const { workspaceId, reportId, item, reason, evidence, files } = input;
+
+  const fileUrls: string[] = [];
+  for (const f of files) {
+    const ext = f.name.split('.').pop() ?? '';
+    const path = `${workspaceId}/${crypto.randomUUID()}.${ext}`;
+    const { error } = await supabase.storage.from('risk-attachments').upload(path, f);
+    if (error) throw error;
+    fileUrls.push(path);
+  }
+
+  const { error } = await supabase.from('risk_reports').insert({
+    workspace_id: workspaceId,
+    report_id: reportId,
+    source_table: RISK_SOURCE_TABLE[item.platform_id] ?? 'community_items',
+    source_id: item.id,
+    platform_id: item.platform_id,
+    title: item.title,
+    link: item.link,
+    critical_type: item.critical_type,
+    reason,
+    evidence,
+    file_urls: fileUrls,
+    status: 'requested',
+  });
   if (error) throw error;
 }
 
@@ -620,6 +825,20 @@ export async function updateRiskReport(id: string, body: { status?: string; admi
 }
 
 // ── 대응 전략 수정 ──
+
+// ── 리스크 해제 (관리자 전용) ──
+
+export async function clearCriticalType(platformId: string, itemId: string): Promise<void> {
+  const res = await fetch('/api/admin/clear-critical', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ platform_id: platformId, id: itemId }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail ?? '리스크 해제 실패');
+  }
+}
 
 export async function updateStrategies(workspaceId: string, reportId: string, strategies: StrategyGroup[]): Promise<void> {
   for (const group of strategies) {

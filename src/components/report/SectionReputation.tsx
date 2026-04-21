@@ -1,7 +1,6 @@
 'use client';
 
 import {
-  ResponsiveContainer,
   LineChart,
   Line,
   XAxis,
@@ -9,6 +8,7 @@ import {
   CartesianGrid,
   Tooltip,
 } from 'recharts';
+import { ChartCanvas } from '@/components/chart/ChartCanvas';
 import { ResponsivePie } from '@nivo/pie';
 import { ReportCard } from '@/components/report/ReportCard';
 
@@ -95,7 +95,7 @@ export function SectionReputation({
       {/* 검색량 추이 */}
       <ReportCard>
         <div className={pdfMode ? 'h-48' : 'h-64'}>
-          <ResponsiveContainer width="100%" height="100%">
+          <ChartCanvas>
             <LineChart data={chartData} margin={{ top: 10, right: 20, bottom: 0, left: 10 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
               <XAxis
@@ -149,7 +149,7 @@ export function SectionReputation({
                 connectNulls
               />
             </LineChart>
-          </ResponsiveContainer>
+          </ChartCanvas>
         </div>
       </ReportCard>
 

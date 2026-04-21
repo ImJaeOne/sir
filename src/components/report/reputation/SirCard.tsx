@@ -61,16 +61,25 @@ export function SirCard({
   stat,
   isInitial,
   prevIsInitial,
+  isDaily = false,
   prevSir,
 }: {
   stat: ChannelStat;
   isInitial: boolean;
   prevIsInitial: boolean;
+  isDaily?: boolean;
   prevSir?: number;
 }) {
+  const hasPrev = prevSir != null;
   const prevScore = prevSir ?? 500;
   const change = stat.sir - prevScore;
-  const changeLabel = isInitial ? '기준점 대비' : prevIsInitial ? '전월 대비' : '전주 대비';
+  const changeLabel = isInitial || !hasPrev
+    ? '기준점 대비'
+    : isDaily
+      ? '전일 대비'
+      : prevIsInitial
+        ? '전월 대비'
+        : '전주 대비';
   const isUp = change >= 0;
 
   const type = getSentimentType(stat.sir);

@@ -1,6 +1,7 @@
 'use client';
 
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import { PieChart, Pie, Cell, Tooltip } from 'recharts';
+import { ChartCanvas } from '@/components/chart/ChartCanvas';
 import { ChartLegend } from '@/components/ui/ChartLegend';
 import type { ChannelStat } from '@/lib/api/reportApi';
 
@@ -31,7 +32,7 @@ export function ChannelDonutChart({ channelStats, total, pdfMode }: ChannelDonut
         <ChartLegend items={LEGEND_ITEMS} />
       </div>
       <div className={`my-5 outline-none **:outline-none ${pdfMode ? 'h-48' : 'h-60'}`}>
-        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+        <ChartCanvas>
           <PieChart>
             <Pie
               data={channelStats}
@@ -72,7 +73,7 @@ export function ChannelDonutChart({ channelStats, total, pdfMode }: ChannelDonut
               }}
             />
           </PieChart>
-        </ResponsiveContainer>
+        </ChartCanvas>
       </div>
     </div>
   );

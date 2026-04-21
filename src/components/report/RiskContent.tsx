@@ -1,11 +1,8 @@
 'use client';
 
-import { useMemo, useCallback } from 'react';
-import { toast } from 'sonner';
-import { useQueryClient } from '@tanstack/react-query';
-import { useRiskItems, useRiskReports, usePrevReport } from '@/hooks/report/useReportQuery';
-import { deleteRiskReport } from '@/lib/api/reportApi';
-import { reportKeys } from '@/hooks/report/useReportQuery';
+import { useMemo } from 'react';
+import { useRiskItems, useRiskReports, useReportInfo } from '@/hooks/report/useReportQuery';
+import { useDeleteRiskReport } from '@/hooks/report/useReportMutation';
 import { ReportSection } from '@/components/report/ReportSection';
 import { RiskDetectionTable } from '@/components/report/risk-content/RiskDetectionTable';
 import { RiskResultTable } from '@/components/report/risk-content/RiskResultTable';
@@ -14,13 +11,16 @@ import { LiskContentIcon } from '@/components/icons/LiskContentIcon';
 interface RiskContentProps {
   workspaceId: string;
   reportId: string;
+  editable?: boolean;
+  /** 신고 대행 요청 버튼 노출 여부. 보고서 내부에선 false, 위기 대응 센터에선 true */
+  allowReport?: boolean;
 }
 
-export function RiskContent({ workspaceId, reportId }: RiskContentProps) {
+export function RiskContent({ workspaceId, reportId, editable = false, allowReport = false }: RiskContentProps) {
+  const { data: report } = useReportInfo(reportId);
   const { data: riskItems } = useRiskItems(workspaceId, reportId);
   const { data: riskReports } = useRiskReports(workspaceId, reportId);
-  const { data: prevReport } = usePrevReport(workspaceId, reportId);
-  const queryClient = useQueryClient();
+  const deleteMutation = useDeleteRiskReport(workspaceId, reportId);
 
   const { reportedSourceIds, riskReportBySourceId } = useMemo(() => {
     const ids = new Set<string>();
@@ -32,18 +32,7 @@ export function RiskContent({ workspaceId, reportId }: RiskContentProps) {
     return { reportedSourceIds: ids, riskReportBySourceId: map };
   }, [riskReports]);
 
-  const handleCancelReport = useCallback(
-    async (riskReportId: string) => {
-      try {
-        await deleteRiskReport(riskReportId);
-        queryClient.invalidateQueries({ queryKey: reportKeys.riskReports(workspaceId, reportId) });
-        toast.success('신고가 취소되었습니다.');
-      } catch {
-        toast.error('신고 대행 취소에 실패했습니다.');
-      }
-    },
-    [workspaceId, reportId, queryClient],
-  );
+  const isDaily = report?.type === 'daily';
 
   return (
     <div className="print-break">
@@ -54,9 +43,18 @@ export function RiskContent({ workspaceId, reportId }: RiskContentProps) {
           reportId={reportId}
           reportedSourceIds={reportedSourceIds}
           riskReportBySourceId={riskReportBySourceId}
-          onCancelReport={handleCancelReport}
+          onCancelReport={deleteMutation.mutate}
+          editable={editable}
+          allowReport={allowReport}
         />
-        {prevReport && <RiskResultTable workspaceId={workspaceId} prevReportId={prevReport.id} />}
+        {report?.period_start && report?.period_end && (
+          <RiskResultTable
+            workspaceId={workspaceId}
+            periodStart={report.period_start}
+            periodEnd={report.period_end}
+            isDaily={isDaily}
+          />
+        )}
       </ReportSection>
     </div>
   );

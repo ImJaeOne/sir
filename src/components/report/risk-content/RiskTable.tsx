@@ -6,6 +6,7 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { Badge } from '@/components/ui/Badge';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { RiskReportRequestModal } from '@/components/report/risk-content/RiskReportRequestModal';
+import { useClearCriticalType } from '@/hooks/report/useReportMutation';
 import type { RiskItem } from '@/lib/api/reportApi';
 
 const criticalTypeConfig: Record<
@@ -54,10 +55,16 @@ const COL_TEMPLATE = '10% 8% 10% 1fr 12%';
 interface RiskTableProps {
   riskItems: RiskItem[];
   workspaceId: string;
+  /** 기본 reportId — 보고서 페이지 모드. sessionToReportMap 에서 매칭 안 될 때 fallback. */
   reportId: string;
   reportedSourceIds: Set<string>;
   riskReportBySourceId: Map<string, string>;
   onCancelReport: (riskReportId: string) => void;
+  editable?: boolean;
+  allowReport?: boolean;
+  /** 위기 대응 센터(workspace 전체 모드) 용 — item.session_id → reportId 매핑. 있으면
+   *  신고 대행 요청 모달에 해당 item 의 고유 reportId 가 전달됨. */
+  sessionToReportMap?: Map<string, string>;
 }
 
 export function RiskTable({
@@ -67,10 +74,19 @@ export function RiskTable({
   reportedSourceIds,
   riskReportBySourceId,
   onCancelReport,
+  editable = false,
+  allowReport = false,
+  sessionToReportMap,
 }: RiskTableProps) {
   const [tab, setTab] = useState<string>('all');
   const [reportTarget, setReportTarget] = useState<RiskItem | null>(null);
+  // target item 에 매핑되는 reportId — map 이 있으면 우선, 아니면 기본 prop 사용
+  const reportTargetReportId = reportTarget
+    ? (sessionToReportMap?.get(reportTarget.session_id ?? '') ?? reportId)
+    : reportId;
   const parentRef = useRef<HTMLDivElement>(null);
+  const clearMutation = useClearCriticalType(workspaceId);
+  const clearingId = clearMutation.isPending ? clearMutation.variables?.id ?? null : null;
 
   const filtered = useMemo(() => {
     if (tab === 'all') return riskItems;
@@ -213,7 +229,21 @@ export function RiskTable({
                           </div>
                         </div>
                         <div className="text-right pr-2">
-                          {reportedSourceIds.has(item.id) ? (
+                          {editable ? (
+                            <button
+                              type="button"
+                              onClick={() => clearMutation.mutate(item)}
+                              disabled={clearingId === item.id}
+                              className="cursor-pointer disabled:opacity-50 disabled:cursor-wait"
+                            >
+                              <Badge
+                                variant="slate"
+                                className="px-3 py-1.5 hover:bg-red-50 hover:text-red-600 transition-colors"
+                              >
+                                {clearingId === item.id ? '해제 중...' : '리스크 해제'}
+                              </Badge>
+                            </button>
+                          ) : !allowReport ? null : reportedSourceIds.has(item.id) ? (
                             <button
                               type="button"
                               onClick={() => {
@@ -311,7 +341,16 @@ export function RiskTable({
                       )}
                     </div>
                   </div>
-                  {reportedSourceIds.has(item.id) ? (
+                  {editable ? (
+                    <button
+                      type="button"
+                      onClick={() => clearMutation.mutate(item)}
+                      disabled={clearingId === item.id}
+                      className="w-full py-2.5 rounded-xl text-xs font-semibold bg-slate-100 text-slate-500 hover:bg-red-50 hover:text-red-600 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-wait"
+                    >
+                      {clearingId === item.id ? '해제 중...' : '리스크 해제'}
+                    </button>
+                  ) : !allowReport ? null : reportedSourceIds.has(item.id) ? (
                     <button
                       type="button"
                       onClick={() => {
@@ -344,7 +383,7 @@ export function RiskTable({
         onClose={() => setReportTarget(null)}
         item={reportTarget}
         workspaceId={workspaceId}
-        reportId={reportId}
+        reportId={reportTargetReportId}
       />
     </div>
   );

@@ -11,6 +11,8 @@ interface SnapshotProps {
   sirRanking: SirRanking;
   isInitial: boolean;
   prevIsInitial: boolean;
+  isDaily?: boolean;
+  hasPrev?: boolean;
   snapshotDiff?: SnapshotDiff;
 }
 
@@ -21,52 +23,70 @@ export function Snapshot({
   sirRanking,
   isInitial,
   prevIsInitial,
+  isDaily = false,
+  hasPrev = false,
   snapshotDiff,
 }: SnapshotProps) {
-  const prefix = isInitial ? '' : prevIsInitial ? '전월 대비 ' : '전주 대비 ';
+  const prefix = !hasPrev
+    ? '기준점 대비 '
+    : isDaily
+      ? '전일 대비 '
+      : prevIsInitial
+        ? '전월 대비 '
+        : '전주 대비 ';
 
-  const cards = [
-    {
-      title: '주간 SIR 지수',
-      mobileTitle: '주간 SIR 지수',
-      description: '1,000점 만점 기준',
-      value: `${Math.round(score)}점`,
-      change: snapshotDiff
-        ? formatChange(snapshotDiff.scoreDiff, '점', '상승', '하락', prefix)
-        : undefined,
-    },
-    {
-      title: '주간 수집된 평판 데이터 수',
-      mobileTitle: '주간 수집된\n평판 데이터 수',
-      description: '6개 채널 통합 수집',
-      value: `${totalItems.toLocaleString()}개`,
-      change: snapshotDiff
-        ? formatChange(snapshotDiff.itemsDiff, '개', '증가', '감소', prefix)
-        : undefined,
-    },
-    {
-      title: '주간 리스크 높은 콘텐츠 수',
-      mobileTitle: '주간 리스크\n높은 콘텐츠 수',
-      description: '즉시 검토 권장',
-      value: `${riskCount.toLocaleString()}개`,
-      change: snapshotDiff
-        ? formatChange(snapshotDiff.riskDiff, '개', '증가', '감소', prefix, true)
-        : undefined,
-    },
-    {
-      title: '주간 SIR 순위',
-      mobileTitle: '주간 SIR 순위',
-      description: `총 참여 기업 ${sirRanking.total}개`,
-      value: getSirTier(score),
-      change: snapshotDiff
-        ? formatChange(snapshotDiff.tierDiff, '구간', '상승', '하락', prefix)
-        : undefined,
-    },
-  ];
+  const period = isDaily ? '일간' : '주간';
+
+  const sirCard = {
+    title: `${period} SIR 지수`,
+    mobileTitle: `${period} SIR 지수`,
+    description: '1,000점 만점 기준',
+    value: `${Math.round(score)}점`,
+    change: snapshotDiff
+      ? formatChange(snapshotDiff.scoreDiff, '점', '상승', '하락', prefix)
+      : undefined,
+  };
+
+  const itemsCard = {
+    title: `${period} 수집된 평판 데이터 수`,
+    mobileTitle: `${period} 수집된\n평판 데이터 수`,
+    description: '6개 채널 통합 수집',
+    value: `${totalItems.toLocaleString()}개`,
+    change: snapshotDiff
+      ? formatChange(snapshotDiff.itemsDiff, '개', '증가', '감소', prefix)
+      : undefined,
+  };
+
+  const riskCard = {
+    title: `${period} 리스크 높은 콘텐츠 수`,
+    mobileTitle: `${period} 리스크\n높은 콘텐츠 수`,
+    description: '즉시 검토 권장',
+    value: `${riskCount.toLocaleString()}개`,
+    change: snapshotDiff
+      ? formatChange(snapshotDiff.riskDiff, '개', '증가', '감소', prefix, true)
+      : undefined,
+  };
+
+  // SIR 순위는 전체 기업 풀 비교 — daily 는 구독사가 제한적이라 모집단이 불완전해서 제외
+  const rankingCard = {
+    title: `${period} SIR 순위`,
+    mobileTitle: `${period} SIR 순위`,
+    description: `총 참여 기업 ${sirRanking.total}개`,
+    value: getSirTier(score),
+    change: snapshotDiff
+      ? formatChange(snapshotDiff.tierDiff, '구간', '상승', '하락', prefix)
+      : undefined,
+  };
+
+  const cards = isDaily
+    ? [sirCard, itemsCard, riskCard]
+    : [sirCard, itemsCard, riskCard, rankingCard];
+
+  const gridCols = isDaily ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-2 lg:grid-cols-4';
 
   return (
     <ReportSubSection title="Snapshot">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-7">
+      <div className={`grid ${gridCols} gap-3 lg:gap-7`}>
         {cards.map((card) => (
           <StatCard key={card.title} {...card} />
         ))}

@@ -9,9 +9,9 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  ResponsiveContainer,
   Legend,
 } from 'recharts';
+import { ChartCanvas } from '@/components/chart/ChartCanvas';
 import { calculateDailySir } from '@/utils/sir';
 
 interface SirChartItem {
@@ -74,7 +74,7 @@ export function StockSirChart({ stockPrices, crawlItems }: StockSirChartProps) {
     <div className="flex flex-col gap-2">
       <h3 className="text-sm font-semibold text-slate-700">주가 & SIR 지수 추이</h3>
       <div className="border border-slate-100 rounded-xl p-4 bg-white [&_svg]:outline-none">
-        <ResponsiveContainer width="100%" height={280}>
+        <ChartCanvas height={280}>
           <ComposedChart data={chartData} margin={{ top: 5, right: 0, bottom: 0, left: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
             <XAxis
@@ -141,7 +141,7 @@ export function StockSirChart({ stockPrices, crawlItems }: StockSirChartProps) {
               radius={[3, 3, 0, 0]}
             />
           </ComposedChart>
-        </ResponsiveContainer>
+        </ChartCanvas>
       </div>
     </div>
   );

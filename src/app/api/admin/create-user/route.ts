@@ -1,20 +1,44 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
+  const supabaseAdmin = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  );
   const body = await request.json();
-  const { email, password, company_name } = body;
+  const {
+    email,
+    password,
+    role = 'user',
+    company_name,
+    ticker,
+    industry,
+    business_summary,
+    tier,
+    subscription_start,
+    subscription_end,
+  } = body;
 
   if (!email || !password || !company_name) {
-    return NextResponse.json({ detail: '이메일, 비밀번호, 회사명은 필수입니다' }, { status: 400 });
+    return NextResponse.json(
+      { detail: '이메일, 비밀번호, 회사명은 필수입니다' },
+      { status: 400 },
+    );
+  }
+  if (
+    role === 'user' &&
+    (!ticker || !tier || !subscription_start || !subscription_end)
+  ) {
+    return NextResponse.json(
+      { detail: '일반 유저 생성 시 종목코드·티어·계약 기간은 필수입니다' },
+      { status: 400 },
+    );
   }
 
-  // 1. Auth 유저 생성
+  // 1. auth.users 생성 (트리거로 user_profiles 자동 생성, 기본 role='user')
   const { data, error } = await supabaseAdmin.auth.admin.createUser({
     email,
     password,
@@ -28,11 +52,36 @@ export async function POST(request: NextRequest) {
 
   const userId = data.user.id;
 
-  // 2. user_profiles에 company_name 업데이트
-  await supabaseAdmin
-    .from('user_profiles')
-    .update({ company_name })
-    .eq('id', userId);
+  try {
+    if (role !== 'user') {
+      const { error: profErr } = await supabaseAdmin
+        .from('user_profiles')
+        .update({ role, company_name })
+        .eq('id', userId);
+      if (profErr) throw profErr;
+    } else {
+      const { error: rpcErr } = await supabaseAdmin.rpc(
+        'create_user_workspace_bundle',
+        {
+          p_user_id: userId,
+          p_company_name: company_name,
+          p_ticker: ticker,
+          p_industry: industry ?? null,
+          p_business_summary: business_summary ?? null,
+          p_tier: tier,
+          p_started_at: subscription_start,
+          p_ended_at: subscription_end,
+        },
+      );
+      if (rpcErr) throw rpcErr;
+    }
 
-  return NextResponse.json({ id: userId, email });
+    return NextResponse.json({ id: userId, email });
+  } catch (e: any) {
+    await supabaseAdmin.auth.admin.deleteUser(userId);
+    return NextResponse.json(
+      { detail: e?.message ?? '계정 생성 실패' },
+      { status: 500 },
+    );
+  }
 }

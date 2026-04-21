@@ -2,13 +2,10 @@
 
 import { useState, useRef } from 'react';
 import { Paperclip, X } from 'lucide-react';
-import { toast } from 'sonner';
-import { useQueryClient } from '@tanstack/react-query';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
-import { createClient } from '@/lib/supabase/client';
-import { reportKeys } from '@/hooks/report/useReportQuery';
+import { useSubmitRiskReport } from '@/hooks/report/useReportMutation';
 import type { RiskItem } from '@/lib/api/reportApi';
 
 const REPORT_REASONS = [
@@ -39,14 +36,6 @@ const TERMS_OF_SERVICE = `개인정보의 수집 및 이용 목적
 - 보존 기간 : 5년
 - 계약 또는 청약철회 등에 관한 기록 : 5년 (전자상거래등에서의 소비자보호에 관한 법률)`;
 
-const SOURCE_TABLE_MAP: Record<string, string> = {
-  naver_news: 'news_items',
-  naver_blog: 'sns_items',
-  youtube: 'sns_items',
-  naver_stock: 'community_items',
-  dcinside: 'community_items',
-};
-
 function RequiredLabel({ children }: { children: React.ReactNode }) {
   return (
     <label className="text-sm font-semibold text-text-dark">
@@ -70,9 +59,8 @@ export function RiskReportRequestModal({ open, onClose, item, workspaceId, repor
   const [files, setFiles] = useState<File[]>([]);
   const [agreed, setAgreed] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const queryClient = useQueryClient();
+  const submitMutation = useSubmitRiskReport(workspaceId, reportId);
 
   const reset = () => {
     setReason(null);
@@ -110,49 +98,17 @@ export function RiskReportRequestModal({ open, onClose, item, workspaceId, repor
     setShowConfirm(true);
   };
 
-  const handleConfirmedSubmit = async () => {
+  const handleConfirmedSubmit = () => {
     if (!item) return;
-    setSubmitting(true);
-    try {
-      const supabase = createClient();
-
-      // 1. 파일 업로드 (Storage 직접)
-      const fileUrls: string[] = [];
-      for (const f of files) {
-        const ext = f.name.split('.').pop() ?? '';
-        const path = `${workspaceId}/${crypto.randomUUID()}.${ext}`;
-        const { error } = await supabase.storage.from('risk-attachments').upload(path, f);
-        if (error) throw error;
-        fileUrls.push(path);
-      }
-
-      // 2. DB INSERT (Supabase 직접)
-      const insertData = {
-        workspace_id: workspaceId,
-        report_id: reportId,
-        source_table: SOURCE_TABLE_MAP[item.platform_id] ?? 'community_items',
-        source_id: item.id,
-        platform_id: item.platform_id,
-        title: item.title,
-        link: item.link,
-        critical_type: item.critical_type,
-        reason: reason!,
-        evidence,
-        file_urls: fileUrls,
-        status: 'requested',
-      };
-      const { error } = await supabase.from('risk_reports').insert(insertData);
-      if (error) throw error;
-
-      queryClient.invalidateQueries({ queryKey: reportKeys.riskReports(workspaceId, reportId) });
-      toast.success('신고 대행 요청이 접수되었습니다.');
-      setShowConfirm(false);
-      handleClose();
-    } catch {
-      toast.error('신고 요청에 실패했습니다.');
-    } finally {
-      setSubmitting(false);
-    }
+    submitMutation.mutate(
+      { item, reason: reason!, evidence, files },
+      {
+        onSuccess: () => {
+          setShowConfirm(false);
+          handleClose();
+        },
+      },
+    );
   };
 
   return (
@@ -163,8 +119,8 @@ export function RiskReportRequestModal({ open, onClose, item, workspaceId, repor
         title="신고 대행 요청"
         size="lg"
         footer={
-          <Button onClick={handleSubmit} disabled={!isValid || submitting} fullWidth>
-            {submitting ? '요청 중...' : '신청하기'}
+          <Button onClick={handleSubmit} disabled={!isValid || submitMutation.isPending} fullWidth>
+            {submitMutation.isPending ? '요청 중...' : '신청하기'}
           </Button>
         }
       >

@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import type { KeyboardEvent } from 'react';
 import { getCompanies } from '@/lib/api/krxApi';
 import type { KrxCompany } from '@/lib/api/krxApi';
+import { AdminButton } from '@/components/ui/AdminButton';
 
 type SearchType = 'name' | 'code';
 
@@ -76,32 +77,24 @@ export function CompanySearch({ onChange }: CompanySearchProps) {
 
   return (
     <div className="flex flex-col gap-2">
-      <label className="text-xs font-semibold text-slate-700 uppercase tracking-wide">회사명</label>
+      <label className="text-sm font-semibold text-slate-700 uppercase tracking-wide">회사명</label>
 
       {/* 검색 타입 토글 */}
-      <div className="flex gap-1">
-        <button
-          type="button"
+      <div className="flex gap-2">
+        <AdminButton
+          size="sm"
+          variant={searchType === 'name' ? 'primary' : 'secondary'}
           onClick={() => setSearchType('name')}
-          className={`text-xs px-2.5 py-1 rounded-full font-medium transition-colors cursor-pointer ${
-            searchType === 'name'
-              ? 'bg-blue-600 text-white'
-              : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
-          }`}
         >
           회사명 또는 종목명
-        </button>
-        <button
-          type="button"
+        </AdminButton>
+        <AdminButton
+          size="sm"
+          variant={searchType === 'code' ? 'primary' : 'secondary'}
           onClick={() => setSearchType('code')}
-          className={`text-xs px-2.5 py-1 rounded-full font-medium transition-colors cursor-pointer ${
-            searchType === 'code'
-              ? 'bg-blue-600 text-white'
-              : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
-          }`}
         >
           종목코드
-        </button>
+        </AdminButton>
       </div>
 
       {/* 검색 입력 + 결과 드롭다운 */}

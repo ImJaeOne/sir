@@ -1,11 +1,10 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import { useIsFetching, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useIsFetching } from '@tanstack/react-query';
 import Link from 'next/link';
 import { ChevronRight, ExternalLink, Check } from 'lucide-react';
-import { toast } from 'sonner';
 import { ReportHeader } from '@/components/report/ReportHeader';
 import { Highlight } from '@/components/report/Highlight';
 import { OnlineReputation } from '@/components/report/OnlineReputation';
@@ -14,9 +13,20 @@ import { RiskContent } from '@/components/report/RiskContent';
 import { Strategy } from '@/components/report/Strategy';
 import { Loading } from '@/components/ui/Loading';
 import { AdminButton } from '@/components/ui/AdminButton';
-import { useWorkspace } from '@/hooks/workspace/useWorkspaceQuery';
-import { useReportInfo, reportKeys } from '@/hooks/report/useReportQuery';
-import { publishReport } from '@/lib/api/reportApi';
+import { useWorkspace, useReportProgress, useReportRealtimeSync } from '@/hooks/workspace/useWorkspaceQuery';
+import { useReportInfo } from '@/hooks/report/useReportQuery';
+import { usePublishReport } from '@/hooks/report/useReportMutation';
+import { getClientReportSections } from '@/components/client/sidebar/sections';
+import { ACTIVE_PLATFORMS, isAllPlatformsDone } from '@/lib/api/workspaceApi';
+import { AlertCircle } from 'lucide-react';
+
+const PLATFORM_LABELS: Record<string, string> = {
+  naver_news: '뉴스',
+  naver_blog: '블로그',
+  youtube: '유튜브',
+  naver_stock: '종토방',
+  dcinside: '디시인사이드',
+};
 
 const BG_COLORS = {
   'bg-light': 'var(--color-bg-light)',
@@ -56,13 +66,16 @@ function SectionBg({
 export default function ReportPage() {
   const params = useParams();
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const workspaceId = params?.workspaceId as string;
   const reportId = params?.reportId as string;
   const isFetching = useIsFetching();
   const { data: workspace } = useWorkspace(workspaceId);
   const { data: report } = useReportInfo(reportId);
-  const queryClient = useQueryClient();
-  const [publishing, setPublishing] = useState(false);
+  const { data: progressList } = useReportProgress(workspaceId);
+  useReportRealtimeSync(workspaceId);
+  const publishMutation = usePublishReport(reportId);
 
   const startedRef = useRef(false);
   const [ready, setReady] = useState(false);
@@ -72,18 +85,28 @@ export default function ReportPage() {
   }, [isFetching]);
 
   const isPublished = report?.status === 'published';
+  const isDraft = report?.status === 'draft';
+  const isDaily = report?.type === 'daily';
 
-  const handlePublish = async () => {
-    setPublishing(true);
-    try {
-      await publishReport(reportId);
-      await queryClient.refetchQueries({ queryKey: reportKeys.info(reportId) });
-      toast.success('보고서가 발행되었습니다.');
-    } catch {
-      toast.error('발행에 실패했습니다.');
-    } finally {
-      setPublishing(false);
-    }
+  // 활성 플랫폼 중 실패/미완료 확인 — 발행 게이트
+  const progress = progressList?.find((p) => p.reportId === reportId);
+  const platformsOk = isAllPlatformsDone(progress);
+  const failedPlatforms = useMemo(() => {
+    if (!progress) return [] as string[];
+    const map = new Map(progress.sessions.map((s) => [s.platform_id, s]));
+    return ACTIVE_PLATFORMS.filter((p) => map.get(p)?.status !== 'done');
+  }, [progress]);
+
+  const sections = useMemo(() => getClientReportSections(isDaily), [isDaily]);
+  const sectionParam = searchParams?.get('section');
+  const activeSection = sectionParam && sections.some((s) => s.id === sectionParam)
+    ? sectionParam
+    : sections[0]?.id ?? 'section-highlight';
+
+  const handleTabClick = (id: string) => {
+    const next = new URLSearchParams(searchParams?.toString() ?? '');
+    next.set('section', id);
+    router.replace(`${pathname}?${next.toString()}`, { scroll: false });
   };
 
   if (!ready) return <Loading />;
@@ -117,50 +140,101 @@ export default function ReportPage() {
           </Link>
         </div>
 
+        {/* 섹션 탭 */}
+        <div className="flex gap-1 border-b border-slate-200">
+          {sections.map((s) => {
+            const active = activeSection === s.id;
+            return (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => handleTabClick(s.id)}
+                className={`px-4 py-2 text-sm font-semibold border-b-2 -mb-px transition-colors cursor-pointer ${
+                  active
+                    ? 'border-slate-700 text-slate-800'
+                    : 'border-transparent text-slate-400 hover:text-slate-600'
+                }`}
+              >
+                {s.label}
+              </button>
+            );
+          })}
+        </div>
+
         {/* 종이 */}
         <div className="bg-white rounded-2xl shadow-[0_2px_40px_rgba(0,0,0,0.08)] overflow-hidden">
           <SectionBg color="bg-light">
             <div className="flex flex-col gap-10">
               <ReportHeader workspaceId={workspaceId} reportId={reportId} showPdfButton={false} />
-              <Highlight workspaceId={workspaceId} reportId={reportId} editable />
+              {activeSection === 'section-highlight' && (
+                <Highlight workspaceId={workspaceId} reportId={reportId} editable />
+              )}
             </div>
           </SectionBg>
-          <SectionBg color="blue" gradient="from-light">
-            <OnlineReputation workspaceId={workspaceId} reportId={reportId} />
-          </SectionBg>
-          <SectionBg color="bg-light" gradient="from-blue">
-            <TopContent workspaceId={workspaceId} reportId={reportId} />
-          </SectionBg>
-          <SectionBg color="blue" gradient="from-light">
-            <RiskContent workspaceId={workspaceId} reportId={reportId} />
-          </SectionBg>
-          <SectionBg color="bg-light" gradient="from-blue">
-            <Strategy workspaceId={workspaceId} reportId={reportId} editable />
-          </SectionBg>
+          {activeSection === 'section-reputation' && (
+            <SectionBg color="blue" gradient="from-light">
+              <OnlineReputation workspaceId={workspaceId} reportId={reportId} />
+            </SectionBg>
+          )}
+          {activeSection === 'section-top-content' && !isDaily && (
+            <SectionBg color="bg-light" gradient="from-blue">
+              <TopContent workspaceId={workspaceId} reportId={reportId} />
+            </SectionBg>
+          )}
+          {activeSection === 'section-risk' && (
+            <SectionBg color="blue" gradient={isDaily ? undefined : 'from-light'}>
+              <RiskContent workspaceId={workspaceId} reportId={reportId} editable />
+            </SectionBg>
+          )}
+          {activeSection === 'section-strategy' && !isDaily && (
+            <SectionBg color="bg-light" gradient="from-blue">
+              <Strategy workspaceId={workspaceId} reportId={reportId} editable />
+            </SectionBg>
+          )}
         </div>
       </div>
 
-      {/* 종이와 발행 바 사이 여백 */}
-      <div className="h-8 lg:h-10" />
+      {/* 종이와 발행 바 사이 여백 — daily 는 자동 발행이므로 바 자체 숨김 */}
+      {!isDaily && <div className="h-8 lg:h-10" />}
 
-      {/* 하단 고정 발행 바 */}
-      <div className="sticky bottom-0 z-30 bg-white/90 backdrop-blur-md border-t border-slate-200 -mx-6 lg:-mx-10">
-        <div className="mx-auto max-w-[1280px] px-6 lg:px-10 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            {isPublished && <Check size={16} className="text-emerald-500" />}
-            <span className={`text-sm font-medium ${isPublished ? 'text-emerald-600' : 'text-slate-500'}`}>
-              {isPublished ? '발행됨' : '검토 대기'}
-            </span>
+      {/* 하단 고정 발행 바 (주간/월간 전용) */}
+      {!isDaily && (
+        <div className="sticky bottom-0 z-30 bg-white/90 backdrop-blur-md border-t border-slate-200 -mx-6 lg:-mx-10">
+          <div className="mx-auto max-w-[1280px] px-6 lg:px-10 py-3 flex flex-col gap-2">
+            {!platformsOk && failedPlatforms.length > 0 && !isPublished && (
+              <div className="flex items-start gap-2 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                <AlertCircle size={14} className="text-amber-600 shrink-0 mt-0.5" />
+                <div className="flex-1 leading-snug">
+                  <span className="font-semibold">실패/미완료 플랫폼이 있습니다:</span>{' '}
+                  {failedPlatforms.map((p) => PLATFORM_LABELS[p] ?? p).join(', ')}
+                  <span className="text-amber-700"> — 워크스페이스 화면에서 재시도 후 발행하세요.</span>
+                </div>
+              </div>
+            )}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                {isPublished && <Check size={16} className="text-emerald-500" />}
+                <span className={`text-sm font-medium ${isPublished ? 'text-emerald-600' : isDraft ? 'text-slate-500' : 'text-amber-600'}`}>
+                  {isPublished ? '발행됨' : isDraft ? '검토 대기' : '분석 중 — 발행 불가'}
+                </span>
+              </div>
+              <AdminButton
+                variant={isPublished ? 'secondary' : 'primary'}
+                onClick={() => publishMutation.mutate()}
+                disabled={publishMutation.isPending || !isDraft || !platformsOk}
+              >
+                {publishMutation.isPending
+                  ? '발행 중...'
+                  : isPublished
+                    ? '발행 완료'
+                    : !platformsOk
+                      ? '재시도 필요'
+                      : '보고서 발행'}
+              </AdminButton>
+            </div>
           </div>
-          <AdminButton
-            variant={isPublished ? 'secondary' : 'primary'}
-            onClick={handlePublish}
-            disabled={publishing || isPublished}
-          >
-            {publishing ? '발행 중...' : isPublished ? '발행 완료' : '보고서 발행'}
-          </AdminButton>
         </div>
-      </div>
+      )}
     </div>
   );
 }

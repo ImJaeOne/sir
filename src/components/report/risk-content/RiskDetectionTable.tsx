@@ -12,6 +12,9 @@ interface RiskDetectionTableProps {
   reportedSourceIds: Set<string>;
   riskReportBySourceId: Map<string, string>;
   onCancelReport: (riskReportId: string) => void;
+  editable?: boolean;
+  allowReport?: boolean;
+  sessionToReportMap?: Map<string, string>;
 }
 
 export function RiskDetectionTable({
@@ -21,6 +24,9 @@ export function RiskDetectionTable({
   reportedSourceIds,
   riskReportBySourceId,
   onCancelReport,
+  editable = false,
+  allowReport = false,
+  sessionToReportMap,
 }: RiskDetectionTableProps) {
   return (
     <ReportSubSection
@@ -36,6 +42,9 @@ export function RiskDetectionTable({
           reportedSourceIds={reportedSourceIds}
           riskReportBySourceId={riskReportBySourceId}
           onCancelReport={onCancelReport}
+          editable={editable}
+          allowReport={allowReport}
+          sessionToReportMap={sessionToReportMap}
         />
       </ReportCard>
     </ReportSubSection>

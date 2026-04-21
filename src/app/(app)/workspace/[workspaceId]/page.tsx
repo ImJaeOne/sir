@@ -1,18 +1,20 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useState, useEffect, useMemo } from 'react';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { TickerBadge } from '@/components/ui/Badge';
 import { BlacklistEditor } from '@/components/ui/BlacklistEditor';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { useWorkspace, useWorkspaceProfile, useReports, useReportProgress, useReportRealtimeSync, workspaceKeys } from '@/hooks/workspace/useWorkspaceQuery';
-import { useUpdateWorkspaceProfile } from '@/hooks/workspace/useWorkspaceMutation';
+import { useUpdateWorkspaceProfile, useRetryFailedReport } from '@/hooks/workspace/useWorkspaceMutation';
 import { createClient } from '@/lib/supabase/client';
 import type { Report, ReportProgress } from '@/lib/api/workspaceApi';
+import { ACTIVE_PLATFORMS } from '@/lib/api/workspaceApi';
 import type { WorkspaceProfile } from '@/types/workspace';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, RefreshCw, AlertCircle } from 'lucide-react';
 
 function EditProfileModal({
   workspaceId,
@@ -192,14 +194,16 @@ const PLATFORM_LABELS: Record<string, string> = {
   dcinside: '디시인사이드',
 };
 
-const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
-  pending: { label: '대기', color: 'text-slate-400' },
-  crawling: { label: '크롤링 중', color: 'text-blue-500' },
-  analyzing: { label: '분석 중', color: 'text-amber-500' },
-  clustering: { label: '클러스터링 중', color: 'text-violet-500' },
-  done: { label: '완료', color: 'text-emerald-500' },
-  failed: { label: '실패', color: 'text-red-500' },
+const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; border: string }> = {
+  pending:    { label: '작업 전',       color: 'text-slate-400',   bg: 'bg-slate-50',   border: 'border-slate-100'   },
+  crawling:   { label: '크롤링 중',     color: 'text-blue-500',    bg: 'bg-blue-50',    border: 'border-blue-100'    },
+  analyzing:  { label: '분석 중',       color: 'text-amber-500',   bg: 'bg-amber-50',   border: 'border-amber-100'   },
+  clustering: { label: '클러스터링 중', color: 'text-violet-500',  bg: 'bg-violet-50',  border: 'border-violet-100'  },
+  done:       { label: '완료',          color: 'text-emerald-500', bg: 'bg-emerald-50', border: 'border-emerald-100' },
+  failed:     { label: '실패',          color: 'text-red-500',     bg: 'bg-red-50',     border: 'border-red-100'     },
 };
+
+const STATUS_FALLBACK = STATUS_CONFIG.pending;
 
 function SessionStatusDot({ status }: { status: string }) {
   const dotColor =
@@ -210,30 +214,150 @@ function SessionStatusDot({ status }: { status: string }) {
   return <span className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />;
 }
 
-const ALL_PLATFORMS = ['naver_news', 'naver_blog', 'youtube', 'naver_stock', 'dcinside'];
+const ALL_PLATFORMS = ['naver_news', 'naver_blog', 'youtube', 'naver_stock'];
 
-function ReportProgressPanel({ progress }: { progress: ReportProgress }) {
+function FailedPlatformRow({
+  platformId,
+  session,
+  cfg,
+}: {
+  platformId: string;
+  session: ReportProgress['sessions'][number];
+  cfg: typeof STATUS_CONFIG[keyof typeof STATUS_CONFIG];
+}) {
+  return (
+    <div className={`flex flex-col gap-1 border rounded-lg px-3 py-2 ${cfg.bg} ${cfg.border}`}>
+      <div className="flex items-center gap-2">
+        <SessionStatusDot status="failed" />
+        <span className="text-xs text-slate-700 font-medium">{PLATFORM_LABELS[platformId] ?? platformId}</span>
+        <span className={`text-xs font-semibold ml-auto ${cfg.color}`}>
+          {session.failed_reason ? `${cfg.label} (${session.failed_reason})` : cfg.label}
+        </span>
+      </div>
+      {session.error_message && (
+        <p className="text-[10px] text-red-700/80 leading-snug pl-3.5 whitespace-pre-wrap break-words">
+          {session.error_message}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function RetryFailedButton({
+  workspaceId,
+  reportId,
+  failedLabels,
+  reportType,
+}: {
+  workspaceId: string;
+  reportId: string;
+  failedLabels: string[];
+  reportType: Report['type'];
+}) {
+  const retry = useRetryFailedReport(workspaceId);
+  const [open, setOpen] = useState(false);
+  const handleConfirm = async () => {
+    setOpen(false);
+    try {
+      await retry.mutateAsync(reportId);
+      toast.success('일괄 재시도를 시작했습니다. 수 분 후 새로고침하세요.');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : '재시도 실패');
+    }
+  };
+
+  const channelText = failedLabels.join(', ');
+  return (
+    <>
+      <button
+        onClick={(e) => { e.stopPropagation(); setOpen(true); }}
+        disabled={retry.isPending}
+        title={`실패한 채널 재시도: ${channelText}`}
+        className="flex items-center gap-1 text-[10px] font-semibold text-red-600 bg-white border border-red-200 rounded-md px-2 py-1 hover:bg-red-100 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        <RefreshCw size={10} className={retry.isPending ? 'animate-spin' : ''} />
+        {retry.isPending ? '재시도 중' : `실패 재시도 (${failedLabels.length})`}
+      </button>
+      <ConfirmModal
+        open={open}
+        onClose={() => setOpen(false)}
+        onConfirm={handleConfirm}
+        title="실패 재시도"
+        confirmVariant="danger"
+        confirmLabel="재시도"
+        message={
+          <>
+            실패한 채널(<b>{channelText}</b>)에 대해 수집·분석을 재진행합니다.
+            {reportType !== 'daily' && (
+              <>
+                <br />
+                성공 시 전략·총평까지 자동으로 재생성됩니다.
+              </>
+            )}
+          </>
+        }
+      />
+    </>
+  );
+}
+
+function ReportProgressPanel({
+  workspaceId,
+  reportId,
+  reportType,
+  progress,
+}: {
+  workspaceId: string;
+  reportId: string;
+  reportType: Report['type'];
+  progress: ReportProgress;
+}) {
   const sessionMap = new Map(progress.sessions.map((s) => [s.platform_id, s]));
+  const failedPlatforms = ALL_PLATFORMS.filter((p) => sessionMap.get(p)?.status === 'failed');
+  const failedLabels = failedPlatforms.map((p) => PLATFORM_LABELS[p] ?? p);
+  const hasAnyFinalize = progress.hasSummary || progress.strategyCategories.length > 0;
 
   return (
     <div className="px-5 pb-4 flex flex-col gap-3">
       {/* 플랫폼별 세션 상태 */}
       <div className="flex flex-col gap-1.5">
-        <span className="text-xs font-semibold text-slate-500">플랫폼별 수집 현황</span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold text-slate-500">채널별 수집·분석</span>
+          {failedLabels.length > 0 && (
+            <RetryFailedButton
+              workspaceId={workspaceId}
+              reportId={reportId}
+              failedLabels={failedLabels}
+              reportType={reportType}
+            />
+          )}
+        </div>
         <div className="grid grid-cols-2 gap-1.5">
           {ALL_PLATFORMS.map((platformId) => {
             const s = sessionMap.get(platformId);
             const status = s?.status ?? 'pending';
-            const cfg = STATUS_CONFIG[status] ?? { label: '대기', color: 'text-slate-400' };
+            const cfg = STATUS_CONFIG[status] ?? STATUS_FALLBACK;
+
+            if (status === 'failed' && s) {
+              return (
+                <FailedPlatformRow
+                  key={platformId}
+                  platformId={platformId}
+                  session={s}
+                  cfg={cfg}
+                />
+              );
+            }
+
             return (
-              <div key={platformId} className="flex items-center gap-2 bg-slate-50 rounded-lg px-3 py-2">
+              <div key={platformId} className={`flex items-center gap-2 border rounded-lg px-3 py-2 ${cfg.bg} ${cfg.border}`}>
                 <SessionStatusDot status={status} />
                 <span className="text-xs text-slate-600 font-medium">{PLATFORM_LABELS[platformId] ?? platformId}</span>
                 {status === 'done' && (
                   <span className="text-[10px] text-slate-400 ml-auto">{s?.total_items ?? 0}건</span>
                 )}
                 <span className={`text-xs font-semibold ${status !== 'done' ? 'ml-auto' : ''} ${cfg.color}`}>
-                  {status === 'failed' && s?.failed_reason ? `${cfg.label} (${s.failed_reason})` : cfg.label}
+                  {cfg.label}
                 </span>
               </div>
             );
@@ -241,26 +365,47 @@ function ReportProgressPanel({ progress }: { progress: ReportProgress }) {
         </div>
       </div>
 
-      {/* 총평 & 전략 */}
-      <div className="flex flex-col gap-1.5">
-        <span className="text-xs font-semibold text-slate-500">보고서 생성 현황</span>
-        <div className="grid grid-cols-2 gap-1.5">
-          <div className="flex items-center gap-2 bg-slate-50 rounded-lg px-3 py-2">
-            <SessionStatusDot status={progress.hasSummary ? 'done' : 'crawling'} />
-            <span className="text-xs text-slate-600 font-medium">총평</span>
-            <span className={`text-xs font-semibold ml-auto ${progress.hasSummary ? 'text-emerald-500' : 'text-slate-400'}`}>
-              {progress.hasSummary ? '완료' : '대기'}
-            </span>
+      {/* 총평 & 전략 — daily 는 finalize 없음, 노출 생략 */}
+      {reportType !== 'daily' && (
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-slate-500">전략·총평 생성</span>
           </div>
-          <div className="flex items-center gap-2 bg-slate-50 rounded-lg px-3 py-2">
-            <SessionStatusDot status={progress.strategyCategories.length > 0 ? 'done' : 'crawling'} />
-            <span className="text-xs text-slate-600 font-medium">대응 전략</span>
-            <span className={`text-xs font-semibold ml-auto ${progress.strategyCategories.length > 0 ? 'text-emerald-500' : 'text-slate-400'}`}>
-              {progress.strategyCategories.length > 0 ? `${progress.strategyCategories.length}개 채널` : '대기'}
-            </span>
+          {failedLabels.length > 0 && hasAnyFinalize && (
+            <div className="flex items-start gap-1.5 text-[10px] text-amber-700 bg-amber-50 border border-amber-100 rounded-md px-2 py-1.5 leading-snug">
+              <AlertCircle size={12} className="text-amber-600 shrink-0 mt-0.5" />
+              <span>실패한 플랫폼 결과가 빠진 상태로 전략/총평이 생성되었습니다. 위 "실패 재시도" 버튼으로 일괄 복구하세요.</span>
+            </div>
+          )}
+          <div className="grid grid-cols-2 gap-1.5">
+            {(() => {
+              const cfg = progress.hasSummary ? STATUS_CONFIG.done : STATUS_FALLBACK;
+              return (
+                <div className={`flex items-center gap-2 border rounded-lg px-3 py-2 ${cfg.bg} ${cfg.border}`}>
+                  <SessionStatusDot status={progress.hasSummary ? 'done' : 'crawling'} />
+                  <span className="text-xs text-slate-600 font-medium">총평</span>
+                  <span className={`text-xs font-semibold ml-auto ${cfg.color}`}>
+                    {progress.hasSummary ? '완료' : '작업 전'}
+                  </span>
+                </div>
+              );
+            })()}
+            {(() => {
+              const done = progress.strategyCategories.length > 0;
+              const cfg = done ? STATUS_CONFIG.done : STATUS_FALLBACK;
+              return (
+                <div className={`flex items-center gap-2 border rounded-lg px-3 py-2 ${cfg.bg} ${cfg.border}`}>
+                  <SessionStatusDot status={done ? 'done' : 'crawling'} />
+                  <span className="text-xs text-slate-600 font-medium">대응 전략</span>
+                  <span className={`text-xs font-semibold ml-auto ${cfg.color}`}>
+                    {done ? `${progress.strategyCategories.length}개 채널` : '작업 전'}
+                  </span>
+                </div>
+              );
+            })()}
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -363,10 +508,28 @@ function CreateReportButton({ workspaceId }: { workspaceId: string }) {
   );
 }
 
+type ReportFilterTab = 'all' | 'weekly' | 'daily';
+
+function isFilterTab(v: string | null): v is ReportFilterTab {
+  return v === 'all' || v === 'weekly' || v === 'daily';
+}
+
 export default function WorkspaceDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const workspaceId = params?.workspaceId as string;
+
+  const typeParam = searchParams?.get('type') ?? null;
+  const currentTab: ReportFilterTab = isFilterTab(typeParam) ? typeParam : 'all';
+
+  const setTab = (t: ReportFilterTab) => {
+    const next = new URLSearchParams(searchParams?.toString() ?? '');
+    if (t === 'all') next.delete('type');
+    else next.set('type', t);
+    const qs = next.toString();
+    router.replace(`/workspace/${workspaceId}${qs ? `?${qs}` : ''}`);
+  };
 
   const { data: workspace } = useWorkspace(workspaceId);
   const { data: profile } = useWorkspaceProfile(workspaceId);
@@ -374,6 +537,14 @@ export default function WorkspaceDetailPage() {
   const { data: reports, isLoading } = useReports(workspaceId);
   const { data: progressList } = useReportProgress(workspaceId);
   useReportRealtimeSync(workspaceId);
+
+  // initial(월간)은 '주간' 탭에 포함 — weekly 흐름의 첫 번째 30일치라 의미상 같은 축
+  const filteredReports = useMemo(() => {
+    if (!reports) return reports;
+    if (currentTab === 'all') return reports;
+    if (currentTab === 'daily') return reports.filter((r) => r.type === 'daily');
+    return reports.filter((r) => r.type !== 'daily');
+  }, [reports, currentTab]);
 
   // 진행 중인 보고서는 기본 열림, 완료된 보고서는 닫힘
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
@@ -442,7 +613,14 @@ export default function WorkspaceDetailPage() {
 
         {/* 리포트 목록 */}
         <div className="flex flex-col gap-4">
-          <h2 className="text-sm font-semibold text-slate-700">보고서</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-slate-700">보고서</h2>
+            <div className="flex gap-1">
+              <ReportTabButton active={currentTab === 'all'} onClick={() => setTab('all')}>전체</ReportTabButton>
+              <ReportTabButton active={currentTab === 'weekly'} onClick={() => setTab('weekly')}>주간</ReportTabButton>
+              <ReportTabButton active={currentTab === 'daily'} onClick={() => setTab('daily')}>일간</ReportTabButton>
+            </div>
+          </div>
 
           {isLoading && <p className="text-sm text-slate-400 py-8 text-center">불러오는 중...</p>}
 
@@ -453,18 +631,38 @@ export default function WorkspaceDetailPage() {
             </div>
           )}
 
-          {reports?.map((report) => {
+          {!isLoading && reports && reports.length > 0 && filteredReports?.length === 0 && (
+            <div className="bg-white rounded-2xl border border-dashed border-slate-200 shadow-sm py-12 flex flex-col items-center gap-2">
+              <span className="text-sm text-slate-400">
+                {currentTab === 'daily' ? '일간' : '주간'} 보고서가 없습니다
+              </span>
+            </div>
+          )}
+
+          {filteredReports?.map((report) => {
             const periodStart = report.period_start.replace(/-/g, '.');
             const periodEnd = report.period_end.replace(/-/g, '.');
-            const typeLabel = report.type === 'initial' ? '월간 보고서' : '주간 보고서';
-            const statusColor = report.status === 'published'
-              ? 'bg-emerald-50 text-emerald-700'
-              : 'bg-amber-50 text-amber-700';
-            const statusLabel = report.status === 'published' ? '검토 완료' : '검토 대기';
+            const typeLabel =
+              report.type === 'initial'
+                ? '월간 보고서'
+                : report.type === 'daily'
+                  ? '일간 보고서'
+                  : '주간 보고서';
+            const isAutoPublished = report.type === 'daily' && report.status === 'published';
+            const statusColor = isAutoPublished
+              ? 'bg-violet-50 text-violet-700'
+              : report.status === 'published'
+                ? 'bg-emerald-50 text-emerald-700'
+                : 'bg-amber-50 text-amber-700';
+            const statusLabel = isAutoPublished
+              ? '자동 발행'
+              : report.status === 'published'
+                ? '검토 완료'
+                : '검토 대기';
             const isExpanded = expandedIds.has(report.id);
             const progress = progressList?.find(p => p.reportId === report.id);
             const isNotAnalyzed = !progress || progress.sessions.length === 0;
-            const periodLabel = `${periodStart} ~ ${periodEnd}`;
+            const periodLabel = report.type === 'daily' ? periodStart : `${periodStart} ~ ${periodEnd}`;
 
             return (
               <div
@@ -512,7 +710,12 @@ export default function WorkspaceDetailPage() {
                 </div>
                 {isExpanded && progress && (
                   <div className="border-t border-slate-100">
-                    <ReportProgressPanel progress={progress} />
+                    <ReportProgressPanel
+                      workspaceId={workspaceId}
+                      reportId={report.id}
+                      reportType={report.type}
+                      progress={progress}
+                    />
                   </div>
                 )}
               </div>
@@ -521,5 +724,29 @@ export default function WorkspaceDetailPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+function ReportTabButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`px-3 py-1 text-xs font-semibold rounded-full transition-colors cursor-pointer ${
+        active
+          ? 'bg-slate-800 text-white'
+          : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+      }`}
+    >
+      {children}
+    </button>
   );
 }
