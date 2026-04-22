@@ -35,7 +35,7 @@ export interface OpsActiveSession {
   workspace_name: string | null;
   report_id: string | null;
   platform_id: string;
-  status: 'pending' | 'crawling' | 'analyzing';
+  status: 'pending' | 'crawling' | 'pending_analysis' | 'analyzing';
   updated_at: string;
 }
 
