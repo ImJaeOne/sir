@@ -50,6 +50,36 @@ export function useReportProgress(workspaceId: string) {
   });
 }
 
+/** 어느 워크스페이스든 sessions/reports 가 바뀌면 목록 카드의 상태 칩·stripe 를 갱신 */
+export function useWorkspacesRealtimeSync() {
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const supabase = createClient();
+    const channel = supabase
+      .channel('workspaces-list-sync')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'sessions' },
+        () => {
+          queryClient.invalidateQueries({ queryKey: workspaceKeys.all });
+        },
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'reports' },
+        () => {
+          queryClient.invalidateQueries({ queryKey: workspaceKeys.all });
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
+}
+
 /** sessions + session_strategies 변경 시 progress & reports 캐시 자동 갱신 */
 export function useReportRealtimeSync(workspaceId: string) {
   const queryClient = useQueryClient();

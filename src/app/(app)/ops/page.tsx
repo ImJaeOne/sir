@@ -682,7 +682,7 @@ export default function OpsPage() {
                 OPS · Live pipeline
               </div>
               <h1
-                className="text-[44px] leading-[1] text-[#f2f3f5] tracking-[-0.02em]"
+                className="text-[32px] sm:text-[44px] leading-[1] text-[#f2f3f5] tracking-[-0.02em] whitespace-nowrap"
                 style={{ fontFamily: 'var(--font-plex)', fontWeight: 500 }}
               >
                 운영 모니터링

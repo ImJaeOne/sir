@@ -12,9 +12,8 @@ import { useWorkspace, useWorkspaceProfile, useReports, useReportProgress, useRe
 import { useUpdateWorkspaceProfile, useRetryFailedReport } from '@/hooks/workspace/useWorkspaceMutation';
 import { createClient } from '@/lib/supabase/client';
 import type { Report, ReportProgress } from '@/lib/api/workspaceApi';
-import { ACTIVE_PLATFORMS } from '@/lib/api/workspaceApi';
 import type { WorkspaceProfile } from '@/types/workspace';
-import { ChevronDown, ChevronUp, RefreshCw, AlertCircle } from 'lucide-react';
+import { ChevronDown, ChevronUp, ChevronRight, RefreshCw, AlertCircle, Pencil } from 'lucide-react';
 
 function EditProfileModal({
   workspaceId,
@@ -96,25 +95,26 @@ function EditProfileModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 p-6 flex flex-col gap-4">
-        <div className="flex items-center justify-between">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-[1px]" onClick={onClose} />
+      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-slate-100">
           <div className="flex items-center gap-1.5">
             <h2 className="text-base font-bold text-slate-800">회사 프로필 수정</h2>
             <Tooltip text="AI 분석의 정확도 향상을 위한 필드입니다." />
           </div>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+            aria-label="닫기"
+            className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
           >
             <svg
-              width="20"
-              height="20"
+              width="16"
+              height="16"
               viewBox="0 0 20 20"
               fill="none"
               stroke="currentColor"
-              strokeWidth="1.5"
+              strokeWidth="1.8"
               strokeLinecap="round"
             >
               <path d="M5 5l10 10M15 5L5 15" />
@@ -122,61 +122,63 @@ function EditProfileModal({
           </button>
         </div>
 
-        <div className="flex flex-col gap-2">
-          <label className="text-xs font-semibold text-slate-700 uppercase tracking-wide">
-            업종
-          </label>
-          <input
-            type="text"
-            value={industry}
-            onChange={(e) => setIndustry(e.target.value)}
-            placeholder="예: 게임, 반도체, 바이오"
-            className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2.5 outline-none focus:border-blue-400 transition-colors"
+        <div className="flex flex-col gap-4 px-6 py-5 overflow-y-auto">
+          <div className="flex flex-col gap-2">
+            <label className="text-[11px] font-semibold text-slate-600 uppercase tracking-wider">
+              업종
+            </label>
+            <input
+              type="text"
+              value={industry}
+              onChange={(e) => setIndustry(e.target.value)}
+              placeholder="예: 게임, 반도체, 바이오"
+              className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2.5 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"
+            />
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <label className="text-[11px] font-semibold text-slate-600 uppercase tracking-wider">
+              사업 개요
+            </label>
+            <textarea
+              value={businessSummary}
+              onChange={(e) => setBusinessSummary(e.target.value)}
+              placeholder="주요 사업 내용, 매출 구조, 자회사 등"
+              rows={4}
+              className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2.5 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all resize-y min-h-[96px] max-h-[200px]"
+            />
+          </div>
+
+          <BlacklistEditor
+            title="디시인사이드 갤러리 블랙리스트"
+            description="크롤링 시 제외할 갤러리명을 입력하세요"
+            placeholder="예: 리그오브레전드"
+            items={dcBlacklist}
+            onAdd={(v) => setDcBlacklist((prev) => [...prev, v])}
+            onRemove={(v) => setDcBlacklist((prev) => prev.filter((x) => x !== v))}
+          />
+
+          <BlacklistEditor
+            title="유튜브 키워드 블랙리스트"
+            description="제목/설명에 포함된 영상을 제외합니다"
+            placeholder="예: LoL, 리그오브레전드"
+            items={ytBlacklist}
+            onAdd={(v) => setYtBlacklist((prev) => [...prev, v])}
+            onRemove={(v) => setYtBlacklist((prev) => prev.filter((x) => x !== v))}
           />
         </div>
 
-        <div className="flex flex-col gap-2">
-          <label className="text-xs font-semibold text-slate-700 uppercase tracking-wide">
-            사업 개요
-          </label>
-          <textarea
-            value={businessSummary}
-            onChange={(e) => setBusinessSummary(e.target.value)}
-            placeholder="주요 사업 내용, 매출 구조, 자회사 등"
-            rows={3}
-            className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2.5 outline-none focus:border-blue-400 transition-colors resize-none"
-          />
-        </div>
-
-        <BlacklistEditor
-          title="디시인사이드 갤러리 블랙리스트"
-          description="크롤링 시 제외할 갤러리명을 입력하세요"
-          placeholder="예: 리그오브레전드"
-          items={dcBlacklist}
-          onAdd={(v) => setDcBlacklist((prev) => [...prev, v])}
-          onRemove={(v) => setDcBlacklist((prev) => prev.filter((x) => x !== v))}
-        />
-
-        <BlacklistEditor
-          title="유튜브 키워드 블랙리스트"
-          description="제목/설명에 포함된 영상을 제외합니다"
-          placeholder="예: LoL, 리그오브레전드"
-          items={ytBlacklist}
-          onAdd={(v) => setYtBlacklist((prev) => [...prev, v])}
-          onRemove={(v) => setYtBlacklist((prev) => prev.filter((x) => x !== v))}
-        />
-
-        <div className="flex justify-end gap-2 pt-2">
+        <div className="flex justify-end gap-2 px-6 py-4 border-t border-slate-100 bg-slate-50/60">
           <button
             onClick={onClose}
-            className="px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-500 hover:bg-slate-100 transition-colors cursor-pointer"
+            className="px-4 py-2 rounded-lg text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
           >
             취소
           </button>
           <button
             onClick={handleSave}
             disabled={!hasChanges || updateProfile.isPending}
-            className="bg-blue-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-700 active:scale-95 transition-all duration-150 cursor-pointer disabled:opacity-40 disabled:cursor-default"
+            className="bg-blue-600 text-white px-5 py-2 rounded-lg text-sm font-semibold shadow-sm hover:bg-blue-700 active:scale-[0.97] transition-all duration-150 cursor-pointer disabled:opacity-40 disabled:cursor-default disabled:shadow-none"
           >
             저장
           </button>
@@ -205,6 +207,13 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; 
 
 const STATUS_FALLBACK = STATUS_CONFIG.pending;
 
+const FAILED_REASON_LABELS: Record<string, string> = {
+  collect: '수집 실패',
+  save: '저장 실패',
+  analyze: '분석 실패',
+  calculate: '계산 실패',
+};
+
 function SessionStatusDot({ status }: { status: string }) {
   const dotColor =
     status === 'done' ? 'bg-emerald-400' :
@@ -216,6 +225,75 @@ function SessionStatusDot({ status }: { status: string }) {
 
 const ALL_PLATFORMS = ['naver_news', 'naver_blog', 'youtube', 'naver_stock'];
 
+type ReportHealth = 'empty' | 'failed' | 'running' | 'done' | 'pending';
+
+/** 진행 상태 기반 카드 좌측 stripe 색 결정 */
+function getReportHealth(progress: ReportProgress | undefined): ReportHealth {
+  if (!progress || progress.sessions.length === 0) return 'empty';
+  const statuses = progress.sessions.map((s) => s.status);
+  if (statuses.some((s) => s === 'failed')) return 'failed';
+  if (statuses.some((s) => ['pending', 'crawling', 'analyzing', 'clustering'].includes(s))) return 'running';
+  if (statuses.every((s) => s === 'done')) return 'done';
+  return 'pending';
+}
+
+const HEALTH_STRIPE: Record<ReportHealth, string> = {
+  empty:   'bg-slate-200',
+  failed:  'bg-red-400',
+  running: 'bg-amber-400',
+  done:    'bg-emerald-400',
+  pending: 'bg-slate-200',
+};
+
+
+/** 채널별 + (비일간일 때) 총평·전략 mini dot. 닫힌 카드에서도 어느 단계가 문제인지 훑어볼 수 있게 */
+function ChannelMiniDots({
+  progress,
+  reportType,
+}: {
+  progress: ReportProgress | undefined;
+  reportType: Report['type'];
+}) {
+  const sessionMap = new Map(progress?.sessions.map((s) => [s.platform_id, s]) ?? []);
+  const dotClassFor = (status: string) =>
+    status === 'done' ? 'bg-emerald-400' :
+    status === 'failed' ? 'bg-red-400' :
+    status === 'pending' ? 'bg-slate-200' :
+    'bg-amber-400 animate-pulse';
+
+  const summaryStatus = progress?.hasSummary ? 'done' : 'pending';
+  const strategyStatus = (progress?.strategyCategories?.length ?? 0) > 0 ? 'done' : 'pending';
+
+  return (
+    <div className="flex items-center gap-1" aria-label="진행 상태 요약">
+      {ALL_PLATFORMS.map((pid) => {
+        const s = sessionMap.get(pid);
+        const status = s?.status ?? 'pending';
+        return (
+          <span
+            key={pid}
+            className={`w-1.5 h-1.5 rounded-full ${dotClassFor(status)}`}
+            title={`${PLATFORM_LABELS[pid] ?? pid}: ${STATUS_CONFIG[status]?.label ?? status}`}
+          />
+        );
+      })}
+      {reportType !== 'daily' && (
+        <>
+          <span className="mx-0.5 w-px h-2 bg-slate-200" aria-hidden />
+          <span
+            className={`w-1.5 h-1.5 rounded-full ${dotClassFor(summaryStatus)}`}
+            title={`총평: ${summaryStatus === 'done' ? '완료' : '작업 전'}`}
+          />
+          <span
+            className={`w-1.5 h-1.5 rounded-full ${dotClassFor(strategyStatus)}`}
+            title={`대응 전략: ${strategyStatus === 'done' ? '완료' : '작업 전'}`}
+          />
+        </>
+      )}
+    </div>
+  );
+}
+
 function FailedPlatformRow({
   platformId,
   session,
@@ -226,19 +304,15 @@ function FailedPlatformRow({
   cfg: typeof STATUS_CONFIG[keyof typeof STATUS_CONFIG];
 }) {
   return (
-    <div className={`flex flex-col gap-1 border rounded-lg px-3 py-2 ${cfg.bg} ${cfg.border}`}>
-      <div className="flex items-center gap-2">
-        <SessionStatusDot status="failed" />
-        <span className="text-xs text-slate-700 font-medium">{PLATFORM_LABELS[platformId] ?? platformId}</span>
-        <span className={`text-xs font-semibold ml-auto ${cfg.color}`}>
-          {session.failed_reason ? `${cfg.label} (${session.failed_reason})` : cfg.label}
-        </span>
-      </div>
-      {session.error_message && (
-        <p className="text-[10px] text-red-700/80 leading-snug pl-3.5 whitespace-pre-wrap break-words">
-          {session.error_message}
-        </p>
-      )}
+    <div className={`flex items-center gap-2 border rounded-lg px-3 py-2 ${cfg.bg} ${cfg.border}`}>
+      <SessionStatusDot status="failed" />
+      <span className="text-xs text-slate-700 font-medium">{PLATFORM_LABELS[platformId] ?? platformId}</span>
+      <span className={`text-xs font-semibold ml-auto ${cfg.color} flex items-center gap-1`}>
+        {session.failed_reason ? (FAILED_REASON_LABELS[session.failed_reason] ?? cfg.label) : cfg.label}
+        {session.error_message && (
+          <Tooltip text={session.error_message} variant="danger" position="left" />
+        )}
+      </span>
     </div>
   );
 }
@@ -318,11 +392,11 @@ function ReportProgressPanel({
   const hasAnyFinalize = progress.hasSummary || progress.strategyCategories.length > 0;
 
   return (
-    <div className="px-5 pb-4 flex flex-col gap-3">
+    <div className="px-4 sm:px-5 py-4 flex flex-col gap-4">
       {/* 플랫폼별 세션 상태 */}
-      <div className="flex flex-col gap-1.5">
+      <div className="flex flex-col gap-2">
         <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold text-slate-500">채널별 수집·분석</span>
+          <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">채널별 수집·분석</span>
           {failedLabels.length > 0 && (
             <RetryFailedButton
               workspaceId={workspaceId}
@@ -367,9 +441,9 @@ function ReportProgressPanel({
 
       {/* 총평 & 전략 — daily 는 finalize 없음, 노출 생략 */}
       {reportType !== 'daily' && (
-        <div className="flex flex-col gap-1.5">
+        <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-slate-500">전략·총평 생성</span>
+            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">전략·총평 생성</span>
           </div>
           {failedLabels.length > 0 && hasAnyFinalize && (
             <div className="flex items-start gap-1.5 text-[10px] text-amber-700 bg-amber-50 border border-amber-100 rounded-md px-2 py-1.5 leading-snug">
@@ -437,7 +511,7 @@ function StartPipelineButton({ workspaceId, reportId, periodLabel }: { workspace
 
       queryClient.invalidateQueries({ queryKey: workspaceKeys.reports(workspaceId) });
       toast.success(`분석이 시작되었습니다. (${periodLabel})`);
-    } catch (e) {
+    } catch {
       toast.error('분석 시작에 실패했습니다.');
     } finally {
       setLoading(false);
@@ -490,7 +564,7 @@ function CreateReportButton({ workspaceId }: { workspaceId: string }) {
       const data = await res.json();
       queryClient.invalidateQueries({ queryKey: workspaceKeys.reports(workspaceId) });
       toast.success(`보고서가 생성되었습니다. (${data.period_start} ~ ${data.period_end})`);
-    } catch (e) {
+    } catch {
       toast.error('보고서 생성에 실패했습니다.');
     } finally {
       setLoading(false);
@@ -558,47 +632,41 @@ export default function WorkspaceDetailPage() {
     });
   };
 
-  // 진행 중인 보고서 자동 열기 (reports/progressList 로드 후)
+  // 가장 최근 보고서 1개만 자동 열기 (reports 로드 후)
   const [initialized, setInitialized] = useState(false);
-  if (!initialized && reports && progressList) {
-    const inProgress = new Set<string>();
-    for (const report of reports) {
-      if (report.status !== 'published') {
-        inProgress.add(report.id);
-      }
-    }
-    if (inProgress.size > 0) setExpandedIds(inProgress);
+  if (!initialized && filteredReports && filteredReports.length > 0) {
+    setExpandedIds(new Set([filteredReports[0].id]));
     setInitialized(true);
   }
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8">
-      <div className="max-w-2xl mx-auto flex flex-col gap-6">
+    <div className="px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
+      <div className="max-w-3xl mx-auto flex flex-col gap-7">
         {/* 워크스페이스 정보 */}
+        <div className="flex items-start justify-between gap-4">
+          <button
+            onClick={() => router.push('/workspace')}
+            className="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600 transition-colors cursor-pointer -ml-1 px-1 py-0.5 rounded"
+          >
+            <ChevronRight size={14} className="rotate-180" strokeWidth={1.8} />
+            워크스페이스
+          </button>
+        </div>
         {workspace && (
-          <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-            <div className="flex items-center gap-3">
-              <h1 className="text-xl font-bold text-slate-800">{workspace.company_name}</h1>
+          <div className="flex items-center justify-between gap-3 pb-4 border-b border-slate-100 -mt-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight truncate">
+                {workspace.company_name}
+              </h1>
               <TickerBadge ticker={workspace.ticker} />
             </div>
             <button
               onClick={() => setShowEditProfile(true)}
-              className="text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+              className="shrink-0 inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 bg-white border border-slate-200 rounded-lg px-3 py-1.5 hover:bg-slate-50 hover:border-slate-300 hover:text-slate-700 transition-colors cursor-pointer"
               title="회사 프로필 수정"
             >
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 18 18"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M9 15h6.75" />
-                <path d="M12.375 2.625a1.591 1.591 0 0 1 2.25 2.25L5.25 14.25l-3 .75.75-3 9.375-9.375z" />
-              </svg>
+              <Pencil size={13} strokeWidth={1.8} />
+              프로필 수정
             </button>
           </div>
         )}
@@ -614,25 +682,30 @@ export default function WorkspaceDetailPage() {
         {/* 리포트 목록 */}
         <div className="flex flex-col gap-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-slate-700">보고서</h2>
-            <div className="flex gap-1">
+            <div className="flex items-baseline gap-2">
+              <h2 className="text-base font-semibold text-slate-800">보고서</h2>
+              {reports && reports.length > 0 && (
+                <span className="text-xs text-slate-400 tabular-nums">({filteredReports?.length ?? 0})</span>
+              )}
+            </div>
+            <div className="inline-flex items-center gap-1 bg-slate-100 rounded-full p-1">
               <ReportTabButton active={currentTab === 'all'} onClick={() => setTab('all')}>전체</ReportTabButton>
               <ReportTabButton active={currentTab === 'weekly'} onClick={() => setTab('weekly')}>주간</ReportTabButton>
               <ReportTabButton active={currentTab === 'daily'} onClick={() => setTab('daily')}>일간</ReportTabButton>
             </div>
           </div>
 
-          {isLoading && <p className="text-sm text-slate-400 py-8 text-center">불러오는 중...</p>}
+          {isLoading && <p className="text-sm text-slate-400 py-10 text-center">불러오는 중...</p>}
 
           {!isLoading && (!reports || reports.length === 0) && (
-            <div className="bg-white rounded-2xl border border-dashed border-slate-200 shadow-sm py-12 flex flex-col items-center gap-3">
+            <div className="bg-white rounded-2xl border border-dashed border-slate-200 shadow-sm py-14 flex flex-col items-center gap-4">
               <span className="text-sm text-slate-400">아직 생성된 보고서가 없습니다</span>
               <CreateReportButton workspaceId={workspaceId} />
             </div>
           )}
 
           {!isLoading && reports && reports.length > 0 && filteredReports?.length === 0 && (
-            <div className="bg-white rounded-2xl border border-dashed border-slate-200 shadow-sm py-12 flex flex-col items-center gap-2">
+            <div className="bg-white rounded-2xl border border-dashed border-slate-200 shadow-sm py-14 flex flex-col items-center gap-2">
               <span className="text-sm text-slate-400">
                 {currentTab === 'daily' ? '일간' : '주간'} 보고서가 없습니다
               </span>
@@ -663,61 +736,83 @@ export default function WorkspaceDetailPage() {
             const progress = progressList?.find(p => p.reportId === report.id);
             const isNotAnalyzed = !progress || progress.sessions.length === 0;
             const periodLabel = report.type === 'daily' ? periodStart : `${periodStart} ~ ${periodEnd}`;
+            const health = getReportHealth(progress);
+            const failedCount = progress?.sessions.filter((s) => s.status === 'failed').length ?? 0;
 
             return (
               <div
                 key={report.id}
-                className="w-full bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden transition-all"
+                className="group w-full bg-white rounded-2xl border border-slate-100 shadow-sm flex items-stretch overflow-hidden hover:shadow-md hover:border-slate-200 transition-all duration-200"
               >
-                <div className="px-5 py-4 sm:px-6 flex items-center justify-between">
-                  <button
-                    onClick={() => toggleExpand(report.id)}
-                    className="flex items-center gap-2 cursor-pointer"
-                  >
-                    {isExpanded
-                      ? <ChevronUp size={16} className="text-slate-400" />
-                      : <ChevronDown size={16} className="text-slate-400" />
-                    }
-                  </button>
-                  <button
-                    onClick={() => router.push(`/workspace/${workspaceId}/${report.id}`)}
-                    className="flex-1 flex items-center justify-between ml-3 text-left cursor-pointer"
-                  >
-                    <div className="flex flex-col gap-1.5">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold text-slate-800">
-                          {periodLabel}
-                        </span>
-                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${statusColor}`}>
-                          {statusLabel}
-                        </span>
+                <div className={`w-1 shrink-0 ${HEALTH_STRIPE[health]}`} aria-hidden />
+                <div className="flex-1 min-w-0">
+                  <div className="px-3 sm:px-4 py-3.5 flex items-center gap-2">
+                    <button
+                      onClick={() => toggleExpand(report.id)}
+                      aria-label={isExpanded ? '접기' : '펼치기'}
+                      className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer transition-colors"
+                    >
+                      {isExpanded
+                        ? <ChevronUp size={16} strokeWidth={2} />
+                        : <ChevronDown size={16} strokeWidth={2} />
+                      }
+                    </button>
+                    <button
+                      onClick={() => router.push(`/workspace/${workspaceId}/${report.id}`)}
+                      className="flex-1 min-w-0 flex items-center justify-between gap-3 text-left cursor-pointer"
+                    >
+                      <div className="flex flex-col gap-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-semibold text-slate-800 tabular-nums">
+                            {periodLabel}
+                          </span>
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${statusColor}`}>
+                            {statusLabel}
+                          </span>
+                          {failedCount > 0 && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-red-50 text-red-600">
+                              <AlertCircle size={10} strokeWidth={2.4} />
+                              실패 {failedCount}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-slate-400">
+                          <span>{typeLabel}</span>
+                          {!isNotAnalyzed && (
+                            <>
+                              <span className="text-slate-200">·</span>
+                              <ChannelMiniDots progress={progress} reportType={report.type} />
+                            </>
+                          )}
+                        </div>
                       </div>
-                      <span className="text-xs text-slate-400">{typeLabel}</span>
-                    </div>
-                    {!isNotAnalyzed && (
-                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" className="text-slate-300 shrink-0">
-                        <path d="M6 4l4 4-4 4" />
-                      </svg>
+                      {!isNotAnalyzed && (
+                        <ChevronRight
+                          size={16}
+                          strokeWidth={1.8}
+                          className="text-slate-300 group-hover:text-slate-500 group-hover:translate-x-0.5 transition-all shrink-0"
+                        />
+                      )}
+                    </button>
+                    {isNotAnalyzed && (
+                      <StartPipelineButton
+                        workspaceId={workspaceId}
+                        reportId={report.id}
+                        periodLabel={periodLabel}
+                      />
                     )}
-                  </button>
-                  {isNotAnalyzed && (
-                    <StartPipelineButton
-                      workspaceId={workspaceId}
-                      reportId={report.id}
-                      periodLabel={periodLabel}
-                    />
+                  </div>
+                  {isExpanded && progress && (
+                    <div className="border-t border-slate-100">
+                      <ReportProgressPanel
+                        workspaceId={workspaceId}
+                        reportId={report.id}
+                        reportType={report.type}
+                        progress={progress}
+                      />
+                    </div>
                   )}
                 </div>
-                {isExpanded && progress && (
-                  <div className="border-t border-slate-100">
-                    <ReportProgressPanel
-                      workspaceId={workspaceId}
-                      reportId={report.id}
-                      reportType={report.type}
-                      progress={progress}
-                    />
-                  </div>
-                )}
               </div>
             );
           })}
@@ -740,10 +835,10 @@ function ReportTabButton({
     <button
       type="button"
       onClick={onClick}
-      className={`px-3 py-1 text-xs font-semibold rounded-full transition-colors cursor-pointer ${
+      className={`px-3.5 py-1.5 text-xs font-semibold rounded-full transition-all cursor-pointer ${
         active
-          ? 'bg-slate-800 text-white'
-          : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+          ? 'bg-white text-slate-800 shadow-sm'
+          : 'text-slate-500 hover:text-slate-700'
       }`}
     >
       {children}
