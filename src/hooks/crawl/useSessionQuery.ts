@@ -8,7 +8,7 @@ export const sessionKeys = {
   byDate: (workspaceId: string, dateKey: string) => ['sessions', workspaceId, dateKey] as const,
 };
 
-const ACTIVE_STATUSES = new Set(['crawling', 'analyzing', 'clustering']);
+const ACTIVE_STATUSES = new Set(['crawling', 'pending_analysis', 'analyzing', 'clustering']);
 
 export function useSessions(workspaceId: string, forcePolling = false) {
   return useQuery({

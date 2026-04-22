@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 // ── 세션 ──
 
-export const crawlStatusEnum = z.enum(['crawling', 'analyzing', 'clustering', 'done', 'failed']);
+export const crawlStatusEnum = z.enum(['crawling', 'pending_analysis', 'analyzing', 'clustering', 'done', 'failed']);
 export const crawlFailedAtEnum = z.enum(['crawling', 'analyzing', 'clustering']);
 
 export const crawlSessionSchema = z.object({

@@ -232,7 +232,7 @@ function getReportHealth(progress: ReportProgress | undefined): ReportHealth {
   if (!progress || progress.sessions.length === 0) return 'empty';
   const statuses = progress.sessions.map((s) => s.status);
   if (statuses.some((s) => s === 'failed')) return 'failed';
-  if (statuses.some((s) => ['pending', 'crawling', 'analyzing', 'clustering'].includes(s))) return 'running';
+  if (statuses.some((s) => ['pending', 'crawling', 'pending_analysis', 'analyzing', 'clustering'].includes(s))) return 'running';
   if (statuses.every((s) => s === 'done')) return 'done';
   return 'pending';
 }
