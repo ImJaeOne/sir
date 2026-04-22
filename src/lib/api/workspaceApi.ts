@@ -219,8 +219,8 @@ export async function getReportProgress(workspaceId: string): Promise<ReportProg
 
     // 해당 리포트의 전략/총평만 필터
     const reportStrategies = strategies.filter(s => s.report_id === report.id);
-    const hasSummary = reportStrategies.some(s => s.category === null);
-    const strategyCategories = [...new Set(reportStrategies.filter(s => s.category !== null).map(s => s.category as string))];
+    const hasSummary = reportStrategies.some(s => s.category === 'summary');
+    const strategyCategories = [...new Set(reportStrategies.filter(s => s.category !== 'summary').map(s => s.category as string))];
 
     return {
       reportId: report.id,

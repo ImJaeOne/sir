@@ -18,7 +18,13 @@ const PLATFORM_LABELS: Record<string, string> = {
   youtube: 'YouTube',
   naver_stock: 'Naver Stock',
   dcinside: 'DC Inside',
+  strategy_news: '전략 · 뉴스',
+  strategy_sns: '전략 · SNS',
+  strategy_community: '전략 · 커뮤니티',
+  summary: '총평',
 };
+
+const STAGE_IDS = new Set(['strategy_news', 'strategy_sns', 'strategy_community', 'summary']);
 
 const ACTIVE_STATUS_LABELS: Record<string, string> = {
   pending: '대기',
@@ -32,6 +38,7 @@ const FAILED_REASON_LABELS: Record<string, string> = {
   save: '저장 실패',
   analyze: '분석 실패',
   calculate: '계산 실패',
+  generate: '생성 실패',
 };
 
 function formatCronSchedule(iso: string): string {
@@ -67,8 +74,14 @@ function groupByWorkspace<T extends { workspace_id: string; workspace_name: stri
 }
 
 function PlatformBadge({ platformId }: { platformId: string }) {
+  const isStage = STAGE_IDS.has(platformId);
+  const cls = isStage
+    ? 'bg-violet-50 text-violet-700'
+    : 'bg-slate-100 text-slate-600';
   return (
-    <span className="inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-600 whitespace-nowrap">
+    <span
+      className={`inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded-md whitespace-nowrap ${cls}`}
+    >
       {PLATFORM_LABELS[platformId] ?? platformId}
     </span>
   );
@@ -111,15 +124,18 @@ function WorkspaceActiveCard({ name, items }: { name: string; items: OpsActiveSe
       <div className="flex-1 min-w-0 px-4 py-3 flex flex-col gap-2">
         <h3 className="text-sm font-semibold text-slate-800 truncate">{name}</h3>
         <ul className="flex flex-col gap-1.5">
-          {items.map((s) => (
-            <li key={s.session_id} className="flex items-center gap-2 min-w-0">
-              <PlatformBadge platformId={s.platform_id} />
-              <span className="text-xs text-slate-600 flex-1 truncate">
-                {ACTIVE_STATUS_LABELS[s.status] ?? s.status}
-              </span>
-              <ActiveStatusIcon status={s.status} />
-            </li>
-          ))}
+          {items.map((s) => {
+            const label = STAGE_IDS.has(s.platform_id)
+              ? '생성 중'
+              : (ACTIVE_STATUS_LABELS[s.status] ?? s.status);
+            return (
+              <li key={s.session_id} className="flex items-center gap-2 min-w-0">
+                <PlatformBadge platformId={s.platform_id} />
+                <span className="text-xs text-slate-600 flex-1 truncate">{label}</span>
+                <ActiveStatusIcon status={s.status} />
+              </li>
+            );
+          })}
         </ul>
       </div>
     </div>
@@ -175,12 +191,39 @@ function WorkspaceWaitingCard({ name, items }: { name: string; items: OpsWaiting
   );
 }
 
-function CompletedRow({ c }: { c: OpsCompletion }) {
+function WorkspaceCompletedCard({ name, items }: { name: string; items: OpsCompletion[] }) {
+  const [open, setOpen] = useState(false);
   return (
-    <div className="bg-white rounded-xl border border-slate-100 shadow-sm px-4 py-2.5 flex items-center gap-2 min-w-0">
-      <PlatformBadge platformId={c.platform_id} />
-      <span className="text-sm text-slate-700 flex-1 truncate">{c.workspace_name ?? '—'}</span>
-      <CheckCircle2 className="size-3.5 text-emerald-500 shrink-0" />
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm flex overflow-hidden">
+      <div className="w-1 shrink-0 bg-emerald-400" aria-hidden />
+      <div className="flex-1 min-w-0 flex flex-col">
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="w-full px-4 py-3 flex items-center gap-2 text-left hover:bg-slate-50 transition-colors cursor-pointer"
+        >
+          <div className="flex-1 min-w-0">
+            <h3 className="text-sm font-semibold text-slate-800 truncate">{name}</h3>
+            <p className="text-[11px] text-emerald-600 mt-0.5">완료 {items.length}건</p>
+          </div>
+          {open ? (
+            <ChevronDown size={14} className="text-slate-400 shrink-0" />
+          ) : (
+            <ChevronRight size={14} className="text-slate-400 shrink-0" />
+          )}
+        </button>
+        {open && (
+          <ul className="border-t border-slate-100 divide-y divide-slate-100">
+            {items.map((c) => (
+              <li key={c.session_id} className="px-4 py-2 flex items-center gap-2 min-w-0">
+                <PlatformBadge platformId={c.platform_id} />
+                <span className="flex-1" aria-hidden />
+                <CheckCircle2 className="size-3.5 text-emerald-500 shrink-0" />
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }
@@ -312,15 +355,16 @@ export default function OpsPage() {
 
   const waitingGroups = groupByWorkspace(waiting);
   const activeGroups = groupByWorkspace(active);
+  const completedGroups = groupByWorkspace(completions);
 
   const hasLock = Boolean(data?.lock_holder);
   const hasFinalize = Boolean(data?.finalize);
   const hasRetry = Boolean(data?.retry_batch);
   const hasUpcoming = Boolean(upcoming && upcoming.workspaces.length > 0);
 
-  const waitingCount = waiting.length + (hasRetry ? 1 : 0) + (hasUpcoming ? 1 : 0);
-  const workingCount = active.length + (hasLock ? 1 : 0) + (hasFinalize ? 1 : 0);
-  const completedCount = completions.length;
+  const waitingCount = waitingGroups.length + (hasRetry ? 1 : 0) + (hasUpcoming ? 1 : 0);
+  const workingCount = activeGroups.length + (hasLock ? 1 : 0) + (hasFinalize ? 1 : 0);
+  const completedCount = completedGroups.length;
 
   const statusInfo = error
     ? { label: 'OFFLINE', dot: 'bg-red-500', chip: 'bg-red-50 text-red-700' }
@@ -375,8 +419,8 @@ export default function OpsPage() {
           </Column>
 
           <Column title="완료" count={completedCount}>
-            {completions.map((c) => (
-              <CompletedRow key={c.session_id} c={c} />
+            {completedGroups.map((g) => (
+              <WorkspaceCompletedCard key={g.workspace_id} name={g.name} items={g.items} />
             ))}
             {completedCount === 0 && <EmptyCard>최근 완료된 작업 없음</EmptyCard>}
           </Column>

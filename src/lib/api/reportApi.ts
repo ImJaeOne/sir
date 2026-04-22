@@ -122,7 +122,7 @@ export async function getWeeklySummary(workspaceId: string, reportId?: string): 
     .from('session_strategies')
     .select('all_strategy')
     .eq('workspace_id', workspaceId)
-    .is('category', null)
+    .eq('category', 'summary')
     .order('created_at', { ascending: false })
     .limit(1);
 
@@ -141,7 +141,7 @@ export async function upsertWeeklySummary(workspaceId: string, reportId: string,
     .select('id')
     .eq('workspace_id', workspaceId)
     .eq('report_id', reportId)
-    .is('category', null)
+    .eq('category', 'summary')
     .limit(1);
 
   if (existing && existing.length > 0) {
@@ -156,7 +156,7 @@ export async function upsertWeeklySummary(workspaceId: string, reportId: string,
       .insert({
         workspace_id: workspaceId,
         report_id: reportId,
-        category: null,
+        category: 'summary',
         all_strategy: sections,
       });
     if (error) throw error;
