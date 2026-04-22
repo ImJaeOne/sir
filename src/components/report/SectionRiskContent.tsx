@@ -4,21 +4,17 @@ import { ReportCard } from './ReportCard';
 import type { RiskItem } from '@/lib/api/reportApi';
 
 const criticalTypeLabels: Record<string, { label: string; className: string }> = {
-  stock_manipulation: { label: '시세조종', className: 'bg-red-50 text-red-700' },
-  false_info: { label: '허위정보', className: 'bg-orange-50 text-orange-700' },
   defamation: { label: '명예훼손', className: 'bg-red-50 text-red-700' },
-  threat: { label: '위협', className: 'bg-red-50 text-red-700' },
-  ad: { label: '광고', className: 'bg-blue-50 text-blue-700' },
+  insult: { label: '욕설/비방', className: 'bg-orange-50 text-orange-700' },
+  rumor: { label: '루머', className: 'bg-blue-50 text-blue-700' },
   spam: { label: '스팸', className: 'bg-slate-100 text-slate-600' },
 };
 
 const criticalTypeDescriptions: Record<string, string> = {
-  stock_manipulation: '시세 조종이 의심되는 게시물',
-  false_info: '허위 정보가 사실처럼 확산되는 게시물',
-  defamation: '기업/인물에 대한 명예훼손성 게시물',
-  threat: '특정인을 대상으로 한 위협/협박 게시물',
-  ad: '기업 관련 광고/홍보성 게시물',
-  spam: '스팸/도배/무관 광고 게시물',
+  defamation: '구체적 사실 또는 허위사실로 평판을 떨어뜨리는 게시물',
+  insult: '사실 주장 없이 상대를 깎아내리거나 조롱하는 게시물',
+  rumor: '확인되지 않은 내용을 추정형으로 퍼뜨리는 게시물',
+  spam: '리딩방 홍보/반복성 도배/상업성 링크 유도 게시물',
 };
 
 const PLATFORM_LABELS: Record<string, string> = {

@@ -312,11 +312,9 @@ export function AnalysisResult({ clusters, standaloneItems, crawlItems, communit
                                         <SentimentTag sentiment={item.sentiment!} />
                                         {item.critical_type && (
                                           <span className="text-xs font-bold px-1.5 py-0.5 rounded bg-orange-50 text-orange-700 shrink-0">
-                                            {item.critical_type === 'market_manipulation' ? '시세조종'
+                                            {item.critical_type === 'defamation' ? '명예훼손'
+                                              : item.critical_type === 'insult' ? '욕설/비방'
                                               : item.critical_type === 'rumor' ? '루머'
-                                              : item.critical_type === 'legal_risk' ? '법적위험'
-                                              : item.critical_type === 'threat' ? '위협'
-                                              : item.critical_type === 'ad' ? '광고'
                                               : item.critical_type === 'spam' ? '스팸' : item.critical_type}
                                           </span>
                                         )}
@@ -347,11 +345,9 @@ export function AnalysisResult({ clusters, standaloneItems, crawlItems, communit
                                         <SentimentTag sentiment={item.sentiment!} />
                                         {item.critical_type && (
                                           <span className="text-xs font-bold px-1.5 py-0.5 rounded bg-orange-50 text-orange-700 shrink-0">
-                                            {item.critical_type === 'market_manipulation' ? '시세조종'
+                                            {item.critical_type === 'defamation' ? '명예훼손'
+                                              : item.critical_type === 'insult' ? '욕설/비방'
                                               : item.critical_type === 'rumor' ? '루머'
-                                              : item.critical_type === 'legal_risk' ? '법적위험'
-                                              : item.critical_type === 'threat' ? '위협'
-                                              : item.critical_type === 'ad' ? '광고'
                                               : item.critical_type === 'spam' ? '스팸' : item.critical_type}
                                           </span>
                                         )}

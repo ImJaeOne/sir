@@ -59,7 +59,7 @@ export const strategySchema = z.object({
 
 // ── 커뮤니티 ──
 
-export const criticalTypeEnum = z.enum(['market_manipulation', 'rumor', 'legal_risk', 'threat', 'ad', 'spam']);
+export const criticalTypeEnum = z.enum(['defamation', 'insult', 'rumor', 'spam']);
 
 export const communityItemSchema = z.object({
   id: z.string().uuid(),
