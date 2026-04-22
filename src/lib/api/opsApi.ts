@@ -62,6 +62,18 @@ export interface OpsCompletion {
   updated_at: string;
 }
 
+export interface OpsUpcomingWorkspace {
+  workspace_id: string;
+  company_name: string | null;
+  ticker: string | null;
+}
+
+export interface OpsUpcomingCron {
+  scheduled_at: string;
+  report_types: ('daily' | 'weekly')[];
+  workspaces: OpsUpcomingWorkspace[];
+}
+
 export interface OpsQueue {
   lock_holder: OpsLockHolder | null;
   retry_batch: OpsRetryBatch | null;
@@ -69,6 +81,7 @@ export interface OpsQueue {
   active_sessions: OpsActiveSession[];
   waiting_sessions: OpsWaitingSession[];
   recent_completions: OpsCompletion[];
+  upcoming_cron: OpsUpcomingCron | null;
   server_time: string;
 }
 

@@ -8,6 +8,7 @@ import {
   type OpsActiveSession,
   type OpsCompletion,
   type OpsQueue,
+  type OpsUpcomingCron,
   type OpsWaitingSession,
 } from '@/lib/api/opsApi';
 
@@ -32,6 +33,24 @@ const FAILED_REASON_LABELS: Record<string, string> = {
   analyze: '분석 실패',
   calculate: '계산 실패',
 };
+
+function formatCronSchedule(iso: string): string {
+  const dt = new Date(iso);
+  const now = new Date();
+  const hh = String(dt.getHours()).padStart(2, '0');
+  const mm = String(dt.getMinutes()).padStart(2, '0');
+
+  const sameDay = (a: Date, b: Date) =>
+    a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+
+  if (sameDay(dt, now)) return `오늘 ${hh}:${mm}`;
+
+  const tomorrow = new Date(now);
+  tomorrow.setDate(now.getDate() + 1);
+  if (sameDay(dt, tomorrow)) return `내일 ${hh}:${mm}`;
+
+  return `${dt.getMonth() + 1}월 ${dt.getDate()}일 ${hh}:${mm}`;
+}
 
 function groupByWorkspace<T extends { workspace_id: string; workspace_name: string | null }>(
   items: T[],
@@ -200,6 +219,59 @@ function FinalizeCard({ finalize }: { finalize: NonNullable<OpsQueue['finalize']
   );
 }
 
+function UpcomingCronCard({ upcoming }: { upcoming: OpsUpcomingCron }) {
+  const [open, setOpen] = useState(false);
+  const dateLabel = formatCronSchedule(upcoming.scheduled_at);
+  const typesLabel = upcoming.report_types.map((t) => (t === 'daily' ? 'Daily' : 'Weekly')).join(' + ');
+  const count = upcoming.workspaces.length;
+
+  return (
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm flex overflow-hidden">
+      <div className="w-1 shrink-0 bg-sky-400" aria-hidden />
+      <div className="flex-1 min-w-0 flex flex-col">
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="w-full px-4 py-3 flex items-center gap-2 text-left hover:bg-slate-50 transition-colors cursor-pointer"
+        >
+          <div className="flex-1 min-w-0">
+            <h3 className="text-sm font-semibold text-slate-800">{dateLabel} 예정</h3>
+            <p className="text-[11px] text-slate-400 mt-0.5">
+              {count}개 워크스페이스 · {typesLabel}
+            </p>
+          </div>
+          {open ? (
+            <ChevronDown size={14} className="text-slate-400 shrink-0" />
+          ) : (
+            <ChevronRight size={14} className="text-slate-400 shrink-0" />
+          )}
+        </button>
+        {open && count > 0 && (
+          <ul className="border-t border-slate-100 divide-y divide-slate-100">
+            {upcoming.workspaces.map((ws) => (
+              <li key={ws.workspace_id} className="px-4 py-2 flex items-center gap-2">
+                <span className="text-sm text-slate-700 flex-1 truncate">
+                  {ws.company_name ?? '—'}
+                </span>
+                {ws.ticker && (
+                  <span className="text-[10px] font-mono text-slate-400 tabular-nums">
+                    {ws.ticker}
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+        {open && count === 0 && (
+          <div className="border-t border-slate-100 px-4 py-3 text-xs text-slate-400">
+            예정된 워크스페이스 없음
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function RetryBatchCard({ batch }: { batch: NonNullable<OpsQueue['retry_batch']> }) {
   const processed = batch.total - batch.remaining;
   const pct = batch.total ? Math.round((processed / batch.total) * 100) : 0;
@@ -236,6 +308,7 @@ export default function OpsPage() {
   const waiting = data?.waiting_sessions ?? [];
   const active = data?.active_sessions ?? [];
   const completions = (data?.recent_completions ?? []).filter((c) => c.status === 'done');
+  const upcoming = data?.upcoming_cron ?? null;
 
   const waitingGroups = groupByWorkspace(waiting);
   const activeGroups = groupByWorkspace(active);
@@ -243,8 +316,9 @@ export default function OpsPage() {
   const hasLock = Boolean(data?.lock_holder);
   const hasFinalize = Boolean(data?.finalize);
   const hasRetry = Boolean(data?.retry_batch);
+  const hasUpcoming = Boolean(upcoming && upcoming.workspaces.length > 0);
 
-  const waitingCount = waiting.length + (hasRetry ? 1 : 0);
+  const waitingCount = waiting.length + (hasRetry ? 1 : 0) + (hasUpcoming ? 1 : 0);
   const workingCount = active.length + (hasLock ? 1 : 0) + (hasFinalize ? 1 : 0);
   const completedCount = completions.length;
 
@@ -287,6 +361,7 @@ export default function OpsPage() {
             {waitingGroups.map((g) => (
               <WorkspaceWaitingCard key={g.workspace_id} name={g.name} items={g.items} />
             ))}
+            {hasUpcoming && upcoming && <UpcomingCronCard upcoming={upcoming} />}
             {waitingCount === 0 && <EmptyCard>대기 중인 작업 없음</EmptyCard>}
           </Column>
 
