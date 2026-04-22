@@ -39,6 +39,17 @@ export interface OpsActiveSession {
   updated_at: string;
 }
 
+export interface OpsWaitingSession {
+  session_id: string;
+  workspace_id: string;
+  workspace_name: string | null;
+  report_id: string | null;
+  platform_id: string;
+  failed_reason: string | null;
+  error_message: string | null;
+  updated_at: string;
+}
+
 export interface OpsCompletion {
   session_id: string;
   workspace_id: string;
@@ -56,6 +67,7 @@ export interface OpsQueue {
   retry_batch: OpsRetryBatch | null;
   finalize: OpsFinalize | null;
   active_sessions: OpsActiveSession[];
+  waiting_sessions: OpsWaitingSession[];
   recent_completions: OpsCompletion[];
   server_time: string;
 }
