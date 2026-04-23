@@ -47,6 +47,7 @@ interface ReportMeta {
   periodStart: string;
   periodEnd: string;
   sirScore: number;
+  type: string;
 }
 
 const reportMetaCache = new Map<string, ReportMeta>();
@@ -57,7 +58,7 @@ async function getReportMeta(reportId: string): Promise<ReportMeta> {
   const [reportRes, sessionsRes] = await Promise.all([
     supabase
       .from('reports')
-      .select('period_start, period_end, sir_score')
+      .select('type, period_start, period_end, sir_score')
       .eq('id', reportId)
       .maybeSingle(),
     supabase.from('sessions').select('id').eq('report_id', reportId),
@@ -68,6 +69,7 @@ async function getReportMeta(reportId: string): Promise<ReportMeta> {
     periodStart: reportRes.data?.period_start ?? '',
     periodEnd: reportRes.data?.period_end ?? '',
     sirScore: reportRes.data?.sir_score ?? 0,
+    type: reportRes.data?.type ?? '',
   };
 
   reportMetaCache.set(reportId, meta);
@@ -231,29 +233,51 @@ const TIER_RANGES = [
 ];
 
 export async function getSirRanking(workspaceId: string, reportId?: string): Promise<SirRanking> {
-  // 각 워크스페이스의 최신 report sir_score 조회 — 기업 × 보고서 누적이 1000 넘을 수 있어 페이지네이션
-  const reports = await fetchAllPaged<{ workspace_id: string; sir_score: number }>((from, to) =>
-    supabase.from('reports')
-      .select('workspace_id, sir_score')
-      .not('sir_score', 'is', null)
-      .order('created_at', { ascending: false })
-      .range(from, to));
+  // 비교 풀 = 현재 보고서와 동일 (type, period_start, period_end) 의 타 워크스페이스 리포트 점수들.
+  // reportId 가 없으면(예: 대시보드 등) 워크스페이스별 최신 리포트 점수로 fallback.
+  let all: { id: string; sir_score: number }[] = [];
+  let myScore = 0;
 
-  // 워크스페이스별 최신 report sir_score만 추출
-  const latestByWs = new Map<string, number>();
-  for (const r of reports) {
-    if (!latestByWs.has(r.workspace_id)) {
-      latestByWs.set(r.workspace_id, r.sir_score);
-    }
-  }
-
-  const all = Array.from(latestByWs.entries()).map(([id, score]) => ({ id, sir_score: score }));
-
-  // reportId가 있으면 해당 report의 sir_score 사용, 없으면 workspace 최신값
-  let myScore = latestByWs.get(workspaceId) ?? 0;
   if (reportId) {
     const meta = await getReportMeta(reportId);
     myScore = meta.sirScore;
+
+    if (meta.type && meta.periodStart && meta.periodEnd) {
+      const reports = await fetchAllPaged<{ workspace_id: string; sir_score: number }>((from, to) =>
+        supabase.from('reports')
+          .select('workspace_id, sir_score')
+          .eq('type', meta.type)
+          .eq('period_start', meta.periodStart)
+          .eq('period_end', meta.periodEnd)
+          .not('sir_score', 'is', null)
+          .order('created_at', { ascending: false })  // 재생성 시 최신 점수 우선
+          .range(from, to));
+
+      const byWs = new Map<string, number>();
+      for (const r of reports) {
+        if (!byWs.has(r.workspace_id)) byWs.set(r.workspace_id, r.sir_score);
+      }
+      all = Array.from(byWs.entries()).map(([id, score]) => ({ id, sir_score: score }));
+
+      // 현재 보고서 자체의 점수로 강제 치환 — all 배열의 내 점수와 myScore 불일치 방지
+      const meIdx = all.findIndex(w => w.id === workspaceId);
+      if (meIdx >= 0) all[meIdx].sir_score = myScore;
+      else all.push({ id: workspaceId, sir_score: myScore });
+    }
+  } else {
+    const reports = await fetchAllPaged<{ workspace_id: string; sir_score: number }>((from, to) =>
+      supabase.from('reports')
+        .select('workspace_id, sir_score')
+        .not('sir_score', 'is', null)
+        .order('created_at', { ascending: false })
+        .range(from, to));
+
+    const latestByWs = new Map<string, number>();
+    for (const r of reports) {
+      if (!latestByWs.has(r.workspace_id)) latestByWs.set(r.workspace_id, r.sir_score);
+    }
+    all = Array.from(latestByWs.entries()).map(([id, score]) => ({ id, sir_score: score }));
+    myScore = latestByWs.get(workspaceId) ?? 0;
   }
 
   const myTierIdx = TIER_RANGES.findIndex(t => myScore >= t.min && myScore < t.max);

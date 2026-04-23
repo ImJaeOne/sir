@@ -1,17 +1,9 @@
 import { useEffect } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { getWorkspaces, getWorkspace, getWorkspaceProfile, getReports, getReportProgress } from '@/lib/api/workspaceApi';
 import { getActiveSubscription } from '@/lib/api/subscriptionApi';
 import { createClient } from '@/lib/supabase/client';
-
-export const workspaceKeys = {
-  all: ['workspaces'] as const,
-  detail: (id: string) => ['workspaces', id] as const,
-  profile: (id: string) => ['workspaces', id, 'profile'] as const,
-  reports: (id: string) => ['workspaces', id, 'reports'] as const,
-  progress: (id: string) => ['workspaces', id, 'progress'] as const,
-  subscription: (id: string) => ['workspaces', id, 'subscription'] as const,
-};
+import { workspaceKeys } from './workspaceKeys';
 
 /** 워크스페이스의 현재 활성 구독 조회 — has_daily 등 분기용 */
 export function useWorkspaceSubscription(workspaceId: string) {
@@ -58,6 +50,24 @@ export function useReportProgress(workspaceId: string) {
     queryKey: workspaceKeys.progress(workspaceId),
     queryFn: () => getReportProgress(workspaceId),
     enabled: !!workspaceId,
+  });
+}
+
+// ── Suspense 변형 ──
+// 보고서 상세 페이지처럼 '모든 데이터 준비 후 한 번에 렌더' 플로우 전용.
+// 호출 측은 <Suspense fallback={...}> 경계 안에 있어야 한다.
+
+export function useWorkspaceSuspense(id: string) {
+  return useSuspenseQuery({
+    queryKey: workspaceKeys.detail(id),
+    queryFn: () => getWorkspace(id),
+  });
+}
+
+export function useReportProgressSuspense(workspaceId: string) {
+  return useSuspenseQuery({
+    queryKey: workspaceKeys.progress(workspaceId),
+    queryFn: () => getReportProgress(workspaceId),
   });
 }
 

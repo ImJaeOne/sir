@@ -1,6 +1,6 @@
 'use client';
 
-import { useResolvedRiskReports } from '@/hooks/report/useReportQuery';
+import { useResolvedRiskReportsSuspense } from '@/hooks/report/useReportQuery';
 import { ReportSubSection } from '@/components/report/ReportSection';
 import { ReportCard } from '@/components/report/ReportCard';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -27,8 +27,7 @@ interface RiskResultTableProps {
 }
 
 export function RiskResultTable({ workspaceId, periodStart, periodEnd, isDaily = false }: RiskResultTableProps) {
-  const { data: riskReports } = useResolvedRiskReports(workspaceId, periodStart, periodEnd);
-  const reports = riskReports ?? [];
+  const { data: reports } = useResolvedRiskReportsSuspense(workspaceId, periodStart, periodEnd);
 
   const description = isDaily
     ? '어제 처리 완료되거나 반려된 신고 대행 건을 확인할 수 있습니다.'

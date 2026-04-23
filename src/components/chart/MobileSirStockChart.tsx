@@ -14,6 +14,32 @@ function getWeekKey(fullDate: string): string {
   return monday.toISOString().slice(0, 10);
 }
 
+function niceTicks(min: number, max: number, tickCount: number): number[] {
+  if (!(max > min)) return Array.from({ length: tickCount }, (_, i) => min + i);
+  const intervals = tickCount - 1;
+  const pickStep = (raw: number) => {
+    const mag = 10 ** Math.floor(Math.log10(raw));
+    const norm = raw / mag;
+    const factor = norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 2.5 ? 2.5 : norm <= 5 ? 5 : 10;
+    return factor * mag;
+  };
+  let step = pickStep((max - min) / intervals);
+  let lo = Math.floor(min / step) * step;
+  let hi = lo + step * intervals;
+  while (hi < max) {
+    step = pickStep(step * 1.01);
+    lo = Math.floor(min / step) * step;
+    hi = lo + step * intervals;
+  }
+  return Array.from({ length: tickCount }, (_, i) => lo + step * i);
+}
+
+function formatPriceTick(v: number, step: number): string {
+  if (v < 10000) return v.toLocaleString();
+  const decimals = step >= 10000 ? 0 : step >= 1000 ? 1 : step >= 100 ? 2 : 3;
+  return `${(v / 10000).toFixed(decimals)}만`;
+}
+
 function aggregateWeekly(data: SirStockPoint[]) {
   const weeks = new Map<string, SirStockPoint[]>();
   for (const d of data) {
@@ -146,9 +172,17 @@ export function MobileSirStockChart({
     .slice(-30)
     .flatMap((d) => [d.low_price, d.high_price])
     .filter((v): v is number => v != null);
-  const minPrice = allPrices.length ? Math.floor(Math.min(...allPrices) * 0.95) : 0;
-  const maxPrice = allPrices.length ? Math.ceil(Math.max(...allPrices) * 1.05) : 100;
+  const rawMin = allPrices.length ? Math.floor(Math.min(...allPrices) * 0.95) : 0;
+  const rawMax = allPrices.length ? Math.ceil(Math.max(...allPrices) * 1.05) : 100;
   const bodyW = Math.max(displayData.length * ITEM_W, 300);
+
+  // 좌(SIR) / 중(격자) / 우(주가) 3개 독립 차트 간 틱 Y 위치 정렬 + nice tick 라벨
+  const TICK_COUNT = 5;
+  const sirTicks = [0, 250, 500, 750, 1000];
+  const priceTicks = niceTicks(rawMin, rawMax, TICK_COUNT);
+  const minPrice = priceTicks[0];
+  const maxPrice = priceTicks[priceTicks.length - 1];
+  const priceStep = priceTicks[1] - priceTicks[0];
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollLeft = scrollRef.current.scrollWidth;
@@ -169,6 +203,7 @@ export function MobileSirStockChart({
               yAxisId="sir"
               orientation="left"
               domain={[0, 1000]}
+              ticks={sirTicks}
               tick={{ fontSize: 9, fill: 'var(--color-text-muted)' }}
               axisLine={false}
               tickLine={false}
@@ -213,8 +248,8 @@ export function MobileSirStockChart({
               tickLine={false}
               interval={2}
             />
-            <YAxis yAxisId="sir" domain={[0, 1000]} hide />
-            <YAxis yAxisId="price" domain={[minPrice, maxPrice]} hide />
+            <YAxis yAxisId="sir" domain={[0, 1000]} ticks={sirTicks} hide />
+            <YAxis yAxisId="price" domain={[minPrice, maxPrice]} ticks={priceTicks} hide />
             <Tooltip
               cursor={false}
               contentStyle={{
@@ -264,11 +299,12 @@ export function MobileSirStockChart({
                 yAxisId="price"
                 orientation="right"
                 domain={[minPrice, maxPrice]}
+                ticks={priceTicks}
                 tick={{ fontSize: 9, fill: 'var(--color-text-muted)' }}
                 axisLine={false}
                 tickLine={false}
                 width={50}
-                tickFormatter={(v) => `${(v / 10000).toFixed(1)}만`}
+                tickFormatter={(v) => formatPriceTick(v, priceStep)}
                 label={{
                   value: '주가',
                   position: 'insideTopRight',

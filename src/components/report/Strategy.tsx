@@ -1,6 +1,6 @@
 'use client';
 
-import { useStrategies } from '@/hooks/report/useReportQuery';
+import { useStrategiesSuspense } from '@/hooks/report/useReportQuery';
 import { ReportSection, ReportSubSection } from '@/components/report/ReportSection';
 import { StrategyCard } from '@/components/report/strategy/StrategyCard';
 import { EditableStrategy } from '@/components/report/strategy/EditableStrategy';
@@ -14,13 +14,13 @@ interface StrategyProps {
 }
 
 export function Strategy({ workspaceId, reportId, editable = false }: StrategyProps) {
-  const { data: strategies } = useStrategies(workspaceId, reportId);
+  const { data: strategies } = useStrategiesSuspense(workspaceId, reportId);
 
   if (editable) {
     return (
       <div className="print-break">
         <ReportSection id="section-strategy" icon={<StrategyIcon size={36} />} title="대응 전략 제안">
-          <EditableStrategy strategies={strategies ?? []} workspaceId={workspaceId} reportId={reportId} />
+          <EditableStrategy strategies={strategies} workspaceId={workspaceId} reportId={reportId} />
         </ReportSection>
       </div>
     );
@@ -33,9 +33,9 @@ export function Strategy({ workspaceId, reportId, editable = false }: StrategyPr
           title="채널별 대응 전략"
           description="이번 주 온라인 여론 분석 결과를 바탕으로, 각 채널별 긍정 여론 확산 및 부정 여론 완화를 위한 주요 전략을 확인할 수 있습니다."
         >
-          {(strategies ?? []).length > 0 ? (
+          {strategies.length > 0 ? (
             <div className="flex flex-col gap-4">
-              {(strategies ?? []).map((s) => (
+              {strategies.map((s) => (
                 <StrategyCard key={s.category} category={s.category} label={s.label} strategy={s.strategy} />
               ))}
             </div>

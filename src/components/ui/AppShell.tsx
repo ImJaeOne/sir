@@ -18,22 +18,28 @@ import {
 import { SirSymbol } from '@/components/icons/SirSymbol';
 import { SirLogoIcon } from '@/components/icons/SirLogo.Icon';
 import type { LucideIcon } from 'lucide-react';
-import type { AuthUser } from '@/types/auth';
+import type { AuthUser, ProfileRole } from '@/types/auth';
 
 interface NavItem {
   label: string;
   href: string;
   icon: LucideIcon;
   disabled?: boolean;
+  /** 미지정 = 전역 노출. 값 있으면 해당 role 에게만 노출. */
+  roles?: ProfileRole[];
 }
 
 const NAV_ITEMS: NavItem[] = [
   { label: '워크스페이스', href: '/workspace', icon: LayoutDashboard },
   { label: '리스크 관리', href: '/risk-reports', icon: ShieldAlert },
   { label: '유저 관리', href: '/users', icon: Users },
-  { label: '모니터링', href: '/ops', icon: Activity },
+  { label: '모니터링', href: '/ops', icon: Activity, roles: ['super_admin'] },
   { label: '설정', href: '#', icon: Settings, disabled: true },
 ];
+
+function getVisibleNavItems(role: ProfileRole | undefined): NavItem[] {
+  return NAV_ITEMS.filter((i) => !i.roles || (role && i.roles.includes(role)));
+}
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -45,8 +51,9 @@ export function AppShell({ children, user = null }: AppShellProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = usePathname();
 
-  const currentLabel = NAV_ITEMS.find(
-    (i) => pathname === i.href || (i.href !== '#' && pathname?.startsWith(i.href + '/')),
+  const visibleNav = getVisibleNavItems(user?.role);
+  const currentLabel = visibleNav.find(
+    (i) => pathname === i.href || (i.href !== '#' && pathname?.startsWith(i.href + '/'))
   )?.label;
 
   return (
@@ -55,13 +62,7 @@ export function AppShell({ children, user = null }: AppShellProps) {
       <aside
         className={`hidden lg:flex ${isOpen ? 'w-56' : 'w-16'} bg-white border-r border-slate-100 flex-col shrink-0 transition-all duration-300`}
       >
-        <SidebarBody
-          isOpen={isOpen}
-          onToggle={setIsOpen}
-          pathname={pathname}
-          user={user}
-          compact
-        />
+        <SidebarBody isOpen={isOpen} onToggle={setIsOpen} pathname={pathname} user={user} compact />
       </aside>
 
       {/* 모바일 drawer */}
@@ -107,9 +108,7 @@ export function AppShell({ children, user = null }: AppShellProps) {
           )}
         </header>
 
-        <main className="flex-1 overflow-y-auto">
-          {children}
-        </main>
+        <main className="flex-1 overflow-y-auto">{children}</main>
       </div>
     </div>
   );
@@ -137,12 +136,18 @@ function SidebarBody({
       {/* 로고 / 토글 */}
       <div className={`relative flex items-center ${isOpen ? 'px-3 py-3' : 'justify-center py-3'}`}>
         {isOpen ? (
-          <Link href="/" className="flex items-center gap-2 px-3 py-2 hover:opacity-80 transition-opacity">
+          <Link
+            href="/"
+            className="flex items-center gap-2 px-3 py-2 hover:opacity-80 transition-opacity"
+          >
             <SirSymbol size={14} />
             <SirLogoIcon width={48} height={18} />
           </Link>
         ) : (
-          <button onClick={() => onToggle(true)} className="px-3 py-2 hover:opacity-80 transition-opacity cursor-pointer">
+          <button
+            onClick={() => onToggle(true)}
+            className="px-3 py-2 hover:opacity-80 transition-opacity cursor-pointer"
+          >
             <SirSymbol size={16} />
           </button>
         )}
@@ -168,9 +173,10 @@ function SidebarBody({
 
       {/* 네비게이션 */}
       <nav className={`flex-1 py-2 flex flex-col gap-0.5 ${isOpen ? 'px-2' : 'px-2 items-center'}`}>
-        {NAV_ITEMS.map((item) => {
+        {getVisibleNavItems(user?.role).map((item) => {
           const Icon = item.icon;
-          const isActive = pathname === item.href || (item.href !== '#' && pathname?.startsWith(item.href + '/'));
+          const isActive =
+            pathname === item.href || (item.href !== '#' && pathname?.startsWith(item.href + '/'));
 
           return (
             <Link
@@ -193,11 +199,15 @@ function SidebarBody({
                   item.disabled ? 'text-slate-300' : isActive ? 'text-blue-600' : 'text-slate-400'
                 }`}
               />
-              <span className={`whitespace-nowrap transition-opacity duration-200 ${isOpen ? 'opacity-100' : 'opacity-0 hidden'}`}>
+              <span
+                className={`whitespace-nowrap transition-opacity duration-200 ${isOpen ? 'opacity-100' : 'opacity-0 hidden'}`}
+              >
                 {item.label}
               </span>
               {isOpen && item.disabled && (
-                <span className="ml-auto text-[10px] text-slate-300 bg-slate-50 px-1.5 py-0.5 rounded-full">soon</span>
+                <span className="ml-auto text-[10px] text-slate-300 bg-slate-50 px-1.5 py-0.5 rounded-full">
+                  soon
+                </span>
               )}
               {!isOpen && (
                 <div className="absolute left-16 top-1/2 -translate-y-1/2 bg-slate-800 text-white text-xs font-medium px-2.5 py-1.5 rounded-lg opacity-0 group-hover/item:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-lg z-50">
@@ -211,11 +221,15 @@ function SidebarBody({
       </nav>
 
       {/* 유저 정보 */}
-      <div className={`border-t border-slate-100 ${isOpen ? 'px-4 py-4' : 'flex justify-center py-4'}`}>
+      <div
+        className={`border-t border-slate-100 ${isOpen ? 'px-4 py-4' : 'flex justify-center py-4'}`}
+      >
         {isOpen ? (
           <div className="flex items-center gap-3">
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-slate-700 truncate">{user?.companyName ?? '사용자'}</p>
+              <p className="text-sm font-medium text-slate-700 truncate">
+                {user?.companyName ?? '사용자'}
+              </p>
               <p className="text-xs text-slate-400 truncate">{user?.email}</p>
             </div>
             <button

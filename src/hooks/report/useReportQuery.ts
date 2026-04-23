@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query';
 import {
   getReportInfo,
   getWeeklySummary,
@@ -16,7 +16,7 @@ import {
   getResolvedRiskReports,
 } from '@/lib/api/reportApi';
 import type { ChannelItem } from '@/lib/api/reportApi';
-import { workspaceKeys } from '@/hooks/workspace/useWorkspaceQuery';
+import { workspaceKeys } from '@/hooks/workspace/workspaceKeys';
 import { getWorkspace } from '@/lib/api/workspaceApi';
 
 export const reportKeys = {
@@ -184,6 +184,139 @@ export function useResolvedRiskReports(workspaceId: string, periodStart?: string
     queryKey: reportKeys.resolvedRiskReports(workspaceId, periodStart ?? '', periodEnd ?? ''),
     queryFn: () => getResolvedRiskReports(workspaceId, periodStart!, periodEnd!),
     enabled: !!workspaceId && !!periodStart && !!periodEnd,
+    staleTime: 30 * 1000,
+    gcTime: 5 * 60 * 1000,
+  });
+}
+
+// ── Suspense 변형 ──
+// 보고서 상세 페이지(관리자 / 클라이언트 / PDF)처럼 '모든 데이터가 준비된 뒤 한 번에 렌더'가
+// 필요한 곳 전용. 호출 측은 반드시 <Suspense fallback={...}> 경계 안에 있어야 한다.
+// 의존 체인(예: channelItems → channelStats) 는 호출 측에서 순서대로 훅을 호출하면
+// React 가 자동 waterfall 처리.
+// enabled 조건이 필요한 쿼리는 skipToken 으로 스킵 (이 경우 data 가 undefined 가능).
+
+export function useReportInfoSuspense(reportId: string) {
+  return useSuspenseQuery({
+    queryKey: reportKeys.info(reportId),
+    queryFn: () => getReportInfo(reportId),
+    ...REPORT_OPTS,
+  });
+}
+
+export function useWorkspaceSirSuspense(workspaceId: string) {
+  return useSuspenseQuery({
+    queryKey: workspaceKeys.detail(workspaceId),
+    queryFn: () => getWorkspace(workspaceId),
+    ...REPORT_OPTS,
+  });
+}
+
+export function useWeeklySummarySuspense(workspaceId: string, reportId?: string) {
+  return useSuspenseQuery({
+    queryKey: [...reportKeys.summary(workspaceId), reportId],
+    queryFn: () => getWeeklySummary(workspaceId, reportId),
+    ...REPORT_OPTS,
+  });
+}
+
+export function useSirStockDataSuspense(workspaceId: string, reportId?: string) {
+  return useSuspenseQuery({
+    queryKey: [...reportKeys.sirStock(workspaceId), reportId],
+    queryFn: () => getSirStockData(workspaceId, reportId),
+    ...REPORT_OPTS,
+  });
+}
+
+export function useSirRankingSuspense(workspaceId: string, reportId?: string) {
+  return useSuspenseQuery({
+    queryKey: [...reportKeys.sirRanking(workspaceId), reportId],
+    queryFn: () => getSirRanking(workspaceId, reportId),
+    ...REPORT_OPTS,
+  });
+}
+
+export function useChannelItemsSuspense(workspaceId: string, reportId?: string) {
+  return useSuspenseQuery({
+    queryKey: [...reportKeys.channelItems(workspaceId), reportId],
+    queryFn: () => getChannelItems(workspaceId, reportId),
+    ...REPORT_OPTS,
+  });
+}
+
+export function useNewsClustersSuspense(workspaceId: string, reportId?: string) {
+  return useSuspenseQuery({
+    queryKey: [...reportKeys.newsClusters(workspaceId), reportId],
+    queryFn: () => getNewsClusters(workspaceId, reportId),
+    ...REPORT_OPTS,
+  });
+}
+
+export function useChannelStatsSuspense(workspaceId: string, channelItems: ChannelItem[], reportId?: string) {
+  return useSuspenseQuery({
+    queryKey: [...reportKeys.channelStats(workspaceId), reportId],
+    queryFn: () => getChannelStats(workspaceId, channelItems, reportId),
+    ...REPORT_OPTS,
+  });
+}
+
+export function useRiskItemsSuspense(workspaceId: string, reportId?: string) {
+  return useSuspenseQuery({
+    queryKey: [...reportKeys.riskItems(workspaceId), reportId],
+    queryFn: () => getRiskItems(workspaceId, reportId),
+    ...REPORT_OPTS,
+  });
+}
+
+export function useStrategiesSuspense(workspaceId: string, reportId?: string) {
+  return useSuspenseQuery({
+    queryKey: [...reportKeys.strategies(workspaceId), reportId],
+    queryFn: () => getStrategies(workspaceId, reportId),
+    ...REPORT_OPTS,
+  });
+}
+
+export function usePrevReportSuspense(workspaceId: string, reportId: string) {
+  return useSuspenseQuery({
+    queryKey: reportKeys.prevReport(workspaceId, reportId),
+    queryFn: () => getPrevReport(workspaceId, reportId),
+    ...REPORT_OPTS,
+  });
+}
+
+/** enabled=false 또는 periodEnd 부재면 즉시-resolve 로 스킵 — data=null. */
+export function usePrevDailySnapshotSuspense(workspaceId: string, periodEnd: string | undefined, enabled: boolean) {
+  const shouldFetch = enabled && !!periodEnd;
+  return useSuspenseQuery({
+    queryKey: reportKeys.prevDailySnapshot(workspaceId, periodEnd),
+    queryFn: shouldFetch
+      ? () => getPrevDailySnapshot(workspaceId, periodEnd)
+      : () => Promise.resolve(null),
+    ...REPORT_OPTS,
+  });
+}
+
+export function useSearchTrendSuspense(workspaceId: string, reportId: string) {
+  return useSuspenseQuery({
+    queryKey: reportKeys.searchTrend(workspaceId, reportId),
+    queryFn: () => getSearchTrend(workspaceId, reportId),
+    ...REPORT_OPTS,
+  });
+}
+
+export function useRiskReportsSuspense(workspaceId: string, reportId?: string) {
+  return useSuspenseQuery({
+    queryKey: reportKeys.riskReports(workspaceId, reportId),
+    queryFn: () => getRiskReports(workspaceId, reportId),
+    staleTime: 30 * 1000,
+    gcTime: 5 * 60 * 1000,
+  });
+}
+
+export function useResolvedRiskReportsSuspense(workspaceId: string, periodStart: string, periodEnd: string) {
+  return useSuspenseQuery({
+    queryKey: reportKeys.resolvedRiskReports(workspaceId, periodStart, periodEnd),
+    queryFn: () => getResolvedRiskReports(workspaceId, periodStart, periodEnd),
     staleTime: 30 * 1000,
     gcTime: 5 * 60 * 1000,
   });

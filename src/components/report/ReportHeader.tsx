@@ -2,8 +2,8 @@
 
 import Link from 'next/link';
 import { ExternalLink } from 'lucide-react';
-import { useWorkspace } from '@/hooks/workspace/useWorkspaceQuery';
-import { useReportInfo } from '@/hooks/report/useReportQuery';
+import { useWorkspaceSuspense } from '@/hooks/workspace/useWorkspaceQuery';
+import { useReportInfoSuspense } from '@/hooks/report/useReportQuery';
 
 interface ReportHeaderProps {
   workspaceId: string;
@@ -12,8 +12,8 @@ interface ReportHeaderProps {
 }
 
 export function ReportHeader({ workspaceId, reportId, showPdfButton = true }: ReportHeaderProps) {
-  const { data: workspace } = useWorkspace(workspaceId);
-  const { data: report } = useReportInfo(reportId);
+  const { data: workspace } = useWorkspaceSuspense(workspaceId);
+  const { data: report } = useReportInfoSuspense(reportId);
 
   const periodStart = report?.period_start?.replace(/-/g, '.') ?? '';
   const periodEnd = report?.period_end?.replace(/-/g, '.') ?? '';

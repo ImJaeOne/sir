@@ -12,7 +12,7 @@ import { useUpdateUser } from '@/hooks/user/useUserMutation';
 import { useActiveSubscription } from '@/hooks/subscription/useSubscriptionQuery';
 import { useUpdateSubscriptionPeriod } from '@/hooks/subscription/useSubscriptionMutation';
 import { ROLE_LABEL } from '@/constants/role';
-import { TIER_LABELS } from '@/types/subscription';
+import { TIER_LABELS, TIER_OPTIONS, type Tier } from '@/types/subscription';
 import type { UserProfile, WorkspaceMember } from '@/lib/api/userApi';
 import type { Subscription } from '@/lib/api/subscriptionApi';
 import type { ProfileRole } from '@/types/auth';
@@ -40,7 +40,9 @@ export function UserDetailModal({
   const [pendingWs, setPendingWs] = useState<string[]>([]);
 
   // subscription 편집 state — 실제 값은 beginEditSub 에서 activeSub 기준으로 초기화
+  // TODO: 현 계약 종료 후 자동 전환(예약 변경) 지원 — 결제 연동 or 운영 요청 생기면 도입
   const [editingSub, setEditingSub] = useState(false);
+  const [newTier, setNewTier] = useState<Tier | undefined>(undefined);
   const [newStartDate, setNewStartDate] = useState<Date | undefined>(undefined);
   const [newEndDate, setNewEndDate] = useState<Date | undefined>(undefined);
 
@@ -68,6 +70,7 @@ export function UserDetailModal({
         members.filter((m) => m.profile_id === user.id).map((m) => m.workspace_id),
       );
       setEditingSub(false);
+      setNewTier(undefined);
       setNewStartDate(undefined);
       setNewEndDate(undefined);
       setWsSearch('');
@@ -75,11 +78,12 @@ export function UserDetailModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
-  // "계약 기간 변경" 진입 시 현재 계약 값으로 초기화 (+ 무기한인 경우 1년 뒤로 가정)
+  // "계약 변경" 진입 시 현재 계약 값으로 초기화 (+ 무기한인 경우 1년 뒤로 가정)
   const beginEditSub = () => {
     if (!activeSub) return;
     const started = parseISO(activeSub.started_at);
     const ended = activeSub.ended_at ? parseISO(activeSub.ended_at) : addMonths(started, 12);
+    setNewTier(activeSub.tier);
     setNewStartDate(started);
     setNewEndDate(ended);
     setEditingSub(true);
@@ -99,9 +103,10 @@ export function UserDetailModal({
 
   const isSuperAdmin = myRole === 'super_admin';
   const isUserRole = user.role === 'user';
-  const canEditWorkspace =
-    isSuperAdmin || (myRole === 'admin' && user.role === 'user');
+  // 편집 권한은 super_admin 단독. 일반 admin 은 열람만.
+  const canEditWorkspace = isSuperAdmin;
   const canEditRole = isSuperAdmin;
+  const canEditSub = isSuperAdmin;
   const singleSelect = pendingRole === 'user';
 
   const currentWs = members
@@ -113,7 +118,15 @@ export function UserDetailModal({
     JSON.stringify([...pendingWs].sort()) !==
     JSON.stringify([...currentWs].sort());
   const subChanged = Boolean(
-    editingSub && newStartDate && newEndDate && newEndDate > newStartDate && activeSub,
+    editingSub &&
+      newTier &&
+      newStartDate &&
+      newEndDate &&
+      newEndDate > newStartDate &&
+      activeSub &&
+      (newTier !== activeSub.tier ||
+        newStartDate.toISOString() !== activeSub.started_at ||
+        (activeSub.ended_at ?? '') !== newEndDate.toISOString()),
   );
 
   const handlePeriodChange = ({ start, end }: { start: Date | undefined; end: Date | undefined }) => {
@@ -159,12 +172,13 @@ export function UserDetailModal({
         subChanged &&
         userWorkspaceId &&
         activeSub &&
+        newTier &&
         newStartDate &&
         newEndDate
       ) {
         await updateSubPeriod.mutateAsync({
           workspaceId: userWorkspaceId,
-          tier: activeSub.tier,
+          tier: newTier,
           startedAt: newStartDate.toISOString(),
           endedAt: newEndDate.toISOString(),
         });
@@ -194,9 +208,11 @@ export function UserDetailModal({
       title="유저 상세"
       size="md"
       footer={
-        <Button onClick={handleSave} disabled={saving || !hasChanges} fullWidth>
-          {saving ? '저장 중...' : '수정하기'}
-        </Button>
+        isSuperAdmin ? (
+          <Button onClick={handleSave} disabled={saving || !hasChanges} fullWidth>
+            {saving ? '저장 중...' : '수정하기'}
+          </Button>
+        ) : undefined
       }
     >
       <div className="flex flex-col gap-4">
@@ -256,25 +272,26 @@ export function UserDetailModal({
               )}
             </div>
 
-            {activeSub && !editingSub && (
+            {activeSub && !editingSub && canEditSub && (
               <AdminButton
                 variant="secondary"
                 size="sm"
                 onClick={beginEditSub}
                 disabled={saving}
               >
-                계약 기간 변경
+                계약 변경
               </AdminButton>
             )}
 
-            {activeSub && editingSub && (
+            {activeSub && editingSub && canEditSub && (
               <div className="p-4 bg-slate-50 rounded-lg flex flex-col gap-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-slate-600">계약 기간 변경</span>
+                  <span className="text-xs font-semibold text-slate-600">계약 변경</span>
                   <button
                     type="button"
                     onClick={() => {
                       setEditingSub(false);
+                      setNewTier(undefined);
                       setNewStartDate(undefined);
                       setNewEndDate(undefined);
                     }}
@@ -282,6 +299,27 @@ export function UserDetailModal({
                   >
                     취소
                   </button>
+                </div>
+
+                <div>
+                  <label className="text-xs text-slate-500 mb-1 block">티어</label>
+                  <div className="grid grid-cols-4 gap-1">
+                    {TIER_OPTIONS.map((t) => (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => setNewTier(t)}
+                        disabled={saving}
+                        className={`text-xs font-semibold py-1.5 rounded-md border transition-colors cursor-pointer ${
+                          newTier === t
+                            ? 'bg-slate-800 text-white border-slate-800'
+                            : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'
+                        }`}
+                      >
+                        {TIER_LABELS[t]}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 <div>

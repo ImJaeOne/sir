@@ -70,15 +70,15 @@ export async function getWorkspaces(): Promise<(Workspace & { latest_report?: La
   });
 }
 
-export async function getWorkspace(id: string): Promise<Workspace> {
+export async function getWorkspace(id: string): Promise<Workspace | null> {
   const { data, error } = await supabase
     .from('workspaces')
     .select('*')
     .eq('id', id)
-    .single();
+    .maybeSingle();
 
   if (error) throw error;
-  return workspaceSchema.parse(data);
+  return data ? workspaceSchema.parse(data) : null;
 }
 
 export async function createWorkspace(dto: CreateWorkspaceDto): Promise<Workspace> {

@@ -2,13 +2,13 @@
 
 import { useMemo } from 'react';
 import {
-  useSearchTrend,
-  useChannelItems,
-  useChannelStats,
-  useNewsClusters,
-  useReportInfo,
-  usePrevReport,
-  usePrevDailySnapshot,
+  useSearchTrendSuspense,
+  useChannelItemsSuspense,
+  useChannelStatsSuspense,
+  useNewsClustersSuspense,
+  useReportInfoSuspense,
+  usePrevReportSuspense,
+  usePrevDailySnapshotSuspense,
 } from '@/hooks/report/useReportQuery';
 import { ReportSection } from '@/components/report/ReportSection';
 import { SearchTrendPanel } from '@/components/report/reputation/SearchTrendPanel';
@@ -25,40 +25,46 @@ interface OnlineReputationProps {
 }
 
 export function OnlineReputation({ workspaceId, reportId, pdfMode = false }: OnlineReputationProps) {
-  const { data: report } = useReportInfo(reportId);
-  const { data: searchTrend } = useSearchTrend(workspaceId, reportId);
-  const { data: channelItems } = useChannelItems(workspaceId, reportId);
-  const { data: channelStats } = useChannelStats(workspaceId, channelItems, reportId);
-  const { data: newsClusters } = useNewsClusters(workspaceId, reportId);
-  const { data: prevReport } = usePrevReport(workspaceId, reportId);
+  const { data: report } = useReportInfoSuspense(reportId);
+  const { data: searchTrend } = useSearchTrendSuspense(workspaceId, reportId);
+  const { data: channelItems } = useChannelItemsSuspense(workspaceId, reportId);
+  const { data: channelStats } = useChannelStatsSuspense(workspaceId, channelItems, reportId);
+  const { data: newsClusters } = useNewsClustersSuspense(workspaceId, reportId);
+  const { data: prevReport } = usePrevReportSuspense(workspaceId, reportId);
 
   const isInitial = report?.type === 'initial';
   const isDaily = report?.type === 'daily';
   const prevIsInitial = prevReport?.type === 'initial';
 
   // daily 는 이전 daily report 가 없어도 daily_snapshots 로 전일 채널별 SIR 비교
-  const { data: prevDaily } = usePrevDailySnapshot(workspaceId, report?.period_end, isDaily);
+  const { data: prevDaily } = usePrevDailySnapshotSuspense(workspaceId, report?.period_end, isDaily);
   const prevChannelSirMap = isDaily
     ? (prevDaily?.channelSirMap ?? {})
     : (prevReport?.channelSirMap ?? {});
 
   const searchTrendProps = useMemo(
-    () => ({ naverTrend: searchTrend?.naver ?? [], googleTrend: searchTrend?.google ?? [], pdfMode }),
-    [searchTrend, pdfMode],
+    () => ({
+      naverTrend: searchTrend.naver,
+      googleTrend: searchTrend.google,
+      pdfMode,
+      workspaceId,
+      reportId,
+    }),
+    [searchTrend, pdfMode, workspaceId, reportId],
   );
 
   const channelVolumeProps = useMemo(
-    () => ({ channelStats: channelStats ?? [], pdfMode }),
+    () => ({ channelStats, pdfMode }),
     [channelStats, pdfMode],
   );
 
   const sentimentProps = useMemo(
-    () => ({ channelStats: channelStats ?? [], pdfMode }),
+    () => ({ channelStats, pdfMode }),
     [channelStats, pdfMode],
   );
 
   const channelDetailProps = useMemo(
-    () => ({ channelStats: channelStats ?? [], channelItems: channelItems ?? [], newsClusters: newsClusters ?? [] }),
+    () => ({ channelStats, channelItems, newsClusters }),
     [channelStats, channelItems, newsClusters],
   );
 
@@ -67,7 +73,7 @@ export function OnlineReputation({ workspaceId, reportId, pdfMode = false }: Onl
       <ReportSection id="section-reputation" icon={<OnlineReputationIcon size={36} />} title="온라인 평판 종합">
         {!isDaily && <SearchTrendPanel {...searchTrendProps} />}
         <ChannelVolumePanel {...channelVolumeProps} />
-        <ChannelSirPanel channelStats={channelStats ?? []} isInitial={isInitial} prevIsInitial={prevIsInitial} isDaily={isDaily} prevChannelSirMap={prevChannelSirMap} />
+        <ChannelSirPanel channelStats={channelStats} isInitial={isInitial} prevIsInitial={prevIsInitial} isDaily={isDaily} prevChannelSirMap={prevChannelSirMap} />
         <SentimentPanel {...sentimentProps} />
         <ChannelDetailPanel {...channelDetailProps} />
       </ReportSection>

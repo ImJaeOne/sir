@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { useRiskItems, useRiskReports, useReportInfo } from '@/hooks/report/useReportQuery';
+import { useRiskItemsSuspense, useRiskReportsSuspense, useReportInfoSuspense } from '@/hooks/report/useReportQuery';
 import { useDeleteRiskReport } from '@/hooks/report/useReportMutation';
 import { ReportSection } from '@/components/report/ReportSection';
 import { RiskDetectionTable } from '@/components/report/risk-content/RiskDetectionTable';
@@ -17,15 +17,15 @@ interface RiskContentProps {
 }
 
 export function RiskContent({ workspaceId, reportId, editable = false, allowReport = false }: RiskContentProps) {
-  const { data: report } = useReportInfo(reportId);
-  const { data: riskItems } = useRiskItems(workspaceId, reportId);
-  const { data: riskReports } = useRiskReports(workspaceId, reportId);
+  const { data: report } = useReportInfoSuspense(reportId);
+  const { data: riskItems } = useRiskItemsSuspense(workspaceId, reportId);
+  const { data: riskReports } = useRiskReportsSuspense(workspaceId, reportId);
   const deleteMutation = useDeleteRiskReport(workspaceId, reportId);
 
   const { reportedSourceIds, riskReportBySourceId } = useMemo(() => {
     const ids = new Set<string>();
     const map = new Map<string, string>();
-    for (const rr of riskReports ?? []) {
+    for (const rr of riskReports) {
       ids.add(rr.source_id);
       map.set(rr.source_id, rr.id);
     }
@@ -38,7 +38,7 @@ export function RiskContent({ workspaceId, reportId, editable = false, allowRepo
     <div className="print-break">
       <ReportSection id="section-risk" icon={<LiskContentIcon size={36} />} title="리스크 콘텐츠 관리">
         <RiskDetectionTable
-          riskItems={riskItems ?? []}
+          riskItems={riskItems}
           workspaceId={workspaceId}
           reportId={reportId}
           reportedSourceIds={reportedSourceIds}
