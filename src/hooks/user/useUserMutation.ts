@@ -6,7 +6,7 @@ import {
   removeWorkspace,
 } from '@/lib/api/userApi';
 import { userKeys } from '@/hooks/user/useUserQuery';
-import { workspaceKeys } from '@/hooks/workspace/useWorkspaceQuery';
+import { workspaceKeys } from '@/hooks/workspace/workspaceKeys';
 import type { ProfileRole } from '@/types/auth';
 import type { Tier } from '@/types/subscription';
 

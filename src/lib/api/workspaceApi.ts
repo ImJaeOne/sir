@@ -5,9 +5,13 @@ import type { Workspace, WorkspaceProfile, CreateWorkspaceDto } from '@/types/wo
 const supabase = createClient();
 
 export interface LatestReport {
+  id: string;
   period_start: string;
   period_end: string;
   type: string;
+  status: string;
+  has_failed_session: boolean;
+  has_running_session: boolean;
 }
 
 export async function getWorkspaces(): Promise<(Workspace & { latest_report?: LatestReport })[]> {
@@ -22,35 +26,59 @@ export async function getWorkspaces(): Promise<(Workspace & { latest_report?: La
   // 각 워크스페이스의 최신 report 조회
   const { data: reports } = await supabase
     .from('reports')
-    .select('workspace_id, period_start, period_end, type')
+    .select('id, workspace_id, period_start, period_end, type, status')
     .order('created_at', { ascending: false });
 
-  const latestByWs = new Map<string, LatestReport>();
+  const latestByWs = new Map<string, Omit<LatestReport, 'has_failed_session' | 'has_running_session'>>();
   for (const r of reports ?? []) {
     if (!latestByWs.has(r.workspace_id)) {
       latestByWs.set(r.workspace_id, {
+        id: r.id,
         period_start: r.period_start,
         period_end: r.period_end,
         type: r.type,
+        status: r.status,
       });
     }
   }
 
-  return workspaces.map(ws => ({
-    ...ws,
-    latest_report: latestByWs.get(ws.id),
-  }));
+  // 최신 report 들에 대한 세션 상태 일괄 조회 (실패/진행 중 플래그만 계산)
+  const latestReportIds = Array.from(latestByWs.values()).map((r) => r.id);
+  const failedSet = new Set<string>();
+  const runningSet = new Set<string>();
+  if (latestReportIds.length > 0) {
+    const { data: sessions } = await supabase
+      .from('sessions')
+      .select('report_id, status')
+      .in('report_id', latestReportIds);
+    for (const s of sessions ?? []) {
+      if (s.status === 'failed') failedSet.add(s.report_id);
+      else if (['pending', 'crawling', 'analyzing', 'clustering'].includes(s.status)) runningSet.add(s.report_id);
+    }
+  }
+
+  return workspaces.map((ws) => {
+    const base = latestByWs.get(ws.id);
+    const latest_report: LatestReport | undefined = base
+      ? {
+          ...base,
+          has_failed_session: failedSet.has(base.id),
+          has_running_session: runningSet.has(base.id),
+        }
+      : undefined;
+    return { ...ws, latest_report };
+  });
 }
 
-export async function getWorkspace(id: string): Promise<Workspace> {
+export async function getWorkspace(id: string): Promise<Workspace | null> {
   const { data, error } = await supabase
     .from('workspaces')
     .select('*')
     .eq('id', id)
-    .single();
+    .maybeSingle();
 
   if (error) throw error;
-  return workspaceSchema.parse(data);
+  return data ? workspaceSchema.parse(data) : null;
 }
 
 export async function createWorkspace(dto: CreateWorkspaceDto): Promise<Workspace> {
@@ -152,8 +180,24 @@ export interface ReportProgress {
     error_message: string | null;
     total_items: number;
   }[];
+  // 주간 전용 다회 크롤 분석용 — 플랫폼당 여러 세션(1차/2차) 모두 포함, 최신순
+  allSessions: {
+    id: string;
+    platform_id: string;
+    status: string;
+    failed_reason: string | null;
+    error_message: string | null;
+    total_items: number;
+    created_at: string;
+  }[];
   hasSummary: boolean;
   strategyCategories: string[];
+  // 주간 카드용 — 카테고리별 세부 상태. status 가 'done' 이어야 실제 완료.
+  strategies: {
+    category: string;
+    status: string;
+    error_message: string | null;
+  }[];
 }
 
 export async function getReportProgress(workspaceId: string): Promise<ReportProgress[]> {
@@ -171,7 +215,7 @@ export async function getReportProgress(workspaceId: string): Promise<ReportProg
       .order('created_at', { ascending: false }),
     supabase
       .from('session_strategies')
-      .select('report_id, category, created_at')
+      .select('report_id, category, status, error_message, created_at')
       .eq('workspace_id', workspaceId),
   ]);
 
@@ -189,10 +233,11 @@ export async function getReportProgress(workspaceId: string): Promise<ReportProg
       }
     }
 
-    // 해당 리포트의 전략/총평만 필터
+    // 해당 리포트의 전략/총평만 필터 — status='done' 인 것만 집계에 반영
     const reportStrategies = strategies.filter(s => s.report_id === report.id);
-    const hasSummary = reportStrategies.some(s => s.category === null);
-    const strategyCategories = [...new Set(reportStrategies.filter(s => s.category !== null).map(s => s.category as string))];
+    const doneStrategies = reportStrategies.filter(s => s.status === 'done');
+    const hasSummary = doneStrategies.some(s => s.category === 'summary');
+    const strategyCategories = [...new Set(doneStrategies.filter(s => s.category !== 'summary').map(s => s.category as string))];
 
     return {
       reportId: report.id,
@@ -204,8 +249,22 @@ export async function getReportProgress(workspaceId: string): Promise<ReportProg
         error_message: s.error_message,
         total_items: s.total_items,
       })),
+      allSessions: reportSessions.map(s => ({
+        id: s.id,
+        platform_id: s.platform_id!,
+        status: s.status,
+        failed_reason: s.failed_reason,
+        error_message: s.error_message,
+        total_items: s.total_items,
+        created_at: s.created_at as string,
+      })),
       hasSummary,
       strategyCategories,
+      strategies: reportStrategies.map(s => ({
+        category: s.category as string,
+        status: s.status as string,
+        error_message: (s as { error_message?: string | null }).error_message ?? null,
+      })),
     };
   });
 }

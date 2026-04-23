@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createWorkspace, deleteWorkspace, updateWorkspaceProfile } from '@/lib/api/workspaceApi';
 import { retryFailedReport } from '@/lib/api/reportApi';
-import { workspaceKeys } from '@/hooks/workspace/useWorkspaceQuery';
+import { workspaceKeys } from '@/hooks/workspace/workspaceKeys';
 import type { CreateWorkspaceDto } from '@/types/workspace';
 
 export function useCreateWorkspace() {

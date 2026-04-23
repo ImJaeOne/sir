@@ -1,10 +1,9 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useIsFetching } from '@tanstack/react-query';
 import Link from 'next/link';
-import { ChevronRight, ExternalLink, Check } from 'lucide-react';
+import { ChevronRight, ExternalLink, Check, AlertCircle } from 'lucide-react';
 import { ReportHeader } from '@/components/report/ReportHeader';
 import { Highlight } from '@/components/report/Highlight';
 import { OnlineReputation } from '@/components/report/OnlineReputation';
@@ -13,12 +12,14 @@ import { RiskContent } from '@/components/report/RiskContent';
 import { Strategy } from '@/components/report/Strategy';
 import { Loading } from '@/components/ui/Loading';
 import { AdminButton } from '@/components/ui/AdminButton';
-import { useWorkspace, useReportProgress, useReportRealtimeSync } from '@/hooks/workspace/useWorkspaceQuery';
-import { useReportInfo } from '@/hooks/report/useReportQuery';
+import {
+  useWorkspaceSuspense,
+  useReportProgressSuspense,
+} from '@/hooks/workspace/useWorkspaceQuery';
+import { useReportInfoSuspense } from '@/hooks/report/useReportQuery';
 import { usePublishReport } from '@/hooks/report/useReportMutation';
 import { getClientReportSections } from '@/components/client/sidebar/sections';
 import { ACTIVE_PLATFORMS, isAllPlatformsDone } from '@/lib/api/workspaceApi';
-import { AlertCircle } from 'lucide-react';
 
 const PLATFORM_LABELS: Record<string, string> = {
   naver_news: '뉴스',
@@ -64,31 +65,37 @@ function SectionBg({
 }
 
 export default function ReportPage() {
+  // SSR 시점엔 QueryClient 캐시가 비어 있어 서버는 항상 Loading fallback 을 렌더하는데,
+  // 클라이언트에는 이전 세션에서 남은 캐시가 있어 useSuspenseQuery 가 즉시 data 를 반환,
+  // hydration 불일치가 발생한다. 마운트 전까지는 서버와 동일하게 Loading 만 렌더해 일치시킨다.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []); // eslint-disable-line react-hooks/set-state-in-effect
+  if (!mounted) return <Loading />;
+
+  return (
+    <Suspense fallback={<Loading />}>
+      <ReportPageContent />
+    </Suspense>
+  );
+}
+
+function ReportPageContent() {
   const params = useParams();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const workspaceId = params?.workspaceId as string;
   const reportId = params?.reportId as string;
-  const isFetching = useIsFetching();
-  const { data: workspace } = useWorkspace(workspaceId);
-  const { data: report } = useReportInfo(reportId);
-  const { data: progressList } = useReportProgress(workspaceId);
-  useReportRealtimeSync(workspaceId);
-  const publishMutation = usePublishReport(reportId);
 
-  const startedRef = useRef(false);
-  const [ready, setReady] = useState(false);
-  useEffect(() => {
-    if (isFetching > 0) startedRef.current = true;
-    if (isFetching === 0 && startedRef.current) setReady(true); // eslint-disable-line react-hooks/set-state-in-effect
-  }, [isFetching]);
+  const { data: workspace } = useWorkspaceSuspense(workspaceId);
+  const { data: report } = useReportInfoSuspense(reportId);
+  const { data: progressList } = useReportProgressSuspense(workspaceId);
+  const publishMutation = usePublishReport(reportId);
 
   const isPublished = report?.status === 'published';
   const isDraft = report?.status === 'draft';
   const isDaily = report?.type === 'daily';
 
-  // 활성 플랫폼 중 실패/미완료 확인 — 발행 게이트
   const progress = progressList?.find((p) => p.reportId === reportId);
   const platformsOk = isAllPlatformsDone(progress);
   const failedPlatforms = useMemo(() => {
@@ -99,9 +106,10 @@ export default function ReportPage() {
 
   const sections = useMemo(() => getClientReportSections(isDaily), [isDaily]);
   const sectionParam = searchParams?.get('section');
-  const activeSection = sectionParam && sections.some((s) => s.id === sectionParam)
-    ? sectionParam
-    : sections[0]?.id ?? 'section-highlight';
+  const activeSection =
+    sectionParam && sections.some((s) => s.id === sectionParam)
+      ? sectionParam
+      : (sections[0]?.id ?? 'section-highlight');
 
   const handleTabClick = (id: string) => {
     const next = new URLSearchParams(searchParams?.toString() ?? '');
@@ -109,19 +117,23 @@ export default function ReportPage() {
     router.replace(`${pathname}?${next.toString()}`, { scroll: false });
   };
 
-  if (!ready) return <Loading />;
-
   return (
     <div className="min-h-full bg-slate-100 px-6 pt-8 lg:px-10 lg:pt-10 pb-0">
       <div className="mx-auto max-w-[1280px] flex flex-col gap-4">
         {/* 상단 바 */}
         <div className="flex items-center justify-between">
           <nav className="flex items-center gap-1.5 text-sm">
-            <Link href="/workspace" className="text-text-muted hover:text-text-dark transition-colors">
+            <Link
+              href="/workspace"
+              className="text-text-muted hover:text-text-dark transition-colors"
+            >
               워크스페이스
             </Link>
             <ChevronRight size={14} className="text-slate-300" />
-            <Link href={`/workspace/${workspaceId}`} className="text-text-muted hover:text-text-dark transition-colors">
+            <Link
+              href={`/workspace/${workspaceId}`}
+              className="text-text-muted hover:text-text-dark transition-colors"
+            >
               {workspace?.company_name ?? '...'}
             </Link>
             <ChevronRight size={14} className="text-slate-300" />
@@ -140,8 +152,8 @@ export default function ReportPage() {
           </Link>
         </div>
 
-        {/* 섹션 탭 */}
-        <div className="flex gap-1 border-b border-slate-200">
+        {/* 섹션 탭 — 데스크톱: flex-1 균등 분할 / 모바일: 가로 스크롤 */}
+        <div className="flex gap-1 border-b border-slate-200 w-full">
           {sections.map((s) => {
             const active = activeSection === s.id;
             return (
@@ -149,7 +161,7 @@ export default function ReportPage() {
                 key={s.id}
                 type="button"
                 onClick={() => handleTabClick(s.id)}
-                className={`px-4 py-2 text-sm font-semibold border-b-2 -mb-px transition-colors cursor-pointer ${
+                className={`lg:flex-1 px-4 py-2 text-sm font-semibold border-b-2 -mb-px transition-colors cursor-pointer whitespace-nowrap ${
                   active
                     ? 'border-slate-700 text-slate-800'
                     : 'border-transparent text-slate-400 hover:text-slate-600'
@@ -207,14 +219,19 @@ export default function ReportPage() {
                 <div className="flex-1 leading-snug">
                   <span className="font-semibold">실패/미완료 플랫폼이 있습니다:</span>{' '}
                   {failedPlatforms.map((p) => PLATFORM_LABELS[p] ?? p).join(', ')}
-                  <span className="text-amber-700"> — 워크스페이스 화면에서 재시도 후 발행하세요.</span>
+                  <span className="text-amber-700">
+                    {' '}
+                    — 워크스페이스 화면에서 재시도 후 발행하세요.
+                  </span>
                 </div>
               </div>
             )}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 {isPublished && <Check size={16} className="text-emerald-500" />}
-                <span className={`text-sm font-medium ${isPublished ? 'text-emerald-600' : isDraft ? 'text-slate-500' : 'text-amber-600'}`}>
+                <span
+                  className={`text-sm font-medium ${isPublished ? 'text-emerald-600' : isDraft ? 'text-slate-500' : 'text-amber-600'}`}
+                >
                   {isPublished ? '발행됨' : isDraft ? '검토 대기' : '분석 중 — 발행 불가'}
                 </span>
               </div>

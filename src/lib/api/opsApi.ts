@@ -35,7 +35,18 @@ export interface OpsActiveSession {
   workspace_name: string | null;
   report_id: string | null;
   platform_id: string;
-  status: 'pending' | 'crawling' | 'analyzing';
+  status: 'pending' | 'crawling' | 'pending_analysis' | 'analyzing';
+  updated_at: string;
+}
+
+export interface OpsWaitingSession {
+  session_id: string;
+  workspace_id: string;
+  workspace_name: string | null;
+  report_id: string | null;
+  platform_id: string;
+  failed_reason: string | null;
+  error_message: string | null;
   updated_at: string;
 }
 
@@ -51,12 +62,26 @@ export interface OpsCompletion {
   updated_at: string;
 }
 
+export interface OpsUpcomingWorkspace {
+  workspace_id: string;
+  company_name: string | null;
+  ticker: string | null;
+}
+
+export interface OpsUpcomingCron {
+  scheduled_at: string;
+  report_types: ('daily' | 'weekly')[];
+  workspaces: OpsUpcomingWorkspace[];
+}
+
 export interface OpsQueue {
   lock_holder: OpsLockHolder | null;
   retry_batch: OpsRetryBatch | null;
   finalize: OpsFinalize | null;
   active_sessions: OpsActiveSession[];
+  waiting_sessions: OpsWaitingSession[];
   recent_completions: OpsCompletion[];
+  upcoming_cron: OpsUpcomingCron | null;
   server_time: string;
 }
 

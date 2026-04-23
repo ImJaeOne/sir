@@ -42,8 +42,14 @@ export function Modal({ open, onClose, title, size = 'md', children, footer }: M
           </button>
         </div>
 
-        {/* body (scrollable) */}
-        <div className="flex flex-col gap-4 px-6 py-2 overflow-y-auto flex-1">{children}</div>
+        {/* body (scrollable) — footer 부재 시 바닥 padding 자동 보강 */}
+        <div
+          className={`flex flex-col gap-4 px-6 pt-2 overflow-y-auto flex-1 ${
+            footer ? 'pb-2' : 'pb-6'
+          }`}
+        >
+          {children}
+        </div>
 
         {/* footer (fixed) */}
         {footer && (

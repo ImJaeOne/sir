@@ -41,8 +41,10 @@ export function Tooltip({
 }) {
   const config = variantConfig[variant];
 
+  // named group (`group/tooltip`) 으로 상위 `.group` 과 격리 — 외부 카드가 `group` 클래스를
+  // 가져도 상위 hover 가 이 툴팁을 트리거하지 못하게 한다.
   return (
-    <span className="relative group" onClick={(e) => e.stopPropagation()}>
+    <span className="relative group/tooltip" onClick={(e) => e.stopPropagation()}>
       <svg
         width="14"
         height="14"
@@ -53,12 +55,12 @@ export function Tooltip({
         {config.icon}
       </svg>
       <span
-        className={`absolute ${positionStyles['bottom']} lg:hidden px-3 py-2 text-xs text-white ${config.bgClass} rounded-lg shadow-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 w-max max-w-[200px]`}
+        className={`absolute ${positionStyles['bottom']} lg:hidden px-3 py-2 text-xs text-white ${config.bgClass} rounded-lg shadow-lg opacity-0 pointer-events-none group-hover/tooltip:opacity-100 transition-opacity z-50 w-max max-w-[200px]`}
       >
         {text}
       </span>
       <span
-        className={`absolute ${positionStyles[position]} hidden lg:block px-3 py-2 text-xs text-white ${config.bgClass} rounded-lg shadow-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 whitespace-pre-line w-max max-w-xs`}
+        className={`absolute ${positionStyles[position]} hidden lg:block px-3 py-2 text-xs text-white ${config.bgClass} rounded-lg shadow-lg opacity-0 pointer-events-none group-hover/tooltip:opacity-100 transition-opacity z-50 whitespace-pre-line w-max max-w-xs`}
       >
         {text}
       </span>

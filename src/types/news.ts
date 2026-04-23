@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 // ── 세션 ──
 
-export const crawlStatusEnum = z.enum(['crawling', 'analyzing', 'clustering', 'done', 'failed']);
+export const crawlStatusEnum = z.enum(['crawling', 'pending_analysis', 'analyzing', 'clustering', 'done', 'failed']);
 export const crawlFailedAtEnum = z.enum(['crawling', 'analyzing', 'clustering']);
 
 export const crawlSessionSchema = z.object({
@@ -59,7 +59,7 @@ export const strategySchema = z.object({
 
 // ── 커뮤니티 ──
 
-export const criticalTypeEnum = z.enum(['market_manipulation', 'rumor', 'legal_risk', 'threat', 'ad', 'spam']);
+export const criticalTypeEnum = z.enum(['defamation', 'insult', 'rumor', 'spam']);
 
 export const communityItemSchema = z.object({
   id: z.string().uuid(),

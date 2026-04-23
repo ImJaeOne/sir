@@ -1,15 +1,18 @@
 import { useEffect } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { getWorkspaces, getWorkspace, getWorkspaceProfile, getReports, getReportProgress } from '@/lib/api/workspaceApi';
+import { getActiveSubscription } from '@/lib/api/subscriptionApi';
 import { createClient } from '@/lib/supabase/client';
+import { workspaceKeys } from './workspaceKeys';
 
-export const workspaceKeys = {
-  all: ['workspaces'] as const,
-  detail: (id: string) => ['workspaces', id] as const,
-  profile: (id: string) => ['workspaces', id, 'profile'] as const,
-  reports: (id: string) => ['workspaces', id, 'reports'] as const,
-  progress: (id: string) => ['workspaces', id, 'progress'] as const,
-};
+/** 워크스페이스의 현재 활성 구독 조회 — has_daily 등 분기용 */
+export function useWorkspaceSubscription(workspaceId: string) {
+  return useQuery({
+    queryKey: workspaceKeys.subscription(workspaceId),
+    queryFn: () => getActiveSubscription(workspaceId),
+    enabled: !!workspaceId,
+  });
+}
 
 export function useWorkspaces() {
   return useQuery({
@@ -48,6 +51,54 @@ export function useReportProgress(workspaceId: string) {
     queryFn: () => getReportProgress(workspaceId),
     enabled: !!workspaceId,
   });
+}
+
+// ── Suspense 변형 ──
+// 보고서 상세 페이지처럼 '모든 데이터 준비 후 한 번에 렌더' 플로우 전용.
+// 호출 측은 <Suspense fallback={...}> 경계 안에 있어야 한다.
+
+export function useWorkspaceSuspense(id: string) {
+  return useSuspenseQuery({
+    queryKey: workspaceKeys.detail(id),
+    queryFn: () => getWorkspace(id),
+  });
+}
+
+export function useReportProgressSuspense(workspaceId: string) {
+  return useSuspenseQuery({
+    queryKey: workspaceKeys.progress(workspaceId),
+    queryFn: () => getReportProgress(workspaceId),
+  });
+}
+
+/** 어느 워크스페이스든 sessions/reports 가 바뀌면 목록 카드의 상태 칩·stripe 를 갱신 */
+export function useWorkspacesRealtimeSync() {
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const supabase = createClient();
+    const channel = supabase
+      .channel('workspaces-list-sync')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'sessions' },
+        () => {
+          queryClient.invalidateQueries({ queryKey: workspaceKeys.all });
+        },
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'reports' },
+        () => {
+          queryClient.invalidateQueries({ queryKey: workspaceKeys.all });
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 }
 
 /** sessions + session_strategies 변경 시 progress & reports 캐시 자동 갱신 */

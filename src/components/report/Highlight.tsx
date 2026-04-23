@@ -2,15 +2,15 @@
 
 import { useMemo } from 'react';
 import {
-  useWorkspaceSir,
-  useWeeklySummary,
-  useSirStockData,
-  useSirRanking,
-  useChannelItems,
-  useRiskItems,
-  usePrevReport,
-  usePrevDailySnapshot,
-  useReportInfo,
+  useWorkspaceSirSuspense,
+  useWeeklySummarySuspense,
+  useSirStockDataSuspense,
+  useSirRankingSuspense,
+  useChannelItemsSuspense,
+  useRiskItemsSuspense,
+  usePrevReportSuspense,
+  usePrevDailySnapshotSuspense,
+  useReportInfoSuspense,
 } from '@/hooks/report/useReportQuery';
 import { ReportSection } from '@/components/report/ReportSection';
 import { Snapshot } from '@/components/report/highlight/Snapshot';
@@ -38,23 +38,23 @@ interface HighlightProps {
 const defaultRanking: SirRanking = { tiers: [], rank: 0, total: 0, average: 0 };
 
 export function Highlight({ workspaceId, reportId, pdfMode = false, editable = false }: HighlightProps) {
-  const { data: workspace } = useWorkspaceSir(workspaceId);
-  const { data: report } = useReportInfo(reportId);
-  const { data: summary } = useWeeklySummary(workspaceId, reportId);
-  const { data: sirStockData } = useSirStockData(workspaceId, reportId);
-  const { data: sirRanking } = useSirRanking(workspaceId, reportId);
-  const { data: channelItems } = useChannelItems(workspaceId, reportId);
-  const { data: riskItems } = useRiskItems(workspaceId, reportId);
-  const { data: prevReport } = usePrevReport(workspaceId, reportId);
+  const { data: workspace } = useWorkspaceSirSuspense(workspaceId);
+  const { data: report } = useReportInfoSuspense(reportId);
+  const { data: summary } = useWeeklySummarySuspense(workspaceId, reportId);
+  const { data: sirStockData } = useSirStockDataSuspense(workspaceId, reportId);
+  const { data: sirRanking } = useSirRankingSuspense(workspaceId, reportId);
+  const { data: channelItems } = useChannelItemsSuspense(workspaceId, reportId);
+  const { data: riskItems } = useRiskItemsSuspense(workspaceId, reportId);
+  const { data: prevReport } = usePrevReportSuspense(workspaceId, reportId);
 
   const isInitial = report?.type === 'initial';
   const isDaily = report?.type === 'daily';
   const sirScore = report?.sir_score ?? 0;
-  const totalItems = channelItems?.length ?? 0;
-  const riskCount = riskItems?.length ?? 0;
+  const totalItems = channelItems.length;
+  const riskCount = riskItems.length;
 
   // daily 는 이전 daily report 가 없어도(첫 daily) daily_snapshots 로 전일 비교
-  const { data: prevDaily } = usePrevDailySnapshot(workspaceId, report?.period_end, isDaily);
+  const { data: prevDaily } = usePrevDailySnapshotSuspense(workspaceId, report?.period_end, isDaily);
 
   const snapshotDiff = useMemo(() => {
     const getTierIdx = (s: number) => Math.min(Math.floor(s / 100), 9);
@@ -89,6 +89,7 @@ export function Highlight({ workspaceId, reportId, pdfMode = false, editable = f
 
   const prevIsInitial = prevReport?.type === 'initial';
   const hasPrev = isDaily ? !!prevDaily : !!prevReport;
+  const avgScore = workspace?.sir_score ?? 0;
 
   const snapshotProps = useMemo(
     () => ({ score: sirScore, totalItems, riskCount, sirRanking: sirRanking ?? defaultRanking, isInitial, prevIsInitial, isDaily, hasPrev, snapshotDiff }),
@@ -96,11 +97,9 @@ export function Highlight({ workspaceId, reportId, pdfMode = false, editable = f
   );
 
   const sirStockProps = useMemo(
-    () => ({ pdfMode, sirStockData: sirStockData ?? [] }),
+    () => ({ pdfMode, sirStockData }),
     [pdfMode, sirStockData],
   );
-
-  const avgScore = workspace?.sir_score ?? 0;
 
   const sirRankingProps = useMemo(
     () => ({ score: sirScore, avgScore, companyName: workspace?.company_name ?? '', sirRanking: sirRanking ?? defaultRanking, pdfMode, isDaily }),
@@ -113,9 +112,9 @@ export function Highlight({ workspaceId, reportId, pdfMode = false, editable = f
       {!isDaily && (
         <>
           {editable ? (
-            <EditableReputation summary={summary ?? []} workspaceId={workspaceId} reportId={reportId} />
+            <EditableReputation summary={summary} workspaceId={workspaceId} reportId={reportId} />
           ) : (
-            <Reputation summary={summary ?? []} />
+            <Reputation summary={summary} />
           )}
           <SirStockPanel {...sirStockProps} />
           <SirRankingPanel {...sirRankingProps} />

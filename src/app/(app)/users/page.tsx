@@ -36,6 +36,8 @@ export default function UsersPage() {
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
 
+  const isSuperAdmin = myRole === 'super_admin';
+
   const selectedUser = useMemo(
     () => users.find((u) => u.id === selectedUserId) ?? null,
     [users, selectedUserId],
@@ -59,9 +61,11 @@ export default function UsersPage() {
       <div className="max-w-4xl mx-auto flex flex-col gap-6 h-full">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-bold text-slate-800">유저 관리</h1>
-          <AdminButton variant="primary" onClick={() => setShowCreate(true)}>
-            계정 생성
-          </AdminButton>
+          {isSuperAdmin && (
+            <AdminButton variant="primary" onClick={() => setShowCreate(true)}>
+              계정 생성
+            </AdminButton>
+          )}
         </div>
 
         <div className="flex gap-1 border-b border-slate-200">
@@ -89,7 +93,10 @@ export default function UsersPage() {
         ) : currentTab === 'customers' ? (
           <CustomerTable users={filtered} onSelect={setSelectedUserId} />
         ) : (
-          <StaffTable users={filtered} onSelect={setSelectedUserId} />
+          <StaffTable
+            users={filtered}
+            onSelect={isSuperAdmin ? setSelectedUserId : undefined}
+          />
         )}
       </div>
 

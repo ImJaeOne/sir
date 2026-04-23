@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 // ── sessions 테이블 ──
 
-export const crawlStatusEnum = z.enum(['crawling', 'analyzing', 'clustering', 'done', 'failed']);
+export const crawlStatusEnum = z.enum(['crawling', 'pending_analysis', 'analyzing', 'clustering', 'done', 'failed']);
 export const crawlFailedAtEnum = z.enum(['crawling', 'analyzing', 'clustering']);
 
 export const sessionSchema = z.object({
