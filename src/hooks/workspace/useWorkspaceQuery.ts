@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getWorkspaces, getWorkspace, getWorkspaceProfile, getReports, getReportProgress } from '@/lib/api/workspaceApi';
+import { getActiveSubscription } from '@/lib/api/subscriptionApi';
 import { createClient } from '@/lib/supabase/client';
 
 export const workspaceKeys = {
@@ -9,7 +10,17 @@ export const workspaceKeys = {
   profile: (id: string) => ['workspaces', id, 'profile'] as const,
   reports: (id: string) => ['workspaces', id, 'reports'] as const,
   progress: (id: string) => ['workspaces', id, 'progress'] as const,
+  subscription: (id: string) => ['workspaces', id, 'subscription'] as const,
 };
+
+/** 워크스페이스의 현재 활성 구독 조회 — has_daily 등 분기용 */
+export function useWorkspaceSubscription(workspaceId: string) {
+  return useQuery({
+    queryKey: workspaceKeys.subscription(workspaceId),
+    queryFn: () => getActiveSubscription(workspaceId),
+    enabled: !!workspaceId,
+  });
+}
 
 export function useWorkspaces() {
   return useQuery({
