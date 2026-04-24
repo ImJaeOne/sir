@@ -34,7 +34,7 @@ export function MobileSirRankingBar({ tiers }: MobileSirRankingBarProps) {
           <span className="text-[10px] text-text-muted">(단위: 기업 수)</span>
         </div>
         <div style={{ height: 320 }}>
-          <ChartCanvas width="105%">
+          <ChartCanvas width="100%">
             <BarChart
               data={tiers}
               layout="vertical"

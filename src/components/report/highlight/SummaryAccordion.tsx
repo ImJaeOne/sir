@@ -18,13 +18,15 @@ const SUMMARY_SECTIONS = [
   { label: '리스크 분석', icon: LiskIcon, bg: 'bg-bg-danger' },
 ];
 
-export function SummaryAccordion({ sections }: { sections: SummarySection[] }) {
+export function SummaryAccordion({ sections, pdfMode = false }: { sections: SummarySection[]; pdfMode?: boolean }) {
   const [openIdx, setOpenIdx] = useState<number | null>(null);
 
   return (
     <div className="flex flex-col px-2 gap-2">
-      {sections.map((section, i) => (
-        <div key={i}>
+      {sections.map((section, i) => {
+        const isOpen = pdfMode || openIdx === i;
+        return (
+        <div key={i} className="print-keep">
           <div className="overflow-hidden">
             <div className="flex flex-col lg:flex-row lg:items-start gap-3 lg:gap-8 py-5">
               <div className="flex gap-3 shrink-0 items-center">
@@ -53,17 +55,17 @@ export function SummaryAccordion({ sections }: { sections: SummarySection[] }) {
               </div>
               <div className="flex-1 min-w-0">
                 <button
-                  onClick={() => setOpenIdx(openIdx === i ? null : i)}
+                  onClick={() => !pdfMode && setOpenIdx(openIdx === i ? null : i)}
                   className="w-full flex justify-between items-center text-left cursor-pointer hover:opacity-80 transition-opacity"
                 >
                   <p className="text-sm font-semibold text-text-dark">{section.summary}</p>
-                  {openIdx === i ? (
+                  {!pdfMode && (isOpen ? (
                     <ChevronUp size={18} className="text-slate-400 shrink-0 ml-3" />
                   ) : (
                     <ChevronDown size={18} className="text-slate-400 shrink-0 ml-3" />
-                  )}
+                  ))}
                 </button>
-                {openIdx === i && (
+                {isOpen && (
                   <div className="mt-3 flex flex-col gap-3">
                     {section.subsections.map((sub, j) => (
                       <div
@@ -90,7 +92,8 @@ export function SummaryAccordion({ sections }: { sections: SummarySection[] }) {
           </div>
           {i < sections.length - 1 ? <Divider /> : null}
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

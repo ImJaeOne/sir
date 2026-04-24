@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
+import { ReportHeader } from '@/components/report/ReportHeader';
 import { Highlight } from '@/components/report/Highlight';
 import { OnlineReputation } from '@/components/report/OnlineReputation';
 import { TopContent } from '@/components/report/TopContent';
@@ -34,11 +35,12 @@ function ReportPdfContent() {
   return (
     <div className="p-8 bg-white min-h-screen">
       <div className="max-w-6xl mx-auto flex flex-col gap-8">
+        <ReportHeader workspaceId={workspaceId} reportId={reportId} showPdfButton={false} />
         <Highlight workspaceId={workspaceId} reportId={reportId} pdfMode />
         <OnlineReputation workspaceId={workspaceId} reportId={reportId} pdfMode />
         {!isDaily && <TopContent workspaceId={workspaceId} reportId={reportId} />}
-        <RiskContent workspaceId={workspaceId} reportId={reportId} />
-        {!isDaily && <Strategy workspaceId={workspaceId} reportId={reportId} />}
+        <RiskContent workspaceId={workspaceId} reportId={reportId} pdfMode />
+        {!isDaily && <Strategy workspaceId={workspaceId} reportId={reportId} pdfMode />}
       </div>
     </div>
   );

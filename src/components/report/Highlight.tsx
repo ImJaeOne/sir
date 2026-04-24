@@ -108,16 +108,16 @@ export function Highlight({ workspaceId, reportId, pdfMode = false, editable = f
 
   return (
     <ReportSection icon={<WeeklyHighlightIcon size={36} />} title={isDaily ? '일간 하이라이트' : '주간 하이라이트'}>
-      <Snapshot {...snapshotProps} />
+      <div className="print-keep"><Snapshot {...snapshotProps} /></div>
       {!isDaily && (
         <>
           {editable ? (
             <EditableReputation summary={summary} workspaceId={workspaceId} reportId={reportId} />
           ) : (
-            <Reputation summary={summary} />
+            <Reputation summary={summary} pdfMode={pdfMode} />
           )}
-          <SirStockPanel {...sirStockProps} />
-          <SirRankingPanel {...sirRankingProps} />
+          <div className="print-keep"><SirStockPanel {...sirStockProps} /></div>
+          <div className="print-keep"><SirRankingPanel {...sirRankingProps} /></div>
         </>
       )}
     </ReportSection>

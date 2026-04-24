@@ -14,9 +14,10 @@ interface RiskContentProps {
   editable?: boolean;
   /** 신고 대행 요청 버튼 노출 여부. 보고서 내부에선 false, 위기 대응 센터에선 true */
   allowReport?: boolean;
+  pdfMode?: boolean;
 }
 
-export function RiskContent({ workspaceId, reportId, editable = false, allowReport = false }: RiskContentProps) {
+export function RiskContent({ workspaceId, reportId, editable = false, allowReport = false, pdfMode = false }: RiskContentProps) {
   const { data: report } = useReportInfoSuspense(reportId);
   const { data: riskItems } = useRiskItemsSuspense(workspaceId, reportId);
   const { data: riskReports } = useRiskReportsSuspense(workspaceId, reportId);
@@ -37,23 +38,28 @@ export function RiskContent({ workspaceId, reportId, editable = false, allowRepo
   return (
     <div className="print-break">
       <ReportSection id="section-risk" icon={<LiskContentIcon size={36} />} title="리스크 콘텐츠 관리">
-        <RiskDetectionTable
-          riskItems={riskItems}
-          workspaceId={workspaceId}
-          reportId={reportId}
-          reportedSourceIds={reportedSourceIds}
-          riskReportBySourceId={riskReportBySourceId}
-          onCancelReport={deleteMutation.mutate}
-          editable={editable}
-          allowReport={allowReport}
-        />
-        {report?.period_start && report?.period_end && (
-          <RiskResultTable
+        <div className="print-keep">
+          <RiskDetectionTable
+            riskItems={riskItems}
             workspaceId={workspaceId}
-            periodStart={report.period_start}
-            periodEnd={report.period_end}
-            isDaily={isDaily}
+            reportId={reportId}
+            reportedSourceIds={reportedSourceIds}
+            riskReportBySourceId={riskReportBySourceId}
+            onCancelReport={deleteMutation.mutate}
+            editable={editable}
+            allowReport={allowReport}
+            pdfMode={pdfMode}
           />
+        </div>
+        {report?.period_start && report?.period_end && (
+          <div className="print-keep">
+            <RiskResultTable
+              workspaceId={workspaceId}
+              periodStart={report.period_start}
+              periodEnd={report.period_end}
+              isDaily={isDaily}
+            />
+          </div>
         )}
       </ReportSection>
     </div>

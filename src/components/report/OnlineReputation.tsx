@@ -71,11 +71,13 @@ export function OnlineReputation({ workspaceId, reportId, pdfMode = false }: Onl
   return (
     <div className="print-break">
       <ReportSection id="section-reputation" icon={<OnlineReputationIcon size={36} />} title="온라인 평판 종합">
-        {!isDaily && <SearchTrendPanel {...searchTrendProps} />}
-        <ChannelVolumePanel {...channelVolumeProps} />
-        <ChannelSirPanel channelStats={channelStats} isInitial={isInitial} prevIsInitial={prevIsInitial} isDaily={isDaily} prevChannelSirMap={prevChannelSirMap} />
-        <SentimentPanel {...sentimentProps} />
-        <ChannelDetailPanel {...channelDetailProps} />
+        {!isDaily && <div className="print-keep"><SearchTrendPanel {...searchTrendProps} /></div>}
+        <div className="print-keep"><ChannelVolumePanel {...channelVolumeProps} /></div>
+        <div className="print-keep">
+          <ChannelSirPanel channelStats={channelStats} isInitial={isInitial} prevIsInitial={prevIsInitial} isDaily={isDaily} prevChannelSirMap={prevChannelSirMap} />
+        </div>
+        <div className="print-keep"><SentimentPanel {...sentimentProps} /></div>
+        <div className="print-keep"><ChannelDetailPanel {...channelDetailProps} /></div>
       </ReportSection>
     </div>
   );

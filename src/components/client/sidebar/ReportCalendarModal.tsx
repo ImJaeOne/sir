@@ -177,7 +177,7 @@ export function ReportCalendarModal({
     <Modal
       open
       onClose={onClose}
-      title="지난 보고서"
+      title="보고서 내역"
       size="md"
       footer={
         <Button onClick={handleApply} disabled={!isChanged} fullWidth>
@@ -284,6 +284,21 @@ export function ReportCalendarModal({
           .report-calendar.mode-daily .day-selected::before {
             border-radius: 9999px;
             inset: 10% 10%;
+          }
+          /* 일간 모드: 기본(연보라 0.1) / 현재(opaque 파랑) / 선택(opaque 보라) 3단계로 명확히 구분 */
+          .report-calendar.mode-daily .day-current::before {
+            background-color: #362cff;
+          }
+          .report-calendar.mode-daily .rdp-day.day-current {
+            color: #ffffff;
+            font-weight: 600;
+          }
+          .report-calendar.mode-daily .day-selected::before {
+            background-color: #9747ff;
+          }
+          .report-calendar.mode-daily .rdp-day.day-selected {
+            color: #ffffff;
+            font-weight: 600;
           }
           .report-calendar .day-range-start::before {
             border-radius: 9999px 0 0 9999px;
@@ -413,7 +428,7 @@ function MonthlyList({
               onClick={() => onSelect(r.id)}
               className={`text-left rounded-lg border px-3.5 py-3 transition-colors cursor-pointer ${
                 isSelected
-                  ? 'border-text-pupple bg-bg-pupple-calendar'
+                  ? 'border-bg-pupple bg-bg-pupple-calendar'
                   : isCurrent
                     ? 'border-text-accent bg-bg-blue'
                     : 'border-slate-200 bg-white hover:bg-slate-50'

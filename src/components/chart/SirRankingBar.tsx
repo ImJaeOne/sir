@@ -23,12 +23,12 @@ export function SirRankingBar({ tiers, pdfMode }: SirRankingBarProps) {
   const ticks = Array.from({ length: max / 5 + 1 }, (_, i) => i * 5);
 
   return (
-    <div className="flex flex-col gap-2 w-full relative outline-none **:outline-none">
+    <div className={`flex flex-col gap-2 w-full relative outline-none **:outline-none ${pdfMode ? 'h-full' : ''}`}>
       <p className="absolute right-1 -top-5 text-text-muted text-xs">(단위: 기업 수)</p>
 
       <ReportCard className="flex-1" px={20} py={10}>
-        <div className="flex flex-col gap-2">
-          <div className={pdfMode ? 'h-56' : 'h-72'}>
+        <div className={`flex flex-col gap-2 ${pdfMode ? 'h-full' : ''}`}>
+          <div className={pdfMode ? 'h-full min-h-56' : 'h-72'}>
             <ChartCanvas>
               <BarChart
                 data={tiers}

@@ -15,6 +15,7 @@ interface RiskDetectionTableProps {
   editable?: boolean;
   allowReport?: boolean;
   sessionToReportMap?: Map<string, string>;
+  pdfMode?: boolean;
 }
 
 export function RiskDetectionTable({
@@ -27,6 +28,7 @@ export function RiskDetectionTable({
   editable = false,
   allowReport = false,
   sessionToReportMap,
+  pdfMode = false,
 }: RiskDetectionTableProps) {
   return (
     <ReportSubSection
@@ -45,6 +47,7 @@ export function RiskDetectionTable({
           editable={editable}
           allowReport={allowReport}
           sessionToReportMap={sessionToReportMap}
+          pdfMode={pdfMode}
         />
       </ReportCard>
     </ReportSubSection>
