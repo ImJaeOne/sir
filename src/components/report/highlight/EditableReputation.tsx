@@ -253,24 +253,24 @@ export function EditableReputation({ summary, workspaceId, reportId }: EditableR
                     <input
                       value={sub.title}
                       onChange={(e) => updateSubTitle(activeTab, subIdx, e.target.value)}
-                      className="text-sm font-semibold text-text-dark bg-white border border-border-light rounded-lg px-3 py-1.5 outline-none focus:border-slate-400"
+                      className="w-full min-w-0 text-sm font-semibold text-text-dark bg-white border border-border-light rounded-lg px-3 py-1.5 outline-none focus:border-slate-400"
                     />
                   ) : (
                     <h5 className="text-sm font-semibold text-text-dark">{sub.title}</h5>
                   )}
                   <ul className="flex flex-col gap-1.5">
                     {sub.points.map((point, pIdx) => (
-                      <li key={pIdx} className="flex gap-2">
+                      <li key={pIdx} className="flex gap-2 min-w-0">
                         <CheckListIcon
                           size={16}
                           className={`shrink-0 ${editing ? 'mt-2' : 'mt-0.5'}`}
                         />
                         {editing ? (
-                          <div className="flex-1 flex items-center gap-1">
+                          <div className="flex-1 min-w-0 flex items-center gap-1">
                             <input
                               value={point}
                               onChange={(e) => updatePoint(activeTab, subIdx, pIdx, e.target.value)}
-                              className="flex-1 text-sm text-text-muted bg-white border border-border-light rounded-lg px-3 py-1.5 outline-none focus:border-slate-400"
+                              className="flex-1 min-w-0 text-sm text-text-muted bg-white border border-border-light rounded-lg px-3 py-1.5 outline-none focus:border-slate-400"
                             />
                             <button
                               onClick={() => removePoint(activeTab, subIdx, pIdx)}
