@@ -1,6 +1,5 @@
 import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth';
-import { createClient } from '@/lib/supabase/server';
 import { loadAdminHome } from '@/lib/adminHome/queries';
 import {
   AutomationFailureCard,
@@ -11,53 +10,8 @@ import {
 export default async function HomePage() {
   const user = await getCurrentUser();
   if (!user) redirect('/auth/login');
+  // user 역할 분기는 (app)/layout.tsx 에서 처리되므로 여기선 admin/super_admin 만 도달.
 
-  console.info('[HomePage] user.role=', user.role, 'id=', user.id, 'email=', user.email);
-
-  // user 역할 — 본인 워크스페이스의 최신 published report 로 이동
-  if (user.role === 'user') {
-    const supabase = await createClient();
-    const { data: membership } = await supabase
-      .from('workspace_members')
-      .select('workspace_id')
-      .eq('profile_id', user.id)
-      .limit(1);
-
-    if (!membership || membership.length === 0) {
-      return (
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="text-center flex flex-col gap-2">
-            <p className="text-lg font-semibold text-slate-700">배정된 워크스페이스가 없습니다</p>
-            <p className="text-sm text-slate-400">관리자에게 문의해주세요.</p>
-          </div>
-        </div>
-      );
-    }
-
-    const workspaceId = membership[0].workspace_id;
-    const { data: reports } = await supabase
-      .from('reports')
-      .select('id')
-      .eq('workspace_id', workspaceId)
-      .eq('status', 'published')
-      .order('period_end', { ascending: false })
-      .limit(1);
-
-    if (reports && reports.length > 0) {
-      redirect(`/report/${workspaceId}/${reports[0].id}`);
-    }
-
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-center flex flex-col gap-2">
-          <p className="text-lg font-semibold text-slate-700">아직 발행된 보고서가 없습니다</p>
-          <p className="text-sm text-slate-400">관리자에게 문의해주세요.</p>
-        </div>
-      </div>
-    );
-  }
-
-  // admin / super_admin — 관리자 홈 대시보드
   const data = await loadAdminHome(user.role, user.id);
   const greetingName = user.companyName || user.email.split('@')[0];
   const roleLabel = user.role === 'super_admin' ? '최고 관리자' : '관리자';
