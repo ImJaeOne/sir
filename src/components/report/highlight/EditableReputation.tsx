@@ -182,8 +182,8 @@ export function EditableReputation({ summary, workspaceId, reportId }: EditableR
     <ReportSubSection title="주간 총평" action={actionButton}>
       <ReportCard px={0} py={0}>
         <div className="flex flex-col">
-          {/* 탭 */}
-          <div className="flex border-b border-slate-100">
+          {/* 탭 — 모바일 가로 스크롤 */}
+          <div className="flex border-b border-slate-100 overflow-x-auto overflow-y-hidden">
             {SUMMARY_SECTIONS.map((sec, i) => {
               const Icon = sec.icon;
               const active = activeTab === i;
@@ -192,7 +192,7 @@ export function EditableReputation({ summary, workspaceId, reportId }: EditableR
                   key={i}
                   onClick={() => setActiveTab(i)}
                   className={cn(
-                    'flex-1 flex items-center justify-center gap-2 py-3 lg:py-4 transition-colors cursor-pointer border-b-2',
+                    'shrink-0 lg:flex-1 flex items-center justify-center gap-2 px-4 lg:px-0 py-3 lg:py-4 transition-colors cursor-pointer border-b-2',
                     active ? sec.borderColor : 'border-transparent hover:bg-slate-50'
                   )}
                 >
@@ -201,7 +201,7 @@ export function EditableReputation({ summary, workspaceId, reportId }: EditableR
                   </div>
                   <span
                     className={cn(
-                      'text-xs lg:text-sm',
+                      'text-xs lg:text-sm whitespace-nowrap',
                       active ? 'text-slate-700 font-semibold' : 'text-slate-400'
                     )}
                   >
@@ -213,7 +213,7 @@ export function EditableReputation({ summary, workspaceId, reportId }: EditableR
           </div>
 
           {/* 콘텐츠 */}
-          <div className="p-5 lg:p-8">
+          <div className="p-4 lg:p-8">
             {/* 섹션 헤더 */}
             <div className="flex items-center gap-3 mb-5">
               {activeConfig?.icon &&
@@ -247,7 +247,7 @@ export function EditableReputation({ summary, workspaceId, reportId }: EditableR
               {activeSection.subsections.map((sub, subIdx) => (
                 <div
                   key={subIdx}
-                  className="rounded-[10px] bg-bg-light px-5 py-4 flex flex-col gap-2"
+                  className="rounded-[10px] bg-bg-light px-4 py-3 lg:px-5 lg:py-4 flex flex-col gap-2"
                 >
                   {editing ? (
                     <input

@@ -74,7 +74,7 @@ function WorkspaceCombobox({
       onChange={(ws) => onChange(ws?.id ?? '')}
       onClose={() => setQuery('')}
     >
-      <div className="relative w-56">
+      <div className="relative w-full sm:w-56">
         <div className="flex items-center border border-slate-200 rounded-lg focus-within:border-blue-400 transition-colors bg-white">
           <ComboboxInput
             className="w-full text-sm px-3 py-2 outline-none bg-transparent"
@@ -155,7 +155,7 @@ function ReportCalendarSelector({
     <>
       <button
         onClick={() => setShowCalendar(true)}
-        className="flex items-center gap-2 text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white hover:bg-slate-50 transition-colors cursor-pointer"
+        className="flex items-center gap-2 text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white hover:bg-slate-50 transition-colors cursor-pointer w-full sm:w-auto"
       >
         <CalendarDays size={16} className="text-slate-400" />
         <span className={selectedReport ? 'text-slate-800 font-semibold' : 'text-slate-400'}>
@@ -365,14 +365,14 @@ export function RiskReportsClient({ assignedIds }: RiskReportsClientProps) {
   const wsMap = useMemo(() => new Map(workspaces.map((ws) => [ws.id, ws.company_name])), [workspaces]);
 
   return (
-    <div className="p-6 lg:p-8 h-full bg-slate-50">
-      <div className="max-w-5xl mx-auto flex flex-col gap-6 h-full">
+    <div className="p-4 sm:p-6 lg:p-8 h-full bg-slate-50">
+      <div className="max-w-5xl mx-auto flex flex-col gap-4 sm:gap-6 h-full">
         <h1 className="text-xl font-bold text-slate-800 pb-2 border-b border-slate-100">
           리스크 관리
         </h1>
 
         {/* 필터 영역 */}
-        <div className="flex items-center gap-4 flex-wrap">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 sm:flex-wrap">
           <WorkspaceCombobox
             workspaces={workspaces}
             selectedId={selectedWsId}
@@ -388,8 +388,8 @@ export function RiskReportsClient({ assignedIds }: RiskReportsClientProps) {
 
         {/* 테이블 (탭 + 바디 통합) */}
         <div className="flex-1 flex flex-col bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-          {/* 상태 필터 (탭 스타일) */}
-          <div className="flex gap-4 px-4 pt-3 border-b border-border-light shrink-0">
+          {/* 상태 필터 (탭 스타일) - 모바일 가로 스크롤 */}
+          <div className="flex gap-3 sm:gap-4 px-4 pt-3 border-b border-border-light shrink-0 overflow-x-auto">
             {STATUS_FILTERS.map((f) => {
               const count = f.key === 'all'
                 ? (riskReports ?? []).length
@@ -399,9 +399,9 @@ export function RiskReportsClient({ assignedIds }: RiskReportsClientProps) {
                 <button
                   key={f.key}
                   onClick={() => setStatusFilter(f.key)}
-                  className="flex flex-col items-center gap-1 cursor-pointer"
+                  className="flex flex-col items-center gap-1 cursor-pointer shrink-0"
                 >
-                  <span className={`text-xs px-2 transition-colors ${active ? 'text-text-dark font-semibold' : 'text-text-muted font-normal'}`}>
+                  <span className={`text-xs px-2 whitespace-nowrap transition-colors ${active ? 'text-text-dark font-semibold' : 'text-text-muted font-normal'}`}>
                     {f.label} ({count})
                   </span>
                   <div className={`h-0.5 w-full rounded-full transition-colors ${active ? 'bg-text-accent' : 'bg-transparent'}`} />
@@ -409,8 +409,8 @@ export function RiskReportsClient({ assignedIds }: RiskReportsClientProps) {
               );
             })}
           </div>
-          {/* 헤더 */}
-          <div className="grid grid-cols-[8%_10%_8%_8%_1fr_12%] border-b border-slate-100 py-3 px-4 text-xs font-semibold text-slate-500 text-center shrink-0">
+          {/* 헤더 (데스크톱만) */}
+          <div className="hidden lg:grid grid-cols-[8%_10%_8%_8%_1fr_12%] border-b border-slate-100 py-3 px-4 text-xs font-semibold text-slate-500 text-center shrink-0">
             <div>신고일</div>
             <div>회사명</div>
             <div>채널명</div>
@@ -432,39 +432,75 @@ export function RiskReportsClient({ assignedIds }: RiskReportsClientProps) {
             <div className="flex-1 overflow-y-auto">
               {filtered.map((rr) => {
                 const statusCfg = STATUS_STYLES[rr.status] ?? { label: rr.status, className: 'bg-slate-100 text-slate-600' };
+                const requestedLabel = rr.requested_at?.slice(5, 10).replace(/-/g, '.') ?? '';
+                const companyLabel = wsMap.get(rr.workspace_id) ?? '';
+                const platformLabel = PLATFORM_LABELS[rr.platform_id] ?? rr.platform_id;
                 return (
                   <div
                     key={rr.id}
                     onClick={() => setSelected(rr)}
-                    className="grid grid-cols-[8%_10%_8%_8%_1fr_12%] items-center py-3 px-4 border-b border-slate-50 hover:bg-slate-50/50 transition-colors cursor-pointer"
+                    className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors cursor-pointer"
                   >
-                    <div className="text-center text-xs text-slate-500">
-                      {rr.requested_at?.slice(5, 10).replace(/-/g, '.') ?? ''}
-                    </div>
-                    <div className="text-center text-xs text-slate-500 truncate">
-                      {wsMap.get(rr.workspace_id) ?? ''}
-                    </div>
-                    <div className="text-center text-xs text-slate-500">
-                      {PLATFORM_LABELS[rr.platform_id] ?? rr.platform_id}
-                    </div>
-                    <div className="text-center text-xs text-slate-500">
-                      {rr.reason}
-                    </div>
-                    <div className="pl-2 flex items-center gap-2 min-w-0">
-                      <span className="text-sm text-slate-800 font-semibold truncate">
-                        {rr.title}
-                      </span>
-                      {rr.file_urls.length > 0 && (
-                        <span className="flex items-center gap-0.5 text-slate-400 shrink-0">
-                          <Paperclip size={12} />
-                          <span className="text-[10px]">{rr.file_urls.length}</span>
+                    {/* 데스크톱 행 */}
+                    <div className="hidden lg:grid grid-cols-[8%_10%_8%_8%_1fr_12%] items-center py-3 px-4">
+                      <div className="text-center text-xs text-slate-500">
+                        {requestedLabel}
+                      </div>
+                      <div className="text-center text-xs text-slate-500 truncate">
+                        {companyLabel}
+                      </div>
+                      <div className="text-center text-xs text-slate-500">
+                        {platformLabel}
+                      </div>
+                      <div className="text-center text-xs text-slate-500">
+                        {rr.reason}
+                      </div>
+                      <div className="pl-2 flex items-center gap-2 min-w-0">
+                        <span className="text-sm text-slate-800 font-semibold truncate">
+                          {rr.title}
                         </span>
-                      )}
+                        {rr.file_urls.length > 0 && (
+                          <span className="flex items-center gap-0.5 text-slate-400 shrink-0">
+                            <Paperclip size={12} />
+                            <span className="text-[10px]">{rr.file_urls.length}</span>
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-center">
+                        <span className={`inline-block text-xs font-semibold px-3 py-1.5 rounded-lg ${statusCfg.className}`}>
+                          {statusCfg.label}
+                        </span>
+                      </div>
                     </div>
-                    <div className="text-center">
-                      <span className={`inline-block text-xs font-semibold px-3 py-1.5 rounded-lg ${statusCfg.className}`}>
-                        {statusCfg.label}
-                      </span>
+
+                    {/* 모바일 카드 */}
+                    <div className="lg:hidden flex flex-col gap-1.5 px-4 py-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-semibold text-slate-700 truncate">
+                          {companyLabel}
+                        </span>
+                        <span className={`shrink-0 inline-block text-[11px] font-semibold px-2 py-0.5 rounded-md ${statusCfg.className}`}>
+                          {statusCfg.label}
+                        </span>
+                      </div>
+                      <div className="flex items-start gap-2 min-w-0">
+                        <p className="text-sm text-slate-800 font-semibold leading-snug line-clamp-2 flex-1">
+                          {rr.title}
+                        </p>
+                        {rr.file_urls.length > 0 && (
+                          <span className="flex items-center gap-0.5 text-slate-400 shrink-0 mt-0.5">
+                            <Paperclip size={12} />
+                            <span className="text-[10px]">{rr.file_urls.length}</span>
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1.5 text-[11px] text-slate-400 tabular-nums">
+                        <span>{requestedLabel}</span>
+                        <span className="text-slate-300">·</span>
+                        <span>{platformLabel}</span>
+                        <span className="text-slate-300">·</span>
+                        <span className="truncate">{rr.reason}</span>
+                      </div>
                     </div>
                   </div>
                 );

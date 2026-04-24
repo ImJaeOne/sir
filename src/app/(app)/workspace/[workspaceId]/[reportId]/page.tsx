@@ -153,7 +153,7 @@ function ReportPageContent() {
         </div>
 
         {/* 섹션 탭 — 데스크톱: flex-1 균등 분할 / 모바일: 가로 스크롤 */}
-        <div className="flex gap-1 border-b border-slate-200 w-full">
+        <div className="flex gap-1 border-b border-slate-200 w-full h-full overflow-x-auto overflow-y-hidden">
           {sections.map((s) => {
             const active = activeSection === s.id;
             return (
@@ -161,7 +161,7 @@ function ReportPageContent() {
                 key={s.id}
                 type="button"
                 onClick={() => handleTabClick(s.id)}
-                className={`lg:flex-1 px-4 py-2 text-sm font-semibold border-b-2 -mb-px transition-colors cursor-pointer whitespace-nowrap ${
+                className={`shrink-0 lg:flex-1 px-4 py-2 text-sm font-semibold border-b-2 -mb-px transition-colors cursor-pointer whitespace-nowrap ${
                   active
                     ? 'border-slate-700 text-slate-800'
                     : 'border-transparent text-slate-400 hover:text-slate-600'
