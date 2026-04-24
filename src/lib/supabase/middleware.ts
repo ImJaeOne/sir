@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextRequest, NextResponse } from 'next/server';
+import { resolveUserReportPath } from '@/lib/auth/resolveLandingPath';
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
@@ -66,13 +67,10 @@ export async function updateSession(request: NextRequest) {
     if (pathname === '/') {
       const role = await getUserRole(supabase, user.id);
       if (role === 'user') {
-        const target = await resolveUserReportPath(supabase, user.id);
-        if (target) {
-          const url = request.nextUrl.clone();
-          url.pathname = target;
-          return NextResponse.redirect(url);
-        }
-        // 배정/발행 없는 경우는 (app)/page.tsx 의 안내 메시지가 그대로 렌더되게 통과
+        const target = (await resolveUserReportPath(supabase, user.id)) ?? '/no-report';
+        const url = request.nextUrl.clone();
+        url.pathname = target;
+        return NextResponse.redirect(url);
       }
     }
   }
@@ -88,26 +86,4 @@ async function getUserRole(supabase: any, userId: string): Promise<string> {
     .eq('id', userId)
     .single();
   return data?.role ?? 'user';
-}
-
-// user 역할의 기본 진입 경로 = 본인 첫 워크스페이스의 최신 published report
-async function resolveUserReportPath(supabase: any, userId: string): Promise<string | null> {
-  const { data: membership } = await supabase
-    .from('workspace_members')
-    .select('workspace_id')
-    .eq('profile_id', userId)
-    .limit(1);
-  const wsId = membership?.[0]?.workspace_id;
-  if (!wsId) return null;
-
-  const { data: reports } = await supabase
-    .from('reports')
-    .select('id')
-    .eq('workspace_id', wsId)
-    .eq('status', 'published')
-    .order('period_end', { ascending: false })
-    .limit(1);
-  const reportId = reports?.[0]?.id;
-  if (!reportId) return null;
-  return `/report/${wsId}/${reportId}`;
 }

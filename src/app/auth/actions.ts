@@ -2,6 +2,7 @@
 
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { resolveLandingPath } from '@/lib/auth/resolveLandingPath';
 import type { AuthResult } from '@/types/auth';
 
 export async function login(formData: FormData): Promise<AuthResult> {
@@ -10,13 +11,14 @@ export async function login(formData: FormData): Promise<AuthResult> {
   const email = formData.get('email') as string;
   const password = formData.get('password') as string;
 
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
     return { success: false, error: error.message };
   }
 
-  redirect('/');
+  const target = data.user ? await resolveLandingPath(supabase, data.user.id) : '/';
+  redirect(target);
 }
 
 export async function signup(formData: FormData): Promise<AuthResult> {
@@ -26,7 +28,7 @@ export async function signup(formData: FormData): Promise<AuthResult> {
   const password = formData.get('password') as string;
   const companyName = formData.get('companyName') as string;
 
-  const { error } = await supabase.auth.signUp({
+  const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
@@ -40,7 +42,8 @@ export async function signup(formData: FormData): Promise<AuthResult> {
     return { success: false, error: error.message };
   }
 
-  redirect('/');
+  const target = data.user ? await resolveLandingPath(supabase, data.user.id) : '/';
+  redirect(target);
 }
 
 export async function logout() {

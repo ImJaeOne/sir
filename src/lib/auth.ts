@@ -7,15 +7,11 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
 
   if (!user) return null;
 
-  const { data: profile, error } = await supabase
+  const { data: profile } = await supabase
     .from('user_profiles')
     .select('*')
     .eq('id', user.id)
     .single<ProfileRow>();
-
-  if (error) {
-    console.warn('[getCurrentUser] user_profiles 조회 실패 → user 로 fallback:', user.id, error.message);
-  }
 
   if (profile) {
     return {
