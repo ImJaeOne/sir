@@ -61,13 +61,18 @@ export async function updateSession(request: NextRequest) {
       }
     }
 
-    // admin/super_admin이 / (홈) 접근 → /workspace로 리다이렉트
+    // / (홈) — user 역할은 (app) 레이아웃(관리자 사이드바) 진입 자체를 막고
+    // 본인 최신 published report 로 직접 이동. admin/super_admin 은 (app)/page.tsx 가 홈 대시보드 렌더.
     if (pathname === '/') {
       const role = await getUserRole(supabase, user.id);
-      if (role !== 'user') {
-        const url = request.nextUrl.clone();
-        url.pathname = '/workspace';
-        return NextResponse.redirect(url);
+      if (role === 'user') {
+        const target = await resolveUserReportPath(supabase, user.id);
+        if (target) {
+          const url = request.nextUrl.clone();
+          url.pathname = target;
+          return NextResponse.redirect(url);
+        }
+        // 배정/발행 없는 경우는 (app)/page.tsx 의 안내 메시지가 그대로 렌더되게 통과
       }
     }
   }
@@ -83,4 +88,26 @@ async function getUserRole(supabase: any, userId: string): Promise<string> {
     .eq('id', userId)
     .single();
   return data?.role ?? 'user';
+}
+
+// user 역할의 기본 진입 경로 = 본인 첫 워크스페이스의 최신 published report
+async function resolveUserReportPath(supabase: any, userId: string): Promise<string | null> {
+  const { data: membership } = await supabase
+    .from('workspace_members')
+    .select('workspace_id')
+    .eq('profile_id', userId)
+    .limit(1);
+  const wsId = membership?.[0]?.workspace_id;
+  if (!wsId) return null;
+
+  const { data: reports } = await supabase
+    .from('reports')
+    .select('id')
+    .eq('workspace_id', wsId)
+    .eq('status', 'published')
+    .order('period_end', { ascending: false })
+    .limit(1);
+  const reportId = reports?.[0]?.id;
+  if (!reportId) return null;
+  return `/report/${wsId}/${reportId}`;
 }

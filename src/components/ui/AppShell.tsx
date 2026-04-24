@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { logout } from '@/app/auth/actions';
 import {
+  Home,
   LayoutDashboard,
   ShieldAlert,
   Users,
@@ -30,6 +31,7 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
+  { label: '홈', href: '/', icon: Home, roles: ['super_admin', 'admin'] },
   { label: '워크스페이스', href: '/workspace', icon: LayoutDashboard },
   { label: '리스크 관리', href: '/risk-reports', icon: ShieldAlert },
   { label: '유저 관리', href: '/users', icon: Users },
