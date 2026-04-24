@@ -403,14 +403,14 @@ function PointsList({
   return (
     <ul className="flex flex-col gap-1.5 mt-1">
       {points.map((point, i) => (
-        <li key={i} className="flex gap-2">
+        <li key={i} className="flex gap-2 min-w-0">
           <CheckListIcon size={16} className={`shrink-0 ${editing ? 'mt-2' : 'mt-0.5'}`} />
           {editing ? (
-            <div className="flex-1 flex items-center gap-1">
+            <div className="flex-1 min-w-0 flex items-center gap-1">
               <input
                 value={point}
                 onChange={(e) => onUpdate(i, e.target.value)}
-                className="flex-1 text-sm text-text-dark bg-white border border-border-light rounded-lg px-3 py-1.5 outline-none focus:border-slate-400"
+                className="flex-1 min-w-0 text-sm text-text-dark bg-white border border-border-light rounded-lg px-3 py-1.5 outline-none focus:border-slate-400"
               />
               <button
                 onClick={() => onRemove(i)}

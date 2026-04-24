@@ -52,10 +52,17 @@ export async function updateSession(request: NextRequest) {
     }
 
     // user 역할은 관리자 페이지 접근 차단 (/workspace, /risk-reports, /users)
+    // /users 는 super_admin 전용 — 일반 admin 도 차단
     const isAdminRoute = pathname.startsWith('/workspace') || pathname.startsWith('/risk-reports') || pathname.startsWith('/users');
+    const isSuperAdminRoute = pathname.startsWith('/users');
     if (isAdminRoute) {
       const role = await getUserRole(supabase, user.id);
       if (role === 'user') {
+        const url = request.nextUrl.clone();
+        url.pathname = '/';
+        return NextResponse.redirect(url);
+      }
+      if (isSuperAdminRoute && role !== 'super_admin') {
         const url = request.nextUrl.clone();
         url.pathname = '/';
         return NextResponse.redirect(url);
