@@ -53,8 +53,8 @@ export function MobileSearchTrendChart({ data }: MobileSearchTrendChartProps) {
           </LineChart>
         </div>
 
-        {/* 본문 — 스크롤 */}
-        <div ref={scrollRef} style={{ flex: 1, overflowX: 'auto', overflowY: 'hidden' }}>
+        {/* 본문 — 스크롤. flex item min-width 기본값(auto) 이 bodyW 에 끌려가 레이아웃이 깨지므로 0 으로 명시 */}
+        <div ref={scrollRef} style={{ flex: 1, minWidth: 0, overflowX: 'auto', overflowY: 'hidden' }}>
           <LineChart
             width={bodyW}
             height={180}

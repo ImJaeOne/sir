@@ -25,7 +25,7 @@ export function SirRankingPanel({ score, avgScore, companyName, sirRanking, pdfM
     <ReportSubSection
       title={isDaily ? 'SIR 일간 순위' : 'SIR 주간 순위'}
       description="SIR을 사용중인 전체 기업 중 우리 회사의 순위를 확인할 수 있습니다."
-      className="flex flex-col lg:flex-row gap-4"
+      className={`flex flex-col lg:flex-row gap-4 ${pdfMode ? 'lg:items-stretch' : ''}`}
     >
       <div className="shrink-0 lg:w-[300px] flex flex-col gap-3">
         <SirRankingCard label={`${companyName} SIR 점수`} value={`${Math.round(score)}점`}>
@@ -38,7 +38,7 @@ export function SirRankingPanel({ score, avgScore, companyName, sirRanking, pdfM
           <SirScoreDonut score={avgScore} icon={<SirAvgIcon size={18} />} />
         </SirRankingCard>
       </div>
-      <div className="hidden lg:block w-full">
+      <div className={pdfMode ? 'hidden lg:flex w-full' : 'hidden lg:block w-full'}>
         <SirRankingBar tiers={sirRanking.tiers} pdfMode={pdfMode} />
       </div>
       <div className="lg:hidden w-full">

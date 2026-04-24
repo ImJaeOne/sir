@@ -13,6 +13,10 @@ body {
   .print-break {
     break-before: page;
   }
+  /* 블록이 페이지 경계에 걸려 쪼개지지 않도록 */
+  .print-keep {
+    break-inside: avoid;
+  }
 }
 
 @theme {

@@ -48,7 +48,7 @@ export function PdfDownloadButton() {
       const {
         data: { session },
       } = await supabase.auth.getSession();
-      const res = await fetch(`http://localhost:8000/api/report/${workspaceId}/${reportId}/pdf`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/report/${workspaceId}/${reportId}/pdf`, {
         headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
       });
       if (!res.ok) throw new Error('PDF 생성 실패');

@@ -571,7 +571,7 @@ export async function getStrategies(workspaceId: string, reportId?: string): Pro
     .from('session_strategies')
     .select('category, strategy')
     .eq('workspace_id', workspaceId)
-    .not('category', 'is', null)
+    .in('category', CATEGORY_ORDER)
     .order('created_at', { ascending: false });
 
   if (reportId) {

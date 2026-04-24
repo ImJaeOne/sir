@@ -65,7 +65,10 @@ interface RiskTableProps {
   /** 위기 대응 센터(workspace 전체 모드) 용 — item.session_id → reportId 매핑. 있으면
    *  신고 대행 요청 모달에 해당 item 의 고유 reportId 가 전달됨. */
   sessionToReportMap?: Map<string, string>;
+  pdfMode?: boolean;
 }
+
+const PDF_ROW_LIMIT = 10;
 
 export function RiskTable({
   riskItems,
@@ -77,6 +80,7 @@ export function RiskTable({
   editable = false,
   allowReport = false,
   sessionToReportMap,
+  pdfMode = false,
 }: RiskTableProps) {
   const [tab, setTab] = useState<string>('all');
   const [reportTarget, setReportTarget] = useState<RiskItem | null>(null);
@@ -92,6 +96,9 @@ export function RiskTable({
     if (tab === 'all') return riskItems;
     return riskItems.filter((i) => PLATFORM_TO_CHANNEL[i.platform_id] === tab);
   }, [riskItems, tab]);
+
+  // PDF 는 스크롤 없이 상위 N건만 펼친 상태로 렌더
+  const displayed = pdfMode ? filtered.slice(0, PDF_ROW_LIMIT) : filtered;
 
   const rowVirtualizer = useVirtualizer({
     count: filtered.length,
@@ -162,7 +169,55 @@ export function RiskTable({
               <div>세부내용</div>
               <div></div>
             </div>
-            <div ref={parentRef} className="max-h-[600px] overflow-y-auto">
+            <div ref={parentRef} className={pdfMode ? '' : 'max-h-[600px] overflow-y-auto'}>
+              {pdfMode ? (
+                displayed.map((item) => {
+                  const config = criticalTypeConfig[item.critical_type] ?? {
+                    label: item.critical_type,
+                    variant: 'slate' as const,
+                  };
+                  return (
+                    <div key={item.id}>
+                      <div
+                        className="grid items-center py-4 px-3 border-b border-border-light"
+                        style={{ gridTemplateColumns: COL_TEMPLATE }}
+                      >
+                        <div className="text-center text-xs text-text-muted">
+                          {item.published_at
+                            ? item.published_at.slice(0, 10).replace(/-/g, '.')
+                            : ''}
+                        </div>
+                        <div className="text-center text-xs text-text-muted">
+                          {PLATFORM_LABELS[item.platform_id] ?? item.platform_id}
+                        </div>
+                        <div className="text-center">
+                          <Badge variant={config.variant} bordered>
+                            {config.label}
+                          </Badge>
+                        </div>
+                        <div className="px-3">
+                          <div className="flex flex-col gap-2">
+                            <span className="text-xs bg-bg-light text-text-muted w-fit px-2 py-0.5 rounded-[10px]">
+                              {criticalTypeDescriptions[item.critical_type] ?? item.critical_type}
+                            </span>
+                            <div className="flex flex-col gap-1">
+                              <span className="text-sm font-semibold text-text-dark">
+                                {item.title}
+                              </span>
+                              {item.critical_reason && (
+                                <p className="text-xs text-text-muted leading-relaxed">
+                                  {item.critical_reason}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <div />
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
               <div
                 style={{
                   height: `${rowVirtualizer.getTotalSize()}px`,
@@ -279,6 +334,7 @@ export function RiskTable({
                   );
                 })}
               </div>
+              )}
             </div>
           </div>
 
@@ -376,7 +432,11 @@ export function RiskTable({
           </div>
         </>
       )}
-      <p className="text-xs text-text-muted text-center py-2">총 {filtered.length}건</p>
+      <p className="text-xs text-text-muted text-center py-2">
+        {pdfMode && filtered.length > PDF_ROW_LIMIT
+          ? `총 ${filtered.length}건 중 상위 ${PDF_ROW_LIMIT}건 표시`
+          : `총 ${filtered.length}건`}
+      </p>
 
       <RiskReportRequestModal
         open={!!reportTarget}

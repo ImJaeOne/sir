@@ -11,9 +11,10 @@ interface StrategyProps {
   workspaceId: string;
   reportId: string;
   editable?: boolean;
+  pdfMode?: boolean;
 }
 
-export function Strategy({ workspaceId, reportId, editable = false }: StrategyProps) {
+export function Strategy({ workspaceId, reportId, editable = false, pdfMode = false }: StrategyProps) {
   const { data: strategies } = useStrategiesSuspense(workspaceId, reportId);
 
   if (editable) {
@@ -36,7 +37,9 @@ export function Strategy({ workspaceId, reportId, editable = false }: StrategyPr
           {strategies.length > 0 ? (
             <div className="flex flex-col gap-4">
               {strategies.map((s) => (
-                <StrategyCard key={s.category} category={s.category} label={s.label} strategy={s.strategy} />
+                <div key={s.category} className="print-keep">
+                  <StrategyCard category={s.category} label={s.label} strategy={s.strategy} pdfMode={pdfMode} />
+                </div>
               ))}
             </div>
           ) : (

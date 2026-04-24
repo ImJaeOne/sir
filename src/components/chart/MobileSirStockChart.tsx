@@ -226,8 +226,8 @@ export function MobileSirStockChart({
           </ComposedChart>
         </div>
 
-        {/* 본문 — 스크롤 */}
-        <div ref={scrollRef} style={{ flex: 1, overflowX: 'auto', overflowY: 'hidden' }}>
+        {/* 본문 — 스크롤. flex item 의 min-width 기본값(auto) 이 자식 width(bodyW) 에 끌려가 레이아웃이 깨지므로 0 으로 명시 */}
+        <div ref={scrollRef} style={{ flex: 1, minWidth: 0, overflowX: 'auto', overflowY: 'hidden' }}>
           <ComposedChart
             width={bodyW}
             height={190}

@@ -133,9 +133,10 @@ function ClientReportContent() {
         <ReportHeader workspaceId={workspaceId} reportId={reportId} showPdfButton={false} />
       </SectionBg>
 
-      {/* 섹션 탭 — 모든 SectionBg 바깥에 두어 스크롤 전 구간에서 sticky 유효 */}
+      {/* 섹션 탭 — 모든 SectionBg 바깥에 두어 스크롤 전 구간에서 sticky 유효.
+          모바일은 MobileFab(ClientShell) 이 섹션 이동을 담당하므로 lg 이상에서만 노출. */}
       <div
-        className="sticky top-0 z-20 w-full border-b border-slate-200"
+        className="hidden lg:block sticky top-0 z-20 w-full border-b border-slate-200"
         style={{ backgroundColor: 'var(--color-bg-light)' }}
       >
         <div className="mx-auto w-full lg:w-[1200px] px-4 lg:px-10">
