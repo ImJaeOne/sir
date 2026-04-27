@@ -108,11 +108,16 @@ export function WorkspaceDetailClient({ workspaceId }: WorkspaceDetailClientProp
     [progressList]
   );
 
-  // 분석 미시작 initial draft: super_admin 이 첫 분석을 트리거할 대상
+  // 분석 미시작 initial draft: super_admin 이 첫 분석을 트리거할 대상.
+  // initial 은 status 가 분석 후에도 draft 로 유지되므로 sessions 존재 여부로 분기.
   const pendingInitial = useMemo(() => {
     if (!reports) return null;
-    return reports.find((r) => r.type === 'initial' && r.status === 'draft') ?? null;
-  }, [reports]);
+    const candidate = reports.find((r) => r.type === 'initial' && r.status === 'draft');
+    if (!candidate) return null;
+    const progress = progressList?.find((p) => p.reportId === candidate.id);
+    if (progress && progress.sessions.length > 0) return null;
+    return candidate;
+  }, [reports, progressList]);
 
   return (
     <div className="flex w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-10 min-h-full">
