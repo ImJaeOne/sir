@@ -11,12 +11,8 @@ import { PLATFORM_LABELS, FAILED_REASON_LABELS, ALL_PLATFORMS } from '@/utils/wo
 import { STATUS_CONFIG, STATUS_FALLBACK } from './styles';
 
 function SessionStatusDot({ status }: { status: string }) {
-  const dotColor =
-    status === 'done' ? 'bg-emerald-400' :
-    status === 'failed' ? 'bg-red-400' :
-    status === 'pending' ? 'bg-slate-300' :
-    'bg-amber-400 animate-pulse';
-  return <span className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />;
+  const cfg = STATUS_CONFIG[status] ?? STATUS_FALLBACK;
+  return <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />;
 }
 
 function FailedPlatformRow({
@@ -183,10 +179,19 @@ export function ReportProgressPanel({
           )}
           <div className="grid grid-cols-2 gap-1.5">
             {(() => {
+              // dot 색 매핑: 분석 시작 전 = pending, 채널 분석은 끝났는데 finalize 안 끝나면 crawling, 끝나면 done
+              const sessionsAllDone =
+                progress.sessions.length > 0 &&
+                progress.sessions.every((s) => s.status === 'done');
+              const dotStatus = progress.hasSummary
+                ? 'done'
+                : sessionsAllDone
+                  ? 'crawling'
+                  : 'pending';
               const cfg = progress.hasSummary ? STATUS_CONFIG.done : STATUS_FALLBACK;
               return (
                 <div className={`flex items-center gap-2 border rounded-lg px-3 py-2 ${cfg.bg} ${cfg.border}`}>
-                  <SessionStatusDot status={progress.hasSummary ? 'done' : 'crawling'} />
+                  <SessionStatusDot status={dotStatus} />
                   <span className="text-xs text-slate-600 font-medium">총평</span>
                   <span className={`text-xs font-semibold ml-auto ${cfg.color}`}>
                     {progress.hasSummary ? '완료' : '작업 전'}
@@ -196,10 +201,14 @@ export function ReportProgressPanel({
             })()}
             {(() => {
               const done = progress.strategyCategories.length > 0;
+              const sessionsAllDone =
+                progress.sessions.length > 0 &&
+                progress.sessions.every((s) => s.status === 'done');
+              const dotStatus = done ? 'done' : sessionsAllDone ? 'crawling' : 'pending';
               const cfg = done ? STATUS_CONFIG.done : STATUS_FALLBACK;
               return (
                 <div className={`flex items-center gap-2 border rounded-lg px-3 py-2 ${cfg.bg} ${cfg.border}`}>
-                  <SessionStatusDot status={done ? 'done' : 'crawling'} />
+                  <SessionStatusDot status={dotStatus} />
                   <span className="text-xs text-slate-600 font-medium">대응 전략</span>
                   <span className={`text-xs font-semibold ml-auto ${cfg.color}`}>
                     {done ? `${progress.strategyCategories.length}개 채널` : '작업 전'}

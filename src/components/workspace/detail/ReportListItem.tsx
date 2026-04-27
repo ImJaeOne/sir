@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { ChevronDown, ChevronUp, ChevronRight, AlertCircle } from 'lucide-react';
 import type { Report, ReportProgress } from '@/lib/api/workspaceApi';
 import { ALL_PLATFORMS, PLATFORM_LABELS, getReportHealth } from '@/utils/workspace';
-import { STATUS_CONFIG, HEALTH_STRIPE } from './styles';
+import { STATUS_CONFIG, STATUS_FALLBACK, HEALTH_STRIPE } from './styles';
 import { ReportProgressPanel } from './ReportProgressPanel';
 
 /** 채널별 + (비일간일 때) 총평·전략 mini dot. 닫힌 카드에서도 어느 단계가 문제인지 훑어볼 수 있게 */
@@ -17,10 +17,7 @@ function ChannelMiniDots({
 }) {
   const sessionMap = new Map(progress?.sessions.map((s) => [s.platform_id, s]) ?? []);
   const dotClassFor = (status: string) =>
-    status === 'done' ? 'bg-emerald-400' :
-    status === 'failed' ? 'bg-red-400' :
-    status === 'pending' ? 'bg-slate-200' :
-    'bg-amber-400 animate-pulse';
+    (STATUS_CONFIG[status] ?? STATUS_FALLBACK).dot;
 
   const summaryStatus = progress?.hasSummary ? 'done' : 'pending';
   const strategyStatus = (progress?.strategyCategories?.length ?? 0) > 0 ? 'done' : 'pending';
@@ -81,17 +78,21 @@ export function ReportListItem({
         ? '일간 보고서'
         : '주간 보고서';
   const isAutoPublished = report.type === 'daily' && report.status === 'published';
+  const isNotAnalyzed = !progress || progress.sessions.length === 0;
   const statusColor = isAutoPublished
     ? 'bg-violet-50 text-violet-700'
     : report.status === 'published'
       ? 'bg-emerald-50 text-emerald-700'
-      : 'bg-amber-50 text-amber-700';
+      : isNotAnalyzed
+        ? 'bg-slate-100 text-slate-600'
+        : 'bg-amber-50 text-amber-700';
   const statusLabel = isAutoPublished
     ? '자동 발행'
     : report.status === 'published'
       ? '검토 완료'
-      : '검토 대기';
-  const isNotAnalyzed = !progress || progress.sessions.length === 0;
+      : isNotAnalyzed
+        ? '분석 대기'
+        : '검토 대기';
   const periodLabel = report.type === 'daily' ? periodStart : `${periodStart} ~ ${periodEnd}`;
   const health = getReportHealth(progress);
   const failedCount = progress?.sessions.filter((s) => s.status === 'failed').length ?? 0;

@@ -34,6 +34,9 @@ export function RiskContent({ workspaceId, reportId, editable = false, allowRepo
   }, [riskReports]);
 
   const isDaily = report?.type === 'daily';
+  // initial 보고서에 속한 항목은 신고 대행 요청 불가 (DB trigger 도 함께 enforce)
+  const isInitial = report?.type === 'initial';
+  const effectiveAllowReport = allowReport && !isInitial;
 
   return (
     <div className="print-break">
@@ -47,7 +50,7 @@ export function RiskContent({ workspaceId, reportId, editable = false, allowRepo
             riskReportBySourceId={riskReportBySourceId}
             onCancelReport={deleteMutation.mutate}
             editable={editable}
-            allowReport={allowReport}
+            allowReport={effectiveAllowReport}
             pdfMode={pdfMode}
           />
         </div>
