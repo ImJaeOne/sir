@@ -179,39 +179,48 @@ export function ReportProgressPanel({
           )}
           <div className="grid grid-cols-2 gap-1.5">
             {(() => {
-              // dot 색 매핑: 분석 시작 전 = pending, 채널 분석은 끝났는데 finalize 안 끝나면 crawling, 끝나면 done
-              const sessionsAllDone =
-                progress.sessions.length > 0 &&
-                progress.sessions.every((s) => s.status === 'done');
-              const dotStatus = progress.hasSummary
-                ? 'done'
-                : sessionsAllDone
-                  ? 'crawling'
-                  : 'pending';
-              const cfg = progress.hasSummary ? STATUS_CONFIG.done : STATUS_FALLBACK;
+              // session_strategies row 의 실제 status (pending → analyzing → done/failed) 를 그대로 반영
+              const sumStrategy = progress.strategies.find((s) => s.category === 'summary');
+              const status = sumStrategy?.status ?? 'pending';
+              const cfg = STATUS_CONFIG[status] ?? STATUS_FALLBACK;
               return (
                 <div className={`flex items-center gap-2 border rounded-lg px-3 py-2 ${cfg.bg} ${cfg.border}`}>
-                  <SessionStatusDot status={dotStatus} />
+                  <SessionStatusDot status={status} />
                   <span className="text-xs text-slate-600 font-medium">총평</span>
                   <span className={`text-xs font-semibold ml-auto ${cfg.color}`}>
-                    {progress.hasSummary ? '완료' : '작업 전'}
+                    {cfg.label}
                   </span>
                 </div>
               );
             })()}
             {(() => {
-              const done = progress.strategyCategories.length > 0;
-              const sessionsAllDone =
-                progress.sessions.length > 0 &&
-                progress.sessions.every((s) => s.status === 'done');
-              const dotStatus = done ? 'done' : sessionsAllDone ? 'crawling' : 'pending';
-              const cfg = done ? STATUS_CONFIG.done : STATUS_FALLBACK;
+              // 대응 전략은 news/community/sns 3 채널의 종합 상태
+              const channels = progress.strategies.filter((s) => s.category !== 'summary');
+              const doneCount = channels.filter((s) => s.status === 'done').length;
+              const total = channels.length;
+              const hasFailed = channels.some((s) => s.status === 'failed');
+              const hasActive = channels.some((s) =>
+                ['analyzing', 'pending_analysis', 'crawling', 'clustering'].includes(s.status),
+              );
+              let status: string;
+              if (total === 0) status = 'pending';
+              else if (doneCount === total) status = 'done';
+              else if (hasActive) status = 'analyzing';
+              else if (hasFailed) status = 'failed';
+              else status = 'pending';
+              const cfg = STATUS_CONFIG[status] ?? STATUS_FALLBACK;
+              const label =
+                status === 'done'
+                  ? `${doneCount}개 채널`
+                  : status === 'analyzing'
+                    ? `분석 중 (${doneCount}/${total})`
+                    : cfg.label;
               return (
                 <div className={`flex items-center gap-2 border rounded-lg px-3 py-2 ${cfg.bg} ${cfg.border}`}>
-                  <SessionStatusDot status={dotStatus} />
+                  <SessionStatusDot status={status} />
                   <span className="text-xs text-slate-600 font-medium">대응 전략</span>
                   <span className={`text-xs font-semibold ml-auto ${cfg.color}`}>
-                    {done ? `${progress.strategyCategories.length}개 채널` : '작업 전'}
+                    {label}
                   </span>
                 </div>
               );
