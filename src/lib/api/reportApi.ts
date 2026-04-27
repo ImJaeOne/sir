@@ -58,18 +58,48 @@ async function getReportMeta(reportId: string): Promise<ReportMeta> {
   const [reportRes, sessionsRes] = await Promise.all([
     supabase
       .from('reports')
-      .select('type, period_start, period_end, sir_score')
+      .select('workspace_id, type, period_start, period_end, sir_score')
       .eq('id', reportId)
       .maybeSingle(),
     supabase.from('sessions').select('id').eq('report_id', reportId),
   ]);
 
+  let sessionIds: string[] = (sessionsRes.data ?? []).map((s) => s.id);
+
+  // 일간 구독자의 weekly compile: 자체 sessions 가 없는 경우
+  // period 안의 daily reports 들의 sessions 합집합으로 fallback.
+  // 백엔드 _resolve_sessions_for_report 와 동일한 분기.
+  const r = reportRes.data;
+  if (
+    sessionIds.length === 0 &&
+    r?.type === 'weekly' &&
+    r?.workspace_id &&
+    r?.period_start &&
+    r?.period_end
+  ) {
+    const dailyReports = await supabase
+      .from('reports')
+      .select('id')
+      .eq('workspace_id', r.workspace_id)
+      .eq('type', 'daily')
+      .gte('period_start', r.period_start)
+      .lte('period_end', r.period_end);
+    const dailyReportIds = (dailyReports.data ?? []).map((row) => row.id);
+    if (dailyReportIds.length > 0) {
+      const dailySessions = await supabase
+        .from('sessions')
+        .select('id')
+        .in('report_id', dailyReportIds);
+      sessionIds = (dailySessions.data ?? []).map((s) => s.id);
+    }
+  }
+
   const meta: ReportMeta = {
-    sessionIds: (sessionsRes.data ?? []).map((s) => s.id),
-    periodStart: reportRes.data?.period_start ?? '',
-    periodEnd: reportRes.data?.period_end ?? '',
-    sirScore: reportRes.data?.sir_score ?? 0,
-    type: reportRes.data?.type ?? '',
+    sessionIds,
+    periodStart: r?.period_start ?? '',
+    periodEnd: r?.period_end ?? '',
+    sirScore: r?.sir_score ?? 0,
+    type: r?.type ?? '',
   };
 
   reportMetaCache.set(reportId, meta);
@@ -375,21 +405,26 @@ export async function getNewsClusters(workspaceId: string, reportId?: string): P
     const meta = await getReportMeta(reportId);
     if (meta.sessionIds.length === 0) return [];
 
-    const [clusters, items] = await Promise.all([
-      fetchAllPaged<any>((from, to) =>
-        supabase.from('news_clusters')
-          .select('id, representative_title, sentiment, summary')
-          .eq('workspace_id', workspaceId).eq('is_relevant', true)
-          .in('session_id', meta.sessionIds)
-          .order('created_at', { ascending: false })
-          .range(from, to)),
-      fetchAllPaged<any>((from, to) =>
-        supabase.from('news_items')
-          .select('cluster_id, title, source, link')
-          .eq('workspace_id', workspaceId).not('cluster_id', 'is', null)
-          .in('session_id', meta.sessionIds)
-          .range(from, to)),
-    ]);
+    // articles 를 먼저 fetch — 그 articles 의 cluster_id 합집합으로 cluster 조회.
+    // cross-session matching 도입 후엔 cluster row 의 session_id 가 처음 만든 session 만 가리키므로
+    // session_id IN 으로 cluster 를 찾으면 다른 session 에서 매칭 추가된 cluster 가 누락된다.
+    const items = await fetchAllPaged<any>((from, to) =>
+      supabase.from('news_items')
+        .select('cluster_id, title, source, link')
+        .eq('workspace_id', workspaceId).not('cluster_id', 'is', null)
+        .in('session_id', meta.sessionIds)
+        .range(from, to));
+
+    const clusterIds = Array.from(new Set(items.map((i: any) => i.cluster_id).filter(Boolean)));
+    if (clusterIds.length === 0) return [];
+
+    const clusters = await fetchAllPaged<any>((from, to) =>
+      supabase.from('news_clusters')
+        .select('id, representative_title, sentiment, summary')
+        .eq('workspace_id', workspaceId).eq('is_relevant', true)
+        .in('id', clusterIds)
+        .order('created_at', { ascending: false })
+        .range(from, to));
 
     const itemsByCluster = new Map<string, { title: string; source: string; link: string }[]>();
     for (const item of items) {

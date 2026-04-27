@@ -15,7 +15,7 @@ import { AdminLoading } from '@/components/ui/AdminLoading';
 import { WeeklyReportCard } from '@/components/workspace/detail/WeeklyReportCard';
 import { EditProfileModal } from '@/components/workspace/detail/EditProfileModal';
 import { BlacklistModal } from '@/components/workspace/detail/BlacklistModal';
-import { CreateReportButton } from '@/components/workspace/detail/CreateReportButton';
+import { StartAnalysisButton } from '@/components/workspace/detail/StartAnalysisButton';
 import { ReportListItem } from '@/components/workspace/detail/ReportListItem';
 import { useMyRole } from '@/hooks/user/useUserQuery';
 import { ChevronRight, Pencil, ShieldOff } from 'lucide-react';
@@ -108,6 +108,12 @@ export function WorkspaceDetailClient({ workspaceId }: WorkspaceDetailClientProp
     [progressList]
   );
 
+  // 분석 미시작 initial draft: super_admin 이 첫 분석을 트리거할 대상
+  const pendingInitial = useMemo(() => {
+    if (!reports) return null;
+    return reports.find((r) => r.type === 'initial' && r.status === 'draft') ?? null;
+  }, [reports]);
+
   return (
     <div className="flex w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-10 min-h-full">
       <div className="w-full max-w-3xl mx-auto flex flex-col gap-7 min-h-full">
@@ -129,6 +135,13 @@ export function WorkspaceDetailClient({ workspaceId }: WorkspaceDetailClientProp
               <TickerBadge ticker={workspace.ticker} />
             </div>
             <div className="shrink-0 flex items-center gap-2">
+              {isSuperAdmin && pendingInitial && (
+                <StartAnalysisButton
+                  workspaceId={workspaceId}
+                  reportId={pendingInitial.id}
+                  size="sm"
+                />
+              )}
               <button
                 onClick={() => setShowBlacklist(true)}
                 className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 bg-white border border-slate-200 rounded-lg px-3 py-1.5 hover:bg-slate-50 hover:border-slate-300 hover:text-slate-700 transition-colors cursor-pointer"
@@ -192,9 +205,11 @@ export function WorkspaceDetailClient({ workspaceId }: WorkspaceDetailClientProp
           {isPending && <AdminLoading message="보고서 불러오는 중" />}
 
           {!isPending && (!reports || reports.length === 0) && (
-            <div className="bg-white rounded-2xl border border-dashed border-slate-200 shadow-sm py-14 flex flex-col items-center gap-4">
+            <div className="bg-white rounded-2xl border border-dashed border-slate-200 shadow-sm py-14 flex flex-col items-center gap-2">
               <span className="text-sm text-slate-400">아직 생성된 보고서가 없습니다.</span>
-              <CreateReportButton workspaceId={workspaceId} />
+              <span className="text-xs text-slate-400">
+                워크스페이스 생성 시 자동으로 보고서가 만들어집니다. 잠시 후 새로고침해 주세요.
+              </span>
             </div>
           )}
 

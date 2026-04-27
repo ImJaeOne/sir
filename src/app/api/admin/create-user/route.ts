@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
         .eq('id', userId);
       if (profErr) throw profErr;
     } else {
-      const { error: rpcErr } = await supabaseAdmin.rpc(
+      const { data: rpcData, error: rpcErr } = await supabaseAdmin.rpc(
         'create_user_workspace_bundle',
         {
           p_user_id: userId,
@@ -74,6 +74,21 @@ export async function POST(request: NextRequest) {
         },
       );
       if (rpcErr) throw rpcErr;
+
+      const bundle = rpcData as {
+        workspace_id: string;
+        report_id: string;
+        period_start: string;
+        period_end: string;
+      };
+      return NextResponse.json({
+        id: userId,
+        email,
+        workspace_id: bundle.workspace_id,
+        report_id: bundle.report_id,
+        period_start: bundle.period_start,
+        period_end: bundle.period_end,
+      });
     }
 
     return NextResponse.json({ id: userId, email });
