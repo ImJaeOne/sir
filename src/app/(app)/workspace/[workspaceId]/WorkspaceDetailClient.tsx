@@ -76,7 +76,16 @@ export function WorkspaceDetailClient({ workspaceId }: WorkspaceDetailClientProp
   const [showBlacklist, setShowBlacklist] = useState(false);
   const { data: reports, isPending } = useReports(workspaceId);
   const { data: progressList } = useReportProgress(workspaceId);
-  useReportRealtimeSync(workspaceId);
+  // 진행 중 세션 또는 pending 전략이 하나라도 있을 때만 Realtime 채널을 연다.
+  // 폴링 비용은 채널 lifetime 에 비례하므로 done/failed 만 남은 워크스페이스는 구독을 끊는다.
+  const hasActiveProgress = useMemo(() => {
+    for (const p of progressList ?? []) {
+      if (p.allSessions.some((s) => s.status !== 'done' && s.status !== 'failed')) return true;
+      if (p.strategies.some((s) => s.status !== 'done' && s.status !== 'failed')) return true;
+    }
+    return false;
+  }, [progressList]);
+  useReportRealtimeSync(workspaceId, hasActiveProgress);
   const hasDaily = subscription?.has_daily ?? true;
 
   const filteredReports = useMemo(() => {

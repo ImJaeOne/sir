@@ -71,42 +71,15 @@ export function useReportProgressSuspense(workspaceId: string) {
   });
 }
 
-/** 어느 워크스페이스든 sessions/reports 가 바뀌면 목록 카드의 상태 칩·stripe 를 갱신 */
-export function useWorkspacesRealtimeSync() {
+/**
+ * sessions + session_strategies 변경 시 progress & reports 캐시 자동 갱신.
+ * isActive=false 면 채널을 열지 않음 — 진행 중 세션/전략이 없을 땐 WAL 폴링 비용을 안 낸다.
+ */
+export function useReportRealtimeSync(workspaceId: string, isActive: boolean) {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    const supabase = createClient();
-    const channel = supabase
-      .channel('workspaces-list-sync')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'sessions' },
-        () => {
-          queryClient.invalidateQueries({ queryKey: workspaceKeys.all });
-        },
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'reports' },
-        () => {
-          queryClient.invalidateQueries({ queryKey: workspaceKeys.all });
-        },
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [queryClient]);
-}
-
-/** sessions + session_strategies 변경 시 progress & reports 캐시 자동 갱신 */
-export function useReportRealtimeSync(workspaceId: string) {
-  const queryClient = useQueryClient();
-
-  useEffect(() => {
-    if (!workspaceId) return;
+    if (!workspaceId || !isActive) return;
 
     const supabase = createClient();
 
@@ -154,5 +127,5 @@ export function useReportRealtimeSync(workspaceId: string) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [workspaceId, queryClient]);
+  }, [workspaceId, queryClient, isActive]);
 }

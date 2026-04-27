@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Search } from 'lucide-react';
-import { useWorkspaces, useWorkspacesRealtimeSync } from '@/hooks/workspace/useWorkspaceQuery';
+import { useWorkspaces } from '@/hooks/workspace/useWorkspaceQuery';
 import { AdminLoading } from '@/components/ui/AdminLoading';
 import { WorkspaceList } from '@/components/workspace/list/WorkspaceList';
 import type { Workspace } from '@/types/workspace';
@@ -18,7 +18,6 @@ export function WorkspaceListClient({ assignedIds }: Props) {
   const [workspaceSearch, setWorkspaceSearch] = useState('');
 
   const { data: workspaces = [], isPending } = useWorkspaces();
-  useWorkspacesRealtimeSync();
 
   const visibleWorkspaces = useMemo(() => {
     if (assignedIds === null) return workspaces;
