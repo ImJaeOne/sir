@@ -12,6 +12,7 @@ export interface LatestReport {
   status: string;
   has_failed_session: boolean;
   has_running_session: boolean;
+  has_any_session: boolean;
 }
 
 export async function getWorkspaces(): Promise<(Workspace & { latest_report?: LatestReport })[]> {
@@ -42,18 +43,20 @@ export async function getWorkspaces(): Promise<(Workspace & { latest_report?: La
     }
   }
 
-  // 최신 report 들에 대한 세션 상태 일괄 조회 (실패/진행 중 플래그만 계산)
+  // 최신 report 들에 대한 세션 상태 일괄 조회 (실패/진행 중/분석 시작 여부 플래그만 계산)
   const latestReportIds = Array.from(latestByWs.values()).map((r) => r.id);
   const failedSet = new Set<string>();
   const runningSet = new Set<string>();
+  const anySessionSet = new Set<string>();
   if (latestReportIds.length > 0) {
     const { data: sessions } = await supabase
       .from('sessions')
       .select('report_id, status')
       .in('report_id', latestReportIds);
     for (const s of sessions ?? []) {
+      anySessionSet.add(s.report_id);
       if (s.status === 'failed') failedSet.add(s.report_id);
-      else if (['pending', 'crawling', 'analyzing', 'clustering'].includes(s.status)) runningSet.add(s.report_id);
+      else if (['pending', 'crawling', 'analyzing', 'clustering', 'pending_analysis'].includes(s.status)) runningSet.add(s.report_id);
     }
   }
 
@@ -64,6 +67,7 @@ export async function getWorkspaces(): Promise<(Workspace & { latest_report?: La
           ...base,
           has_failed_session: failedSet.has(base.id),
           has_running_session: runningSet.has(base.id),
+          has_any_session: anySessionSet.has(base.id),
         }
       : undefined;
     return { ...ws, latest_report };

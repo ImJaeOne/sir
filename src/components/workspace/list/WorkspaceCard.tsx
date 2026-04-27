@@ -6,18 +6,21 @@ import type { LatestReport } from '@/lib/api/workspaceApi';
 
 export type WorkspaceWithLatest = Workspace & { latest_report?: LatestReport };
 
-type ReportHealth = 'empty' | 'failed' | 'running' | 'published' | 'review';
+type ReportHealth = 'empty' | 'pending' | 'failed' | 'running' | 'published' | 'review';
 
 function getReportHealth(latest: LatestReport | undefined): ReportHealth {
   if (!latest) return 'empty';
   if (latest.has_failed_session) return 'failed';
   if (latest.has_running_session) return 'running';
   if (latest.status === 'published') return 'published';
+  // 보고서는 만들어졌지만 세션이 1건도 없으면 분석 전 상태 — review 와 구분
+  if (!latest.has_any_session) return 'pending';
   return 'review';
 }
 
 const HEALTH_STYLE: Record<ReportHealth, { stripe: string; chip: string; label: string }> = {
   empty:     { stripe: 'bg-slate-200',   chip: 'bg-slate-100 text-slate-500',    label: '보고서 없음' },
+  pending:   { stripe: 'bg-slate-300',   chip: 'bg-slate-100 text-slate-600',    label: '분석 전' },
   failed:    { stripe: 'bg-red-400',     chip: 'bg-red-50 text-red-600',         label: '실패' },
   running:   { stripe: 'bg-amber-400',   chip: 'bg-amber-50 text-amber-700',     label: '진행 중' },
   review:    { stripe: 'bg-sky-400',     chip: 'bg-sky-50 text-sky-700',         label: '검토 대기' },
