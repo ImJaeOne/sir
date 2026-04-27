@@ -30,7 +30,7 @@ export async function getWorkspaces(): Promise<(Workspace & { latest_report?: La
     .select('id, workspace_id, period_start, period_end, type, status')
     .order('created_at', { ascending: false });
 
-  const latestByWs = new Map<string, Omit<LatestReport, 'has_failed_session' | 'has_running_session'>>();
+  const latestByWs = new Map<string, Omit<LatestReport, 'has_failed_session' | 'has_running_session' | 'has_any_session'>>();
   for (const r of reports ?? []) {
     if (!latestByWs.has(r.workspace_id)) {
       latestByWs.set(r.workspace_id, {
