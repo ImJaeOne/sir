@@ -249,79 +249,15 @@ export async function getSirStockData(workspaceId: string, reportId?: string): P
 
 // ── SIR 순위 ──
 
-const TIER_RANGES = [
-  { label: '상위 1구간 (900~1000)', min: 900, max: 1001 },
-  { label: '상위 2구간 (800~899)', min: 800, max: 900 },
-  { label: '상위 3구간 (700~799)', min: 700, max: 800 },
-  { label: '중위 1구간 (600~699)', min: 600, max: 700 },
-  { label: '중위 2구간 (500~599)', min: 500, max: 600 },
-  { label: '중위 3구간 (400~499)', min: 400, max: 500 },
-  { label: '하위 1구간 (300~399)', min: 300, max: 400 },
-  { label: '하위 2구간 (200~299)', min: 200, max: 300 },
-  { label: '하위 3구간 (100~199)', min: 100, max: 200 },
-  { label: '하위 4구간 (0~99)', min: 0, max: 100 },
-];
-
 export async function getSirRanking(workspaceId: string, reportId?: string): Promise<SirRanking> {
-  // 비교 풀 = 현재 보고서와 동일 (type, period_start, period_end) 의 타 워크스페이스 리포트 점수들.
-  // reportId 가 없으면(예: 대시보드 등) 워크스페이스별 최신 리포트 점수로 fallback.
-  let all: { id: string; sir_score: number }[] = [];
-  let myScore = 0;
-
-  if (reportId) {
-    const meta = await getReportMeta(reportId);
-    myScore = meta.sirScore;
-
-    if (meta.type && meta.periodStart && meta.periodEnd) {
-      const reports = await fetchAllPaged<{ workspace_id: string; sir_score: number }>((from, to) =>
-        supabase.from('reports')
-          .select('workspace_id, sir_score')
-          .eq('type', meta.type)
-          .eq('period_start', meta.periodStart)
-          .eq('period_end', meta.periodEnd)
-          .not('sir_score', 'is', null)
-          .order('created_at', { ascending: false })  // 재생성 시 최신 점수 우선
-          .range(from, to));
-
-      const byWs = new Map<string, number>();
-      for (const r of reports) {
-        if (!byWs.has(r.workspace_id)) byWs.set(r.workspace_id, r.sir_score);
-      }
-      all = Array.from(byWs.entries()).map(([id, score]) => ({ id, sir_score: score }));
-
-      // 현재 보고서 자체의 점수로 강제 치환 — all 배열의 내 점수와 myScore 불일치 방지
-      const meIdx = all.findIndex(w => w.id === workspaceId);
-      if (meIdx >= 0) all[meIdx].sir_score = myScore;
-      else all.push({ id: workspaceId, sir_score: myScore });
-    }
-  } else {
-    const reports = await fetchAllPaged<{ workspace_id: string; sir_score: number }>((from, to) =>
-      supabase.from('reports')
-        .select('workspace_id, sir_score')
-        .not('sir_score', 'is', null)
-        .order('created_at', { ascending: false })
-        .range(from, to));
-
-    const latestByWs = new Map<string, number>();
-    for (const r of reports) {
-      if (!latestByWs.has(r.workspace_id)) latestByWs.set(r.workspace_id, r.sir_score);
-    }
-    all = Array.from(latestByWs.entries()).map(([id, score]) => ({ id, sir_score: score }));
-    myScore = latestByWs.get(workspaceId) ?? 0;
-  }
-
-  const myTierIdx = TIER_RANGES.findIndex(t => myScore >= t.min && myScore < t.max);
-  const tiers = TIER_RANGES.map((t, i) => ({
-    tier: t.label,
-    count: all.filter(w => w.sir_score >= t.min && w.sir_score < t.max).length,
-    isCurrent: i === myTierIdx ? 1 : 0,
-  }));
-
-  const sorted = all.map(w => w.sir_score).sort((a, b) => b - a);
-  const rank = sorted.indexOf(myScore) + 1;
-  const average = all.length ? Math.round(all.reduce((s, w) => s + w.sir_score, 0) / all.length) : 0;
-
-  return { tiers, rank, total: all.length, average };
+  // RLS 멤버십 격리 후 cross-workspace fetch 가 막히므로 SECURITY DEFINER RPC 로 위임.
+  // RPC 안에서만 raw 점수 사용, 클라이언트엔 aggregate (tiers/rank/total/average) 만 노출.
+  const { data, error } = await supabase.rpc('get_sir_ranking', {
+    p_workspace_id: workspaceId,
+    p_report_id: reportId ?? null,
+  });
+  if (error) throw error;
+  return data as SirRanking;
 }
 
 // ── 채널별 통계 ──

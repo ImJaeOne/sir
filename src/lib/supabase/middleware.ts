@@ -3,6 +3,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { resolveUserReportPath } from '@/lib/auth/resolveLandingPath';
 
 export async function updateSession(request: NextRequest) {
+  // /report-pdf — Playwright headless 가 URL 토큰(?at/?rt) 으로 자체 setSession 하므로
+  // middleware 의 cookie 기반 인증 검사를 통째로 우회. (matcher negative lookahead 가
+  // 일부 환경에서 안 먹어 코드 레벨 early return 으로 처리)
+  if (request.nextUrl.pathname.startsWith('/report-pdf')) {
+    return NextResponse.next({ request });
+  }
+
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(

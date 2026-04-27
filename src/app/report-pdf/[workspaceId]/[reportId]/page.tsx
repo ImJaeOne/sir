@@ -10,19 +10,43 @@ import { RiskContent } from '@/components/report/RiskContent';
 import { Strategy } from '@/components/report/Strategy';
 import { Loading } from '@/components/ui/Loading';
 import { useReportInfoSuspense } from '@/hooks/report/useReportQuery';
+import { createClient } from '@/lib/supabase/client';
 
 export default function ReportPdfPage() {
-  // 서버: QueryClient 캐시 비어있어 Loading fallback / 클라이언트: 기존 세션 캐시로 즉시 렌더
-  // → hydration mismatch 방지 위해 mount 전까지 서버와 동일하게 Loading 만 렌더
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []); // eslint-disable-line react-hooks/set-state-in-effect
-  if (!mounted) return <Loading />;
+  // RLS 멤버십 격리 후 anon 으로는 데이터 0건. 백엔드가 호출자 토큰을 ?at=&rt= 로 주입하면
+  // setSession 으로 Playwright 컨텍스트를 사용자 신원으로 전환 → 본인 워크스페이스 RLS 통과.
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const at = params.get('at');
+    const rt = params.get('rt');
+    if (at && rt) {
+      const supabase = createClient();
+      supabase.auth.setSession({ access_token: at, refresh_token: rt })
+        .then(() => setReady(true))
+        .catch(() => setReady(true));
+    } else {
+      setReady(true);
+    }
+  }, []);
+
+  if (!ready) return <Loading />;
 
   return (
     <Suspense fallback={<Loading />}>
       <ReportPdfContent />
     </Suspense>
   );
+}
+
+function PdfReadyMarker() {
+  // Playwright headless 가 PDF 캡처 시점을 알 수 있도록 모든 Suspense 쿼리 해소 후 마커 부착.
+  // useSuspenseQuery 가 throw 하면 후속 sibling 도 렌더 안 되므로 이 컴포넌트가 렌더되면 위 섹션들 데이터 모두 도착.
+  useEffect(() => {
+    document.documentElement.dataset.pdfReady = 'true';
+  }, []);
+  return null;
 }
 
 function ReportPdfContent() {
@@ -41,6 +65,7 @@ function ReportPdfContent() {
         {!isDaily && <TopContent workspaceId={workspaceId} reportId={reportId} />}
         <RiskContent workspaceId={workspaceId} reportId={reportId} pdfMode />
         {!isDaily && <Strategy workspaceId={workspaceId} reportId={reportId} pdfMode />}
+        <PdfReadyMarker />
       </div>
     </div>
   );
