@@ -7,6 +7,7 @@ import { ChevronDown, ChevronUp, ChevronRight, RefreshCw, AlertCircle, Check, Cl
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { useRetryFailedReport } from '@/hooks/workspace/useWorkspaceMutation';
 import type { Report, ReportProgress } from '@/lib/api/workspaceApi';
+import { getErrorMessage } from '@/lib/utils';
 import {
   WEEKDAYS_KR,
   WEEKLY_PLATFORMS,
@@ -203,7 +204,7 @@ export function WeeklyReportCard({
       await retry.mutateAsync(retryTarget.id);
       toast.success('일괄 재시도를 시작했습니다. 성공 시 주간 컴파일이 자동 이어집니다.');
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : '재시도 실패');
+      toast.error(getErrorMessage(e, '재시도 실패'));
     } finally {
       setRetryTarget(null);
     }
@@ -214,7 +215,7 @@ export function WeeklyReportCard({
       await retry.mutateAsync(report.id);
       toast.success('실패한 채널을 재시도합니다. 완료 시 총평·대응 전략이 이어 생성됩니다.');
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : '재시도 실패');
+      toast.error(getErrorMessage(e, '재시도 실패'));
     }
   };
 

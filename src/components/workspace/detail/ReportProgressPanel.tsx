@@ -8,6 +8,7 @@ import { Tooltip } from '@/components/ui/Tooltip';
 import { useRetryFailedReport } from '@/hooks/workspace/useWorkspaceMutation';
 import type { Report, ReportProgress } from '@/lib/api/workspaceApi';
 import { PLATFORM_LABELS, FAILED_REASON_LABELS, ALL_PLATFORMS } from '@/utils/workspace';
+import { getErrorMessage } from '@/lib/utils';
 import { STATUS_CONFIG, STATUS_FALLBACK } from './styles';
 
 function SessionStatusDot({ status }: { status: string }) {
@@ -57,7 +58,7 @@ function RetryFailedButton({
       await retry.mutateAsync(reportId);
       toast.success('일괄 재시도를 시작했습니다. 수 분 후 새로고침하세요.');
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : '재시도 실패');
+      toast.error(getErrorMessage(e, '재시도 실패'));
     }
   };
 

@@ -159,7 +159,7 @@ export const riskItemSchema = z.object({
   platform_id: z.string(),
   title: z.string(),
   link: z.string(),
-  critical_type: z.string(),
+  critical_type: criticalTypeEnum,
   critical_reason: z.string().nullable(),
   published_at: z.string().nullable(),
   /** 위기 대응 센터에서 여러 report 간 items 를 한꺼번에 표시할 때, 신고 대행 요청
@@ -209,7 +209,7 @@ export const riskReportSchema = z.object({
   platform_id: z.string(),
   title: z.string(),
   link: z.string(),
-  critical_type: z.string(),
+  critical_type: criticalTypeEnum,
   reason: z.string(),
   evidence: z.string(),
   file_urls: z.array(z.string()),

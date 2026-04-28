@@ -1,19 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { createWorkspace, deleteWorkspace, updateWorkspaceProfile } from '@/lib/api/workspaceApi';
+import { deleteWorkspace, updateWorkspaceProfile } from '@/lib/api/workspaceApi';
 import { retryFailedReport } from '@/lib/api/reportApi';
 import { workspaceKeys } from '@/hooks/workspace/workspaceKeys';
-import type { CreateWorkspaceDto } from '@/types/workspace';
-
-export function useCreateWorkspace() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (dto: CreateWorkspaceDto) => createWorkspace(dto),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: workspaceKeys.all });
-    },
-  });
-}
 
 export function useDeleteWorkspace() {
   const queryClient = useQueryClient();

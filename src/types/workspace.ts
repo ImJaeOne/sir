@@ -17,15 +17,5 @@ export const workspaceProfileSchema = z.object({
   updated_at: z.string(),
 });
 
-export const createWorkspaceSchema = z.object({
-  company_name: z.string().min(1),
-  ticker: z.string().min(1),
-  profile: z.object({
-    industry: z.string().optional(),
-    business_summary: z.string().optional(),
-  }).optional(),
-});
-
 export type Workspace = z.infer<typeof workspaceSchema>;
 export type WorkspaceProfile = z.infer<typeof workspaceProfileSchema>;
-export type CreateWorkspaceDto = z.infer<typeof createWorkspaceSchema>;

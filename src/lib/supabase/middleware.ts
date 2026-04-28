@@ -1,5 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
+import type { Database } from '@/types/database.types';
 import { resolveUserReportPath } from '@/lib/auth/resolveLandingPath';
 
 export async function updateSession(request: NextRequest) {
@@ -12,7 +14,7 @@ export async function updateSession(request: NextRequest) {
 
   let supabaseResponse = NextResponse.next({ request });
 
-  const supabase = createServerClient(
+  const supabase = createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
@@ -93,7 +95,7 @@ export async function updateSession(request: NextRequest) {
 }
 
 // 역할 조회 (캐시 없이 매번 조회 — middleware는 서버에서 실행)
-async function getUserRole(supabase: any, userId: string): Promise<string> {
+async function getUserRole(supabase: SupabaseClient<Database>, userId: string): Promise<string> {
   const { data } = await supabase
     .from('user_profiles')
     .select('role')

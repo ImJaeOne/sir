@@ -11,6 +11,7 @@ import { SearchTrendChart } from '@/components/chart/SearchTrendChart';
 import { MobileSearchTrendChart } from '@/components/chart/MobileSearchTrendChart';
 import { useMyRole } from '@/hooks/user/useUserQuery';
 import { reportKeys } from '@/hooks/report/useReportQuery';
+import { getErrorMessage } from '@/lib/utils';
 
 const DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토'];
 
@@ -116,7 +117,7 @@ export function SearchTrendPanel({
         queryKey: reportKeys.searchTrend(workspaceId, reportId),
       });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : '업로드 실패');
+      toast.error(getErrorMessage(err, '업로드 실패'));
     } finally {
       setUploading(false);
     }

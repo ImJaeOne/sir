@@ -14,6 +14,7 @@ import {
   type Tier,
 } from '@/types/subscription';
 import type { ProfileRole } from '@/types/auth';
+import { getErrorMessage } from '@/lib/utils';
 
 interface CreateUserModalProps {
   open: boolean;
@@ -95,8 +96,8 @@ export function CreateUserModal({ open, onClose, myRole }: CreateUserModalProps)
       toast.success('계정이 생성되었습니다.');
       reset();
       onClose();
-    } catch (e: any) {
-      toast.error(e.message ?? '계정 생성에 실패했습니다.');
+    } catch (e) {
+      toast.error(getErrorMessage(e, '계정 생성에 실패했습니다.'));
     }
   };
 
