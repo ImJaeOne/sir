@@ -36,9 +36,10 @@ interface EditableStrategyProps {
   strategies: StrategyGroup[];
   workspaceId: string;
   reportId: string;
+  channelDesc: string;
 }
 
-export function EditableStrategy({ strategies, workspaceId, reportId }: EditableStrategyProps) {
+export function EditableStrategy({ strategies, workspaceId, reportId, channelDesc }: EditableStrategyProps) {
   const [editing, setEditing] = useState(false);
   const [data, setData] = useState<StrategyGroup[]>(strategies);
   const [activeTab, setActiveTab] = useState(0);
@@ -88,18 +89,14 @@ export function EditableStrategy({ strategies, workspaceId, reportId }: Editable
 
   if (items.length === 0) {
     return (
-      <ReportSubSection title="채널별 대응 전략" action={actionButton}>
+      <ReportSubSection title="채널별 대응 전략" description={channelDesc} action={actionButton}>
         <EmptyState message={'전략 데이터가 없습니다.\n전략 생성을 실행해주세요.'} />
       </ReportSubSection>
     );
   }
 
   return (
-    <ReportSubSection
-      title="채널별 대응 전략"
-      description="이번 주 온라인 여론 분석 결과를 바탕으로, 각 채널별 긍정 여론 확산 및 부정 여론 완화를 위한 주요 전략을 확인할 수 있습니다."
-      action={actionButton}
-    >
+    <ReportSubSection title="채널별 대응 전략" description={channelDesc} action={actionButton}>
       <ReportCard px={0} py={0}>
         <div className="flex flex-col">
           {/* 탭 */}
@@ -146,7 +143,7 @@ export function EditableStrategy({ strategies, workspaceId, reportId }: Editable
               </div>
 
               {/* 전략 도출 배경 */}
-              <SectionBlock title="전략 도출 배경" editing={editing}>
+              <SectionBlock title="전략 도출 배경">
                 <EditableText
                   editing={editing}
                   value={activeStrategy.strategy.background.summary}
@@ -194,7 +191,6 @@ export function EditableStrategy({ strategies, workspaceId, reportId }: Editable
                 bg="bg-bg-blue"
                 textColor="text-text-dark"
                 border="border border-bg-accent"
-                editing={editing}
                 className="mt-4"
               >
                 <EditableText
@@ -288,42 +284,6 @@ export function EditableStrategy({ strategies, workspaceId, reportId }: Editable
                 ))}
               </SectionBlock>
 
-              {/* 기대 효과 */}
-              <SectionBlock title="기대 효과" editing={editing} className="mt-4">
-                <EditableText
-                  editing={editing}
-                  value={activeStrategy.strategy.effect.summary}
-                  onChange={(v) =>
-                    update(activeKey, (s) => ({ ...s, effect: { ...s.effect, summary: v } }))
-                  }
-                  bold
-                />
-                <PointsList
-                  editing={editing}
-                  points={activeStrategy.strategy.effect.points}
-                  onUpdate={(pIdx, v) =>
-                    update(activeKey, (s) => ({
-                      ...s,
-                      effect: {
-                        ...s.effect,
-                        points: s.effect.points.map((p, k) => (k === pIdx ? v : p)),
-                      },
-                    }))
-                  }
-                  onAdd={() =>
-                    update(activeKey, (s) => ({
-                      ...s,
-                      effect: { ...s.effect, points: [...s.effect.points, ''] },
-                    }))
-                  }
-                  onRemove={(pIdx) =>
-                    update(activeKey, (s) => ({
-                      ...s,
-                      effect: { ...s.effect, points: s.effect.points.filter((_, k) => k !== pIdx) },
-                    }))
-                  }
-                />
-              </SectionBlock>
             </div>
           )}
         </div>
@@ -337,7 +297,6 @@ export function EditableStrategy({ strategies, workspaceId, reportId }: Editable
 function SectionBlock({
   title,
   bg,
-  editing,
   textColor,
   border,
   className,
@@ -345,7 +304,6 @@ function SectionBlock({
 }: {
   title: string;
   bg?: string;
-  editing: boolean;
   textColor?: string;
   border?: string;
   className?: string;

@@ -7,7 +7,6 @@ import { ChevronRight, ExternalLink, Check, AlertCircle } from 'lucide-react';
 import { ReportHeader } from '@/components/report/ReportHeader';
 import { Highlight } from '@/components/report/Highlight';
 import { OnlineReputation } from '@/components/report/OnlineReputation';
-import { TopContent } from '@/components/report/TopContent';
 import { RiskContent } from '@/components/report/RiskContent';
 import { Strategy } from '@/components/report/Strategy';
 import { Loading } from '@/components/ui/Loading';
@@ -104,7 +103,7 @@ function ReportPageContent() {
     return ACTIVE_PLATFORMS.filter((p) => map.get(p)?.status !== 'done');
   }, [progress]);
 
-  const sections = useMemo(() => getClientReportSections(isDaily), [isDaily]);
+  const sections = useMemo(() => getClientReportSections(report?.type), [report?.type]);
   const sectionParam = searchParams?.get('section');
   const activeSection =
     sectionParam && sections.some((s) => s.id === sectionParam)
@@ -186,11 +185,6 @@ function ReportPageContent() {
           {activeSection === 'section-reputation' && (
             <SectionBg color="blue" gradient="from-light">
               <OnlineReputation workspaceId={workspaceId} reportId={reportId} />
-            </SectionBg>
-          )}
-          {activeSection === 'section-top-content' && !isDaily && (
-            <SectionBg color="bg-light" gradient="from-blue">
-              <TopContent workspaceId={workspaceId} reportId={reportId} />
             </SectionBg>
           )}
           {activeSection === 'section-risk' && (

@@ -554,7 +554,7 @@ export async function getStrategies(workspaceId: string, reportId?: string): Pro
   const items = (data ?? []).map((row) => ({
     category: row.category,
     label: CATEGORY_LABELS[row.category] ?? row.category,
-    strategy: row.strategy ?? { background: { summary: '', points: [] }, proposal: { summary: '', actions: [] }, effect: { summary: '', points: [] } },
+    strategy: row.strategy ?? { background: { summary: '', points: [] }, proposal: { summary: '', actions: [] } },
   }));
 
   return items.sort((a, b) => CATEGORY_ORDER.indexOf(a.category) - CATEGORY_ORDER.indexOf(b.category));

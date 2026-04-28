@@ -50,10 +50,13 @@ export const strategyDataSchema = z.object({
     summary: z.string(),
     actions: z.array(strategyActionSchema),
   }),
-  effect: z.object({
-    summary: z.string(),
-    points: z.array(z.string()),
-  }),
+  // 옛 보고서엔 effect 가 있을 수 있어 schema 는 받아주되, 신규 응답엔 없음 (UI/프롬프트에서 제거됨)
+  effect: z
+    .object({
+      summary: z.string(),
+      points: z.array(z.string()),
+    })
+    .optional(),
 });
 
 export const strategyGroupSchema = z.object({

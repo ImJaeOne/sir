@@ -4,9 +4,10 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { SummaryAccordion } from '@/components/report/highlight/SummaryAccordion';
 import type { SummarySection } from '@/lib/api/reportApi';
 
-export function Reputation({ summary, pdfMode = false }: { summary: SummarySection[]; pdfMode?: boolean }) {
+export function Reputation({ summary, pdfMode = false, isInitial = false }: { summary: SummarySection[]; pdfMode?: boolean; isInitial?: boolean }) {
+  const title = isInitial ? '월간 총평' : '주간 총평';
   return (
-    <ReportSubSection title="주간 총평">
+    <ReportSubSection title={title}>
       <ReportCard px={20} py={5}>
         {summary && summary.length > 0 ? (
           <SummaryAccordion sections={summary} pdfMode={pdfMode} />

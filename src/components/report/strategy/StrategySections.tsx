@@ -31,7 +31,7 @@ function SectionBlock({
 }
 
 export function StrategySections({ strategy }: StrategySectionsProps) {
-  const { background, proposal, effect } = strategy;
+  const { background, proposal } = strategy;
 
   return (
     <div className="flex-1 flex flex-col gap-4">
@@ -77,20 +77,6 @@ export function StrategySections({ strategy }: StrategySectionsProps) {
         </div>
       </SectionBlock>
 
-      {/* 기대 효과 */}
-      <SectionBlock title="기대 효과" bg="bg-bg-light" textColor="text-text-dark">
-        <p className="font-medium mb-2 text-text-mobile-muted lg:text-text-dark">
-          {effect.summary}
-        </p>
-        <ul className="flex flex-col gap-1">
-          {effect.points.map((point, i) => (
-            <li key={i} className="flex gap-2">
-              <CheckListIcon size={16} className="shrink-0 mt-0.5" />
-              <span className="text-text-mobile-muted lg:text-text-sub">{point}</span>
-            </li>
-          ))}
-        </ul>
-      </SectionBlock>
     </div>
   );
 }

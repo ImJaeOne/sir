@@ -47,7 +47,7 @@ function ClusterRow({
               {cluster.items.length}건
             </span>
           </div>
-          <span className="inline-flex items-center gap-2 mr-1 align-middle">
+          <span className="lg:hidden inline-flex items-center gap-2 mr-1 align-middle">
             <SentimentBadge sentiment={cluster.sentiment ?? 'neutral'} />
             <span className="text-xs text-text-muted bg-bg-light px-2 py-0.5 rounded-sm font-normal">
               {cluster.items.length}건

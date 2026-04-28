@@ -59,8 +59,8 @@ export function SentimentPanel({ channelStats, pdfMode }: SentimentPanelProps) {
 
   return (
     <ReportSubSection
-      title="채널별 긍정·중립·부정 여론 비중"
-      description="채널별 감정 분포를 100% 누적 그래프로 비교하여 여론 구조를 직관적으로 보여줍니다."
+      title="채널별 평판 비중"
+      description="채널별 긍정·중립·부정 여론의 분포를 비교하여 보여줍니다."
     >
       <div className="flex flex-col lg:flex-row gap-4">
         <div className="shrink-0 lg:w-[270px] grid grid-cols-3 lg:grid-cols-1 gap-3">

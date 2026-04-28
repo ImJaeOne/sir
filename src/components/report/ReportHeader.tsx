@@ -18,7 +18,12 @@ export function ReportHeader({ workspaceId, reportId, showPdfButton = true }: Re
   const periodStart = report?.period_start?.replace(/-/g, '.') ?? '';
   const periodEnd = report?.period_end?.replace(/-/g, '.') ?? '';
   const isDaily = report?.type === 'daily';
-  const headerLabel = isDaily ? 'SIR Daily Report' : 'SIR Weekly Report';
+  const isInitial = report?.type === 'initial';
+  const headerLabel = isDaily
+    ? 'SIR Daily Report'
+    : isInitial
+      ? 'SIR Monthly Report'
+      : 'SIR Weekly Report';
   const periodTitle = isDaily ? '분석 일자' : '분석 기간';
   const periodValue = isDaily ? periodStart : `${periodStart} ~ ${periodEnd}`;
 

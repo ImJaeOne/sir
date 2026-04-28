@@ -33,7 +33,7 @@ export function ReportSection({
         } lg:bg-transparent lg:backdrop-blur-none`}
       >
         {icon}
-        <h2 className="text-lg lg:text-xl font-bold text-text-dark shrink-0">{title}</h2>
+        <h2 className="text-lg lg:text-2xl font-semibold text-text-dark shrink-0">{title}</h2>
       </div>
       <div className="flex flex-col gap-10">{children}</div>
     </section>

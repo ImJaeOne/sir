@@ -24,14 +24,18 @@ interface RiskResultTableProps {
   periodStart: string;
   periodEnd: string;
   isDaily?: boolean;
+  reportType?: string | null;
 }
 
-export function RiskResultTable({ workspaceId, periodStart, periodEnd, isDaily = false }: RiskResultTableProps) {
+export function RiskResultTable({ workspaceId, periodStart, periodEnd, isDaily = false, reportType }: RiskResultTableProps) {
   const { data: reports } = useResolvedRiskReportsSuspense(workspaceId, periodStart, periodEnd);
 
-  const description = isDaily
-    ? '어제 처리 완료되거나 반려된 신고 대행 건을 확인할 수 있습니다.'
-    : '이번 주 처리 완료되거나 반려된 신고 대행 건을 확인할 수 있습니다.';
+  const periodPhrase =
+    reportType === 'daily' || isDaily ? '오늘'
+    : reportType === 'initial' ? '이번 달'
+    : '이번 주';
+  const description = `${periodPhrase} SIR 팀에서 진행한 리스크 콘텐츠 삭제, 신고 처리 결과를 확인할 수 있습니다.`;
+  const emptyMessage = `${periodPhrase} 처리된 내역이 없습니다.`;
 
   return (
     <ReportSubSection
@@ -42,7 +46,7 @@ export function RiskResultTable({ workspaceId, periodStart, periodEnd, isDaily =
       <ReportCard px={20} py={10}>
         {reports.length === 0 ? (
           <>
-            <EmptyState message={isDaily ? '어제 처리 완료된 신고 대행 내역이 없습니다.' : '이번 주 처리 완료된 신고 대행 내역이 없습니다.'} />
+            <EmptyState message={emptyMessage} />
             <p className="text-xs text-text-muted text-center py-2">총 0건</p>
           </>
         ) : (

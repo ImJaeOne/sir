@@ -145,7 +145,7 @@ export default function CrisisCenterPage() {
             {/* 리스크 처리 결과 — has_armor=false 면 업그레이드 안내 카드로 대체 */}
             <ReportSubSection
               title="리스크 콘텐츠 처리 결과"
-              description="처리 완료되거나 반려된 모든 신고 대행 건을 확인할 수 있습니다."
+              description="SIR 팀에서 진행한 리스크 콘텐츠 삭제, 신고 처리 결과를 확인할 수 있습니다."
               tooltip="신고된 게시물은 해당 채널 운영자의 판단에 의해 삭제되지 않을 수 있으며, 신고 후 2주가 지나도 삭제되지 않을 경우 자동으로 반려된 것으로 간주합니다."
             >
               <ReportCard px={20} py={!hasArmor ? 32 : 10}>
@@ -164,7 +164,7 @@ export default function CrisisCenterPage() {
                   </div>
                 ) : processedReports.length === 0 ? (
                   <>
-                    <EmptyState message="처리 완료된 신고 대행 내역이 없습니다." />
+                    <EmptyState message="처리된 내역이 없습니다." />
                     <p className="text-xs text-text-muted text-center py-2">총 0건</p>
                   </>
                 ) : (

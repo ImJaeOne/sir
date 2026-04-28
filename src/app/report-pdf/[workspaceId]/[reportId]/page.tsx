@@ -5,7 +5,6 @@ import { useParams } from 'next/navigation';
 import { ReportHeader } from '@/components/report/ReportHeader';
 import { Highlight } from '@/components/report/Highlight';
 import { OnlineReputation } from '@/components/report/OnlineReputation';
-import { TopContent } from '@/components/report/TopContent';
 import { RiskContent } from '@/components/report/RiskContent';
 import { Strategy } from '@/components/report/Strategy';
 import { Loading } from '@/components/ui/Loading';
@@ -27,7 +26,7 @@ export default function ReportPdfPage() {
         .then(() => setReady(true))
         .catch(() => setReady(true));
     } else {
-      setReady(true);
+      setReady(true); // eslint-disable-line react-hooks/set-state-in-effect
     }
   }, []);
 
@@ -62,7 +61,6 @@ function ReportPdfContent() {
         <ReportHeader workspaceId={workspaceId} reportId={reportId} showPdfButton={false} />
         <Highlight workspaceId={workspaceId} reportId={reportId} pdfMode />
         <OnlineReputation workspaceId={workspaceId} reportId={reportId} pdfMode />
-        {!isDaily && <TopContent workspaceId={workspaceId} reportId={reportId} />}
         <RiskContent workspaceId={workspaceId} reportId={reportId} pdfMode />
         {!isDaily && <Strategy workspaceId={workspaceId} reportId={reportId} pdfMode />}
         <PdfReadyMarker />

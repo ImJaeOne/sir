@@ -102,6 +102,7 @@ export function RiskContent({ workspaceId, reportId, editable = false, allowRepo
                 periodStart={report.period_start}
                 periodEnd={report.period_end}
                 isDaily={isDaily}
+                reportType={report.type}
               />
             </div>
           )

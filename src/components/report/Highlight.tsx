@@ -102,19 +102,19 @@ export function Highlight({ workspaceId, reportId, pdfMode = false, editable = f
   );
 
   const sirRankingProps = useMemo(
-    () => ({ score: sirScore, avgScore, companyName: workspace?.company_name ?? '', sirRanking: sirRanking ?? defaultRanking, pdfMode, isDaily }),
-    [sirScore, avgScore, workspace?.company_name, sirRanking, pdfMode, isDaily],
+    () => ({ score: sirScore, avgScore, companyName: workspace?.company_name ?? '', sirRanking: sirRanking ?? defaultRanking, pdfMode, isDaily, isInitial }),
+    [sirScore, avgScore, workspace?.company_name, sirRanking, pdfMode, isDaily, isInitial],
   );
 
   return (
-    <ReportSection icon={<WeeklyHighlightIcon size={36} />} title={isDaily ? '일간 하이라이트' : '주간 하이라이트'}>
+    <ReportSection icon={<WeeklyHighlightIcon size={36} />} title={isDaily ? '일간 하이라이트' : isInitial ? '월간 하이라이트' : '주간 하이라이트'}>
       <div className="print-keep"><Snapshot {...snapshotProps} /></div>
       {!isDaily && (
         <>
           {editable ? (
-            <EditableReputation summary={summary} workspaceId={workspaceId} reportId={reportId} />
+            <EditableReputation summary={summary} workspaceId={workspaceId} reportId={reportId} isInitial={isInitial} />
           ) : (
-            <Reputation summary={summary} pdfMode={pdfMode} />
+            <Reputation summary={summary} pdfMode={pdfMode} isInitial={isInitial} />
           )}
           <div className="print-keep"><SirStockPanel {...sirStockProps} /></div>
           <div className="print-keep"><SirRankingPanel {...sirRankingProps} /></div>

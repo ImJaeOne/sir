@@ -89,7 +89,7 @@ export function PdfDownloadButton() {
           className="w-full flex items-center gap-2.5 rounded-lg text-sm transition-colors cursor-pointer justify-center border border-bg-dark px-3 py-2.5 hover:bg-bg-light disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <span className="text-text-dark font-semibold text-center">
-            {downloading ? 'PDF 생성 중...' : 'PDF 다운로드'}
+            {downloading ? 'PDF 생성 중...' : '보고서 다운로드(PDF)'}
           </span>
         </button>
       </div>

@@ -31,7 +31,7 @@ export function ClientSidebar({ user = null }: ClientSidebarProps) {
           {onReportPath && <PdfDownloadButton />}
           {onReportPath && <ReportSelector />}
           <ServiceUpgradeButton />
-          <div className="flex flex-col text-text-muted text-[10px] items-center font-extralight">
+          <div className="flex flex-col text-text-dark text-[10px] items-center font-light">
             <p>SIR 서비스에 사용된 데이터는 최근 3년까지만</p>
             <p>보관되며 순차적으로 삭제됩니다.</p>
           </div>

@@ -21,9 +21,8 @@ export function MobileFab() {
   const searchParams = useSearchParams();
   const reportId = (params?.reportId as string | undefined) ?? '';
   const { data: report } = useReportInfo(reportId);
-  const isDaily = report?.type === 'daily';
 
-  const sections = useMemo(() => getClientReportSections(isDaily), [isDaily]);
+  const sections = useMemo(() => getClientReportSections(report?.type), [report?.type]);
   const activeId = searchParams?.get('section') ?? sections[0]?.id;
 
   const [isOpen, setIsOpen] = useState(false);

@@ -18,12 +18,14 @@ interface SirRankingPanelProps {
   sirRanking: SirRanking;
   pdfMode: boolean;
   isDaily?: boolean;
+  isInitial?: boolean;
 }
 
-export function SirRankingPanel({ score, avgScore, companyName, sirRanking, pdfMode, isDaily = false }: SirRankingPanelProps) {
+export function SirRankingPanel({ score, avgScore, companyName, sirRanking, pdfMode, isDaily = false, isInitial = false }: SirRankingPanelProps) {
+  const periodLabel = isDaily ? '일간' : isInitial ? '월간' : '주간';
   return (
     <ReportSubSection
-      title={isDaily ? 'SIR 일간 순위' : 'SIR 주간 순위'}
+      title={`SIR ${periodLabel} 순위`}
       description="SIR을 사용중인 전체 기업 중 우리 회사의 순위를 확인할 수 있습니다."
       className={`flex flex-col lg:flex-row gap-4 ${pdfMode ? 'lg:items-stretch' : ''}`}
     >
