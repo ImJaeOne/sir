@@ -24,7 +24,8 @@ function splitTierLabel(label: string): [string, string] {
 }
 
 export function MobileSirRankingBar({ tiers }: MobileSirRankingBarProps) {
-  const max = Math.ceil(Math.max(...tiers.map((t) => t.count), 1) / 5) * 5 || 5;
+  const maxCount = Math.max(...tiers.map((t) => t.count), 0);
+  const max = (Math.floor(maxCount / 5) + 1) * 5;
   const ticks = Array.from({ length: max / 5 + 1 }, (_, i) => i * 5);
 
   return (

@@ -19,7 +19,9 @@ interface SirRankingBarProps {
 }
 
 export function SirRankingBar({ tiers, pdfMode }: SirRankingBarProps) {
-  const max = Math.ceil(Math.max(...tiers.map((t) => t.count), 1) / 5) * 5 || 5;
+  // max count 가 5의 배수면 라벨이 right edge 와 겹쳐 잘리므로 항상 한 단계 위로 padding.
+  const maxCount = Math.max(...tiers.map((t) => t.count), 0);
+  const max = (Math.floor(maxCount / 5) + 1) * 5;
   const ticks = Array.from({ length: max / 5 + 1 }, (_, i) => i * 5);
 
   return (

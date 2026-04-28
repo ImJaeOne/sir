@@ -162,7 +162,7 @@ export function usePrevDailySnapshot(workspaceId: string, periodEnd: string | un
 export function useSearchTrend(workspaceId: string, reportId?: string) {
   return useQuery({
     queryKey: reportKeys.searchTrend(workspaceId, reportId),
-    queryFn: () => getSearchTrend(workspaceId, reportId),
+    queryFn: () => getSearchTrend(reportId),
     enabled: !!workspaceId && !!reportId,
     ...REPORT_OPTS,
   });
@@ -299,7 +299,7 @@ export function usePrevDailySnapshotSuspense(workspaceId: string, periodEnd: str
 export function useSearchTrendSuspense(workspaceId: string, reportId: string) {
   return useSuspenseQuery({
     queryKey: reportKeys.searchTrend(workspaceId, reportId),
-    queryFn: () => getSearchTrend(workspaceId, reportId),
+    queryFn: () => getSearchTrend(reportId),
     ...REPORT_OPTS,
   });
 }

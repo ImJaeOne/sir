@@ -11,6 +11,7 @@ import {
   type OpsUpcomingCron,
   type OpsWaitingSession,
 } from '@/lib/api/opsApi';
+import { getErrorMessage } from '@/lib/utils';
 
 const PLATFORM_LABELS: Record<string, string> = {
   naver_news: 'Naver News',
@@ -395,7 +396,7 @@ export function OpsClient() {
         {error && (
           <div className="border border-red-100 bg-red-50 rounded-xl px-4 py-3 text-sm text-red-700 flex items-center gap-2">
             <AlertTriangle size={14} />
-            {error instanceof Error ? error.message : '데이터 조회 실패'}
+            {getErrorMessage(error, '데이터 조회 실패')}
           </div>
         )}
 

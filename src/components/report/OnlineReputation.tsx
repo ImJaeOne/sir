@@ -70,7 +70,7 @@ export function OnlineReputation({ workspaceId, reportId, pdfMode = false }: Onl
 
   return (
     <div className="print-break">
-      <ReportSection id="section-reputation" icon={<OnlineReputationIcon size={36} />} title="온라인 평판 종합">
+      <ReportSection id="section-reputation" icon={<OnlineReputationIcon size={36} />} title="기업 평판 분석">
         {!isDaily && <div className="print-keep"><SearchTrendPanel {...searchTrendProps} /></div>}
         <div className="print-keep"><ChannelVolumePanel {...channelVolumeProps} /></div>
         <div className="print-keep">

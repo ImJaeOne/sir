@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/client';
-import { workspaceSchema, workspaceProfileSchema, createWorkspaceSchema } from '@/types/workspace';
-import type { Workspace, WorkspaceProfile, CreateWorkspaceDto } from '@/types/workspace';
+import { workspaceSchema, workspaceProfileSchema } from '@/types/workspace';
+import type { Workspace, WorkspaceProfile } from '@/types/workspace';
 
 const supabase = createClient();
 
@@ -12,6 +12,7 @@ export interface LatestReport {
   status: string;
   has_failed_session: boolean;
   has_running_session: boolean;
+  has_any_session: boolean;
 }
 
 export async function getWorkspaces(): Promise<(Workspace & { latest_report?: LatestReport })[]> {
@@ -29,7 +30,7 @@ export async function getWorkspaces(): Promise<(Workspace & { latest_report?: La
     .select('id, workspace_id, period_start, period_end, type, status')
     .order('created_at', { ascending: false });
 
-  const latestByWs = new Map<string, Omit<LatestReport, 'has_failed_session' | 'has_running_session'>>();
+  const latestByWs = new Map<string, Omit<LatestReport, 'has_failed_session' | 'has_running_session' | 'has_any_session'>>();
   for (const r of reports ?? []) {
     if (!latestByWs.has(r.workspace_id)) {
       latestByWs.set(r.workspace_id, {
@@ -37,23 +38,26 @@ export async function getWorkspaces(): Promise<(Workspace & { latest_report?: La
         period_start: r.period_start,
         period_end: r.period_end,
         type: r.type,
-        status: r.status,
+        status: r.status ?? 'draft',
       });
     }
   }
 
-  // 최신 report 들에 대한 세션 상태 일괄 조회 (실패/진행 중 플래그만 계산)
+  // 최신 report 들에 대한 세션 상태 일괄 조회 (실패/진행 중/분석 시작 여부 플래그만 계산)
   const latestReportIds = Array.from(latestByWs.values()).map((r) => r.id);
   const failedSet = new Set<string>();
   const runningSet = new Set<string>();
+  const anySessionSet = new Set<string>();
   if (latestReportIds.length > 0) {
     const { data: sessions } = await supabase
       .from('sessions')
       .select('report_id, status')
       .in('report_id', latestReportIds);
     for (const s of sessions ?? []) {
+      if (!s.report_id) continue;
+      anySessionSet.add(s.report_id);
       if (s.status === 'failed') failedSet.add(s.report_id);
-      else if (['pending', 'crawling', 'analyzing', 'clustering'].includes(s.status)) runningSet.add(s.report_id);
+      else if (['pending', 'crawling', 'analyzing', 'clustering', 'pending_analysis'].includes(s.status)) runningSet.add(s.report_id);
     }
   }
 
@@ -64,6 +68,7 @@ export async function getWorkspaces(): Promise<(Workspace & { latest_report?: La
           ...base,
           has_failed_session: failedSet.has(base.id),
           has_running_session: runningSet.has(base.id),
+          has_any_session: anySessionSet.has(base.id),
         }
       : undefined;
     return { ...ws, latest_report };
@@ -79,52 +84,6 @@ export async function getWorkspace(id: string): Promise<Workspace | null> {
 
   if (error) throw error;
   return data ? workspaceSchema.parse(data) : null;
-}
-
-export async function createWorkspace(dto: CreateWorkspaceDto): Promise<Workspace> {
-  const validated = createWorkspaceSchema.parse(dto);
-  const { profile, ...workspaceData } = validated;
-
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Unauthorized');
-
-  // 1. workspace 생성
-  const { data: workspace, error: wsError } = await supabase
-    .from('workspaces')
-    .insert(workspaceData)
-    .select()
-    .single();
-
-  if (wsError) throw wsError;
-
-  const result = workspaceSchema.parse(workspace);
-
-  // 2. 멤버 등록 (생성자를 owner로)
-  await supabase
-    .from('workspace_members')
-    .insert({ workspace_id: result.id, profile_id: user.id, role: 'owner' });
-
-  // 3. workspace_profiles upsert (프로필 데이터가 있으면)
-  if (profile && (profile.industry || profile.business_summary)) {
-    const { error: profileError } = await supabase
-      .from('workspace_profiles')
-      .upsert({
-        workspace_id: result.id,
-        industry: profile.industry ?? null,
-        business_summary: profile.business_summary ?? null,
-      }, { onConflict: 'workspace_id' });
-
-    if (profileError) {
-      await supabase.from('workspaces').delete().eq('id', result.id);
-      throw profileError;
-    }
-  }
-
-  // 4. 주가 데이터 수집 (30일, 백그라운드)
-  fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/collect/stock-prices?workspace_id=${result.id}`)
-    .catch(() => {});
-
-  return result;
 }
 
 export async function deleteWorkspace(id: string): Promise<void> {
@@ -167,7 +126,17 @@ export async function getReports(workspaceId: string): Promise<Report[]> {
     .order('created_at', { ascending: false });
 
   if (error) throw error;
-  return data ?? [];
+  return (data ?? []).map((r) => ({
+    id: r.id,
+    workspace_id: r.workspace_id,
+    type: r.type,
+    period_start: r.period_start,
+    period_end: r.period_end,
+    sir_score: r.sir_score,
+    status: r.status ?? 'draft',
+    generated_at: r.generated_at,
+    created_at: r.created_at,
+  }));
 }
 
 export interface ReportProgress {

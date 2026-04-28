@@ -1,25 +1,19 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import dynamic from 'next/dynamic';
 import { toast } from 'sonner';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import { Combobox, ComboboxButton, ComboboxInput, ComboboxOption, ComboboxOptions } from '@headlessui/react';
-import { ChevronDown, Check, CalendarDays, Paperclip, Download } from 'lucide-react';
-import { useWorkspaces } from '@/hooks/workspace/useWorkspaceQuery';
-import { useReports } from '@/hooks/workspace/useWorkspaceQuery';
+import { ChevronDown, Check, Paperclip, Download, ShieldAlert } from 'lucide-react';
+import { useWorkspaces, useWorkspaceSubscription } from '@/hooks/workspace/useWorkspaceQuery';
 import { useRiskReports, reportKeys } from '@/hooks/report/useReportQuery';
 import { updateRiskReport } from '@/lib/api/reportApi';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
+import { ReportCalendarSelector } from '@/components/report/ReportCalendarSelector';
 import type { RiskReport } from '@/lib/api/reportApi';
 import type { Workspace } from '@/types/workspace';
-
-const ReportCalendarModal = dynamic(
-  () => import('@/components/client/sidebar/ReportCalendarModal').then((m) => m.ReportCalendarModal),
-  { ssr: false },
-);
 
 const STATUS_OPTIONS = [
   { value: 'requested', label: '요청 완료' },
@@ -110,67 +104,6 @@ function WorkspaceCombobox({
         </ComboboxOptions>
       </div>
     </Combobox>
-  );
-}
-
-// ── 보고서 달력 선택 ──
-
-function ReportCalendarSelector({
-  workspaceId,
-  selectedReportId,
-  onChange,
-}: {
-  workspaceId: string;
-  selectedReportId: string;
-  onChange: (reportId: string) => void;
-}) {
-  const [showCalendar, setShowCalendar] = useState(false);
-  // 특정 workspace 선택 시 해당 workspace의 report만, 아니면 전체
-  const { data: wsReports } = useReports(workspaceId);
-  const { data: allReports } = useQuery({
-    queryKey: ['reports', 'all'],
-    queryFn: async () => {
-      const { data } = await createClient()
-        .from('reports')
-        .select('id, type, status, period_start, period_end')
-        .order('period_end', { ascending: false });
-      return data ?? [];
-    },
-    enabled: !workspaceId,
-    staleTime: 5 * 60 * 1000,
-  });
-  const reports = workspaceId ? wsReports : allReports;
-
-  const selectedReport = reports?.find((r) => r.id === selectedReportId);
-  const label = selectedReport
-    ? `${selectedReport.period_start.replace(/-/g, '.')} ~ ${selectedReport.period_end.replace(/-/g, '.')}`
-    : '전체 보고서';
-
-  const handleSelect = (reportId: string) => {
-    onChange(reportId);
-    setShowCalendar(false);
-  };
-
-  return (
-    <>
-      <button
-        onClick={() => setShowCalendar(true)}
-        className="flex items-center gap-2 text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white hover:bg-slate-50 transition-colors cursor-pointer w-full sm:w-auto"
-      >
-        <CalendarDays size={16} className="text-slate-400" />
-        <span className={selectedReport ? 'text-slate-800 font-semibold' : 'text-slate-400'}>
-          {label}
-        </span>
-      </button>
-      {showCalendar && reports && (
-        <ReportCalendarModal
-          reports={reports}
-          currentReportId={selectedReportId}
-          onSelect={handleSelect}
-          onClose={() => setShowCalendar(false)}
-        />
-      )}
-    </>
   );
 }
 
@@ -336,6 +269,13 @@ export function RiskReportsClient({ assignedIds }: RiskReportsClientProps) {
     selectedReportId || undefined,
   );
 
+  // 선택된 워크스페이스의 아머 활성 여부. 전체(빈 selectedWsId)면 체크 스킵.
+  const { data: selectedSub } = useWorkspaceSubscription(selectedWsId);
+  const selectedHasArmor = selectedWsId
+    ? selectedSub?.has_armor ?? null  // null: 로딩 중
+    : true; // 전체는 게이트 안 함
+  const showArmorEmpty = selectedWsId !== '' && selectedHasArmor === false;
+
   // admin 은 배정받은 ws 의 risk 만 보이도록 클라이언트에서 한 번 더 필터
   const riskReports = useMemo(() => {
     if (assignedIds === null) return rawRiskReports;
@@ -423,6 +363,18 @@ export function RiskReportsClient({ assignedIds }: RiskReportsClientProps) {
           {isLoading ? (
             <div className="flex-1 flex items-center justify-center">
               <p className="text-xs text-text-muted">불러오는 중...</p>
+            </div>
+          ) : showArmorEmpty ? (
+            <div className="flex-1 flex items-center justify-center px-6">
+              <div className="flex flex-col items-center gap-2 text-center py-10">
+                <ShieldAlert size={28} className="text-bg-accent" />
+                <p className="text-sm font-semibold text-text-dark">
+                  이 워크스페이스는 아머 서비스를 이용하고 있지 않습니다.
+                </p>
+                <p className="text-xs text-text-muted leading-relaxed">
+                  아머(신고 대행) 미구독 워크스페이스는 신고 대행 요청을 등록할 수 없습니다.
+                </p>
+              </div>
             </div>
           ) : filtered.length === 0 ? (
             <div className="flex-1 flex items-center justify-center">

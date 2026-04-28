@@ -1,19 +1,42 @@
 import { createClient } from '@/lib/supabase/client';
+import type { Database } from '@/types/database.types';
+
+type Tables = Database['public']['Tables'];
+type Row<T extends keyof Tables> = Tables[T]['Row'];
 
 // ── 타입 re-export (기존 import 호환) ──
 export type {
-  SummarySubsection, SummarySection,
-  SirStockPoint, TierItem, SirRanking,
-  ChannelStat, ChannelItem, RiskItem,
-  StrategyAction, StrategyData, StrategyGroup,
-  PrevReport, TrendPoint, SearchTrendResult,
-  RiskReport, NewsClusterResponse as NewsCluster,
+  SummarySubsection,
+  SummarySection,
+  SirStockPoint,
+  TierItem,
+  SirRanking,
+  ChannelStat,
+  ChannelItem,
+  RiskItem,
+  StrategyAction,
+  StrategyData,
+  StrategyGroup,
+  PrevReport,
+  TrendPoint,
+  SearchTrendResult,
+  RiskReport,
+  NewsClusterResponse as NewsCluster,
 } from '@/types/report';
 
+import { summarySectionSchema, strategyDataSchema, trendPointSchema } from '@/types/report';
 import type {
-  SummarySection, SirStockPoint, SirRanking,
-  ChannelStat, ChannelItem, RiskItem,
-  StrategyGroup, PrevReport, SearchTrendResult, RiskReport,
+  SummarySection,
+  SirStockPoint,
+  SirRanking,
+  ChannelStat,
+  ChannelItem,
+  RiskItem,
+  StrategyData,
+  StrategyGroup,
+  PrevReport,
+  SearchTrendResult,
+  RiskReport,
   NewsClusterResponse,
 } from '@/types/report';
 
@@ -26,7 +49,7 @@ const supabase = createClient();
 const _PAGE = 1000;
 
 async function fetchAllPaged<T>(
-  build: (from: number, to: number) => PromiseLike<{ data: T[] | null }>,
+  build: (from: number, to: number) => PromiseLike<{ data: T[] | null }>
 ): Promise<T[]> {
   const all: T[] = [];
   let off = 0;
@@ -39,6 +62,65 @@ async function fetchAllPaged<T>(
   }
   return all;
 }
+
+// ── fetchAllPaged 호출지에서 select 컬럼에 맞춰 좁힌 row 타입 ──
+type NewsItemMinRow = Pick<Row<'news_items'>, 'cluster_id' | 'title' | 'source' | 'link'>;
+type NewsClusterMinRow = Pick<
+  Row<'news_clusters'>,
+  'id' | 'representative_title' | 'sentiment' | 'summary'
+>;
+type NewsItemChannelRow = Pick<
+  Row<'news_items'>,
+  | 'id'
+  | 'platform_id'
+  | 'title'
+  | 'summary'
+  | 'sentiment'
+  | 'link'
+  | 'source'
+  | 'published_at'
+  | 'cluster_id'
+>;
+type CommunityItemChannelRow = Pick<
+  Row<'community_items'>,
+  'id' | 'platform_id' | 'title' | 'content' | 'sentiment' | 'link' | 'views' | 'published_at'
+>;
+type SnsItemChannelRow = Pick<
+  Row<'sns_items'>,
+  | 'id'
+  | 'platform_id'
+  | 'title'
+  | 'content'
+  | 'summary'
+  | 'sentiment'
+  | 'link'
+  | 'author'
+  | 'views'
+  | 'published_at'
+  | 'impact_score'
+>;
+type CommunityItemRiskRow = Pick<
+  Row<'community_items'>,
+  | 'id'
+  | 'platform_id'
+  | 'title'
+  | 'link'
+  | 'critical_type'
+  | 'critical_reason'
+  | 'published_at'
+  | 'session_id'
+>;
+type SnsItemRiskRow = Pick<
+  Row<'sns_items'>,
+  | 'id'
+  | 'platform_id'
+  | 'title'
+  | 'link'
+  | 'critical_type'
+  | 'critical_reason'
+  | 'published_at'
+  | 'session_id'
+>;
 
 // ── Report Meta 캐시 (session IDs + period) ──
 
@@ -134,13 +216,18 @@ export async function publishReport(reportId: string): Promise<void> {
 /** 보고서 내 failed 플랫폼 일괄 재시도 + 성공 시 자동 regenerate.
  *  백엔드: POST /api/reports/{id}/retry-failed — 순차 retry 후 전 플랫폼 done 되면 finalize. */
 export async function retryFailedReport(reportId: string): Promise<void> {
-  const { data: { session: auth } } = await supabase.auth.getSession();
+  const {
+    data: { session: auth },
+  } = await supabase.auth.getSession();
   if (!auth) throw new Error('로그인이 필요합니다.');
 
-  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/reports/${reportId}/retry-failed`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${auth.access_token}` },
-  });
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL}/api/reports/${reportId}/retry-failed`,
+    {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${auth.access_token}` },
+    }
+  );
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(body.detail ?? '재시도 요청 실패');
@@ -149,7 +236,10 @@ export async function retryFailedReport(reportId: string): Promise<void> {
 
 // ── 주간 총평 ──
 
-export async function getWeeklySummary(workspaceId: string, reportId?: string): Promise<SummarySection[]> {
+export async function getWeeklySummary(
+  workspaceId: string,
+  reportId?: string
+): Promise<SummarySection[]> {
   let query = supabase
     .from('session_strategies')
     .select('all_strategy')
@@ -163,10 +253,16 @@ export async function getWeeklySummary(workspaceId: string, reportId?: string): 
   }
 
   const { data } = await query;
-  return data?.[0]?.all_strategy ?? [];
+  const raw = data?.[0]?.all_strategy;
+  if (!raw) return [];
+  return summarySectionSchema.array().parse(raw);
 }
 
-export async function upsertWeeklySummary(workspaceId: string, reportId: string, sections: SummarySection[]): Promise<void> {
+export async function upsertWeeklySummary(
+  workspaceId: string,
+  reportId: string,
+  sections: SummarySection[]
+): Promise<void> {
   // 기존 row 확인
   const { data: existing } = await supabase
     .from('session_strategies')
@@ -183,23 +279,32 @@ export async function upsertWeeklySummary(workspaceId: string, reportId: string,
       .eq('id', existing[0].id);
     if (error) throw error;
   } else {
-    const { error } = await supabase
-      .from('session_strategies')
-      .insert({
-        workspace_id: workspaceId,
-        report_id: reportId,
-        category: 'summary',
-        all_strategy: sections,
-      });
+    const { error } = await supabase.from('session_strategies').insert({
+      workspace_id: workspaceId,
+      report_id: reportId,
+      category: 'summary',
+      all_strategy: sections,
+    });
     if (error) throw error;
   }
 }
 
 // ── SIR & 주가 차트 ──
 
-export async function getSirStockData(workspaceId: string, reportId?: string): Promise<SirStockPoint[]> {
-  let snapshotQuery = supabase.from('daily_snapshots').select('date, sir_score').eq('workspace_id', workspaceId).order('date');
-  let stockQuery = supabase.from('stock_prices').select('date, open_price, high_price, low_price, close_price').eq('workspace_id', workspaceId).order('date');
+export async function getSirStockData(
+  workspaceId: string,
+  reportId?: string
+): Promise<SirStockPoint[]> {
+  let snapshotQuery = supabase
+    .from('daily_snapshots')
+    .select('date, sir_score')
+    .eq('workspace_id', workspaceId)
+    .order('date');
+  let stockQuery = supabase
+    .from('stock_prices')
+    .select('date, open_price, high_price, low_price, close_price')
+    .eq('workspace_id', workspaceId)
+    .order('date');
 
   if (reportId) {
     const meta = await getReportMeta(reportId);
@@ -221,9 +326,17 @@ export async function getSirStockData(workspaceId: string, reportId?: string): P
     if (s.sir_score != null) sirMap.set(s.date, s.sir_score);
   }
 
-  const stockMap = new Map<string, { open_price: number; high_price: number; low_price: number; close_price: number }>();
+  const stockMap = new Map<
+    string,
+    { open_price: number; high_price: number; low_price: number; close_price: number }
+  >();
   for (const s of stockRes.data ?? []) {
-    stockMap.set(s.date, { open_price: s.open_price, high_price: s.high_price, low_price: s.low_price, close_price: s.close_price });
+    stockMap.set(s.date, {
+      open_price: s.open_price,
+      high_price: s.high_price,
+      low_price: s.low_price,
+      close_price: s.close_price,
+    });
   }
 
   const allDates = new Set([...sirMap.keys(), ...stockMap.keys()]);
@@ -233,7 +346,9 @@ export async function getSirStockData(workspaceId: string, reportId?: string): P
   // 3일 이동평균
   const sirMA = sirValues.map((_, i) => {
     const window = sirValues.slice(Math.max(0, i - 2), i + 1).filter((v): v is number => v != null);
-    return window.length ? Math.round(window.reduce((a, b) => a + b, 0) / window.length * 10) / 10 : null;
+    return window.length
+      ? Math.round((window.reduce((a, b) => a + b, 0) / window.length) * 10) / 10
+      : null;
   });
 
   return sorted.map((date, i) => ({
@@ -249,79 +364,15 @@ export async function getSirStockData(workspaceId: string, reportId?: string): P
 
 // ── SIR 순위 ──
 
-const TIER_RANGES = [
-  { label: '상위 1구간 (900~1000)', min: 900, max: 1001 },
-  { label: '상위 2구간 (800~899)', min: 800, max: 900 },
-  { label: '상위 3구간 (700~799)', min: 700, max: 800 },
-  { label: '중위 1구간 (600~699)', min: 600, max: 700 },
-  { label: '중위 2구간 (500~599)', min: 500, max: 600 },
-  { label: '중위 3구간 (400~499)', min: 400, max: 500 },
-  { label: '하위 1구간 (300~399)', min: 300, max: 400 },
-  { label: '하위 2구간 (200~299)', min: 200, max: 300 },
-  { label: '하위 3구간 (100~199)', min: 100, max: 200 },
-  { label: '하위 4구간 (0~99)', min: 0, max: 100 },
-];
-
 export async function getSirRanking(workspaceId: string, reportId?: string): Promise<SirRanking> {
-  // 비교 풀 = 현재 보고서와 동일 (type, period_start, period_end) 의 타 워크스페이스 리포트 점수들.
-  // reportId 가 없으면(예: 대시보드 등) 워크스페이스별 최신 리포트 점수로 fallback.
-  let all: { id: string; sir_score: number }[] = [];
-  let myScore = 0;
-
-  if (reportId) {
-    const meta = await getReportMeta(reportId);
-    myScore = meta.sirScore;
-
-    if (meta.type && meta.periodStart && meta.periodEnd) {
-      const reports = await fetchAllPaged<{ workspace_id: string; sir_score: number }>((from, to) =>
-        supabase.from('reports')
-          .select('workspace_id, sir_score')
-          .eq('type', meta.type)
-          .eq('period_start', meta.periodStart)
-          .eq('period_end', meta.periodEnd)
-          .not('sir_score', 'is', null)
-          .order('created_at', { ascending: false })  // 재생성 시 최신 점수 우선
-          .range(from, to));
-
-      const byWs = new Map<string, number>();
-      for (const r of reports) {
-        if (!byWs.has(r.workspace_id)) byWs.set(r.workspace_id, r.sir_score);
-      }
-      all = Array.from(byWs.entries()).map(([id, score]) => ({ id, sir_score: score }));
-
-      // 현재 보고서 자체의 점수로 강제 치환 — all 배열의 내 점수와 myScore 불일치 방지
-      const meIdx = all.findIndex(w => w.id === workspaceId);
-      if (meIdx >= 0) all[meIdx].sir_score = myScore;
-      else all.push({ id: workspaceId, sir_score: myScore });
-    }
-  } else {
-    const reports = await fetchAllPaged<{ workspace_id: string; sir_score: number }>((from, to) =>
-      supabase.from('reports')
-        .select('workspace_id, sir_score')
-        .not('sir_score', 'is', null)
-        .order('created_at', { ascending: false })
-        .range(from, to));
-
-    const latestByWs = new Map<string, number>();
-    for (const r of reports) {
-      if (!latestByWs.has(r.workspace_id)) latestByWs.set(r.workspace_id, r.sir_score);
-    }
-    all = Array.from(latestByWs.entries()).map(([id, score]) => ({ id, sir_score: score }));
-    myScore = latestByWs.get(workspaceId) ?? 0;
-  }
-
-  const myTierIdx = TIER_RANGES.findIndex(t => myScore >= t.min && myScore < t.max);
-  const tiers = TIER_RANGES.map((t, i) => ({
-    tier: t.label,
-    count: all.filter(w => w.sir_score >= t.min && w.sir_score < t.max).length,
-    isCurrent: i === myTierIdx ? 1 : 0,
-  }));
-
-  const sorted = all.map(w => w.sir_score).sort((a, b) => b - a);
-  const rank = sorted.indexOf(myScore) + 1;
-  const average = all.length ? Math.round(all.reduce((s, w) => s + w.sir_score, 0) / all.length) : 0;
-
-  return { tiers, rank, total: all.length, average };
+  // RLS 멤버십 격리 후 cross-workspace fetch 가 막히므로 SECURITY DEFINER RPC 로 위임.
+  // RPC 안에서만 raw 점수 사용, 클라이언트엔 aggregate (tiers/rank/total/average) 만 노출.
+  const { data, error } = await supabase.rpc('get_sir_ranking', {
+    p_workspace_id: workspaceId,
+    p_report_id: reportId,
+  });
+  if (error) throw error;
+  return data as SirRanking;
 }
 
 // ── 채널별 통계 ──
@@ -342,7 +393,11 @@ const CHANNEL_CONFIG: { id: string; label: string; color: string }[] = [
 ];
 
 /** channelItems + sessions 캐시에서 channelStats를 파생 (카테고리 기반) */
-export async function getChannelStats(workspaceId: string, channelItems: ChannelItem[], reportId?: string): Promise<ChannelStat[]> {
+export async function getChannelStats(
+  workspaceId: string,
+  channelItems: ChannelItem[],
+  reportId?: string
+): Promise<ChannelStat[]> {
   // channelItems가 이미 report-scoped이므로 비어있으면 빈 stats 반환
   if (channelItems.length === 0 && reportId) return [];
   // 채널별 감정 집계
@@ -374,33 +429,38 @@ export async function getChannelStats(workspaceId: string, channelItems: Channel
 
   const sirByChannel = new Map<string, number[]>();
   for (const s of sessions ?? []) {
-    if (s.sir_score == null) continue;
+    if (s.sir_score == null || !s.platform_id) continue;
     const channel = PLATFORM_TO_CHANNEL[s.platform_id] ?? s.platform_id;
     if (!sirByChannel.has(channel)) sirByChannel.set(channel, []);
     sirByChannel.get(channel)!.push(s.sir_score);
   }
 
-  return CHANNEL_CONFIG
-    .map(c => {
-      const counts = byChannel.get(c.id) ?? { positive: 0, negative: 0, neutral: 0 };
-      const sirScores = sirByChannel.get(c.id) ?? [];
-      const avgSir = sirScores.length > 0 ? Math.round(sirScores.reduce((a, b) => a + b, 0) / sirScores.length) : 500;
-      return {
-        id: c.id,
-        label: c.label,
-        value: counts.positive + counts.negative + counts.neutral,
-        color: c.color,
-        sir: avgSir,
-        positive: counts.positive,
-        negative: counts.negative,
-        neutral: counts.neutral,
-      };
-    });
+  return CHANNEL_CONFIG.map((c) => {
+    const counts = byChannel.get(c.id) ?? { positive: 0, negative: 0, neutral: 0 };
+    const sirScores = sirByChannel.get(c.id) ?? [];
+    const avgSir =
+      sirScores.length > 0
+        ? Math.round(sirScores.reduce((a, b) => a + b, 0) / sirScores.length)
+        : 500;
+    return {
+      id: c.id,
+      label: c.label,
+      value: counts.positive + counts.negative + counts.neutral,
+      color: c.color,
+      sir: avgSir,
+      positive: counts.positive,
+      negative: counts.negative,
+      neutral: counts.neutral,
+    };
+  });
 }
 
 // ── 뉴스 클러스터 ──
 
-export async function getNewsClusters(workspaceId: string, reportId?: string): Promise<NewsClusterResponse[]> {
+export async function getNewsClusters(
+  workspaceId: string,
+  reportId?: string
+): Promise<NewsClusterResponse[]> {
   if (reportId) {
     const meta = await getReportMeta(reportId);
     if (meta.sessionIds.length === 0) return [];
@@ -408,57 +468,72 @@ export async function getNewsClusters(workspaceId: string, reportId?: string): P
     // articles 를 먼저 fetch — 그 articles 의 cluster_id 합집합으로 cluster 조회.
     // cross-session matching 도입 후엔 cluster row 의 session_id 가 처음 만든 session 만 가리키므로
     // session_id IN 으로 cluster 를 찾으면 다른 session 에서 매칭 추가된 cluster 가 누락된다.
-    const items = await fetchAllPaged<any>((from, to) =>
-      supabase.from('news_items')
+    const items = await fetchAllPaged<NewsItemMinRow>((from, to) =>
+      supabase
+        .from('news_items')
         .select('cluster_id, title, source, link')
-        .eq('workspace_id', workspaceId).not('cluster_id', 'is', null)
+        .eq('workspace_id', workspaceId)
+        .not('cluster_id', 'is', null)
         .in('session_id', meta.sessionIds)
-        .range(from, to));
+        .range(from, to)
+    );
 
-    const clusterIds = Array.from(new Set(items.map((i: any) => i.cluster_id).filter(Boolean)));
+    const clusterIds = Array.from(
+      new Set(items.map((i) => i.cluster_id).filter((v): v is string => !!v))
+    );
     if (clusterIds.length === 0) return [];
 
-    const clusters = await fetchAllPaged<any>((from, to) =>
-      supabase.from('news_clusters')
+    const clusters = await fetchAllPaged<NewsClusterMinRow>((from, to) =>
+      supabase
+        .from('news_clusters')
         .select('id, representative_title, sentiment, summary')
-        .eq('workspace_id', workspaceId).eq('is_relevant', true)
+        .eq('workspace_id', workspaceId)
+        .eq('is_relevant', true)
         .in('id', clusterIds)
         .order('created_at', { ascending: false })
-        .range(from, to));
+        .range(from, to)
+    );
 
-    const itemsByCluster = new Map<string, { title: string; source: string; link: string }[]>();
-    for (const item of items) {
-      if (!itemsByCluster.has(item.cluster_id)) itemsByCluster.set(item.cluster_id, []);
-      itemsByCluster.get(item.cluster_id)!.push({ title: item.title, source: item.source ?? '', link: item.link ?? '#' });
-    }
-
-    return clusters.map(c => ({
-      id: c.id, representative_title: c.representative_title, sentiment: c.sentiment,
-      summary: c.summary, items: itemsByCluster.get(c.id) ?? [],
-    }));
+    return buildClusters(clusters, items);
   }
 
   const [clusters, items] = await Promise.all([
-    fetchAllPaged<any>((from, to) =>
-      supabase.from('news_clusters')
+    fetchAllPaged<NewsClusterMinRow>((from, to) =>
+      supabase
+        .from('news_clusters')
         .select('id, representative_title, sentiment, summary')
-        .eq('workspace_id', workspaceId).eq('is_relevant', true)
+        .eq('workspace_id', workspaceId)
+        .eq('is_relevant', true)
         .order('created_at', { ascending: false })
-        .range(from, to)),
-    fetchAllPaged<any>((from, to) =>
-      supabase.from('news_items')
+        .range(from, to)
+    ),
+    fetchAllPaged<NewsItemMinRow>((from, to) =>
+      supabase
+        .from('news_items')
         .select('cluster_id, title, source, link')
-        .eq('workspace_id', workspaceId).not('cluster_id', 'is', null)
-        .range(from, to)),
+        .eq('workspace_id', workspaceId)
+        .not('cluster_id', 'is', null)
+        .range(from, to)
+    ),
   ]);
 
+  return buildClusters(clusters, items);
+}
+
+function buildClusters(
+  clusters: NewsClusterMinRow[],
+  items: NewsItemMinRow[]
+): NewsClusterResponse[] {
   const itemsByCluster = new Map<string, { title: string; source: string; link: string }[]>();
   for (const item of items) {
+    if (!item.cluster_id) continue;
     if (!itemsByCluster.has(item.cluster_id)) itemsByCluster.set(item.cluster_id, []);
-    itemsByCluster.get(item.cluster_id)!.push({ title: item.title, source: item.source ?? '', link: item.link ?? '#' });
+    itemsByCluster
+      .get(item.cluster_id)!
+      .push({ title: item.title, source: item.source ?? '', link: item.link ?? '#' });
   }
 
-  return clusters.map(c => ({
+  return clusters.map((c) => ({
     id: c.id,
     representative_title: c.representative_title,
     sentiment: c.sentiment,
@@ -469,125 +544,207 @@ export async function getNewsClusters(workspaceId: string, reportId?: string): P
 
 // ── 채널별 아이템 (감정 상세 + 상위 콘텐츠 공유) ──
 
-export async function getChannelItems(workspaceId: string, reportId?: string): Promise<ChannelItem[]> {
-  const normalize = (rows: any[], defaults: Partial<ChannelItem> = {}): ChannelItem[] =>
-    rows.map(r => ({
-      id: r.id,
-      platform_id: r.platform_id,
-      title: r.title ?? '',
-      content: r.content ?? null,
-      summary: r.summary ?? null,
-      sentiment: r.sentiment ?? 'neutral',
-      link: r.link ?? '#',
-      source: r.source ?? r.author ?? null,
-      views: r.views ?? null,
-      published_at: r.published_at ?? null,
-      critical_type: r.critical_type ?? null,
-      cluster_id: r.cluster_id ?? null,
-      impact_score: r.impact_score ?? null,
-      ...defaults,
-    }));
+export async function getChannelItems(
+  workspaceId: string,
+  reportId?: string
+): Promise<ChannelItem[]> {
+  const toNewsItem = (r: NewsItemChannelRow): ChannelItem => ({
+    id: r.id,
+    platform_id: r.platform_id,
+    title: r.title ?? '',
+    content: null,
+    summary: r.summary ?? null,
+    sentiment: r.sentiment ?? 'neutral',
+    link: r.link ?? '#',
+    source: r.source ?? null,
+    views: null,
+    published_at: r.published_at ?? null,
+    cluster_id: r.cluster_id ?? null,
+    impact_score: null,
+  });
+  const toCommunityItem = (r: CommunityItemChannelRow): ChannelItem => ({
+    id: r.id,
+    platform_id: r.platform_id,
+    title: r.title ?? '',
+    content: r.content ?? null,
+    summary: null,
+    sentiment: r.sentiment ?? 'neutral',
+    link: r.link ?? '#',
+    source: null,
+    views: r.views ?? null,
+    published_at: r.published_at ?? null,
+    cluster_id: null,
+    impact_score: null,
+  });
+  const toSnsItem = (r: SnsItemChannelRow): ChannelItem => ({
+    id: r.id,
+    platform_id: r.platform_id,
+    title: r.title ?? '',
+    content: r.content ?? null,
+    summary: r.summary ?? null,
+    sentiment: r.sentiment ?? 'neutral',
+    link: r.link ?? '#',
+    source: r.author ?? null,
+    views: r.views ?? null,
+    published_at: r.published_at ?? null,
+    cluster_id: null,
+    impact_score: r.impact_score ?? null,
+  });
 
   if (reportId) {
     const meta = await getReportMeta(reportId);
     if (meta.sessionIds.length === 0) return [];
     const [news, community, sns] = await Promise.all([
-      fetchAllPaged<any>((from, to) =>
-        supabase.from('news_items')
-          .select('id, platform_id, title, summary, sentiment, link, source, published_at, critical_type, cluster_id')
-          .eq('workspace_id', workspaceId).eq('is_relevant', true).in('session_id', meta.sessionIds)
-          .range(from, to)),
-      fetchAllPaged<any>((from, to) =>
-        supabase.from('community_items')
-          .select('id, platform_id, title, content, sentiment, link, views, published_at, critical_type')
-          .eq('workspace_id', workspaceId).eq('is_relevant', true).in('session_id', meta.sessionIds)
-          .range(from, to)),
-      fetchAllPaged<any>((from, to) =>
-        supabase.from('sns_items')
-          .select('id, platform_id, title, content, summary, sentiment, link, author, views, published_at, critical_type, impact_score')
-          .eq('workspace_id', workspaceId).eq('is_relevant', true).in('session_id', meta.sessionIds)
-          .range(from, to)),
+      fetchAllPaged<NewsItemChannelRow>((from, to) =>
+        supabase
+          .from('news_items')
+          .select(
+            'id, platform_id, title, summary, sentiment, link, source, published_at, cluster_id'
+          )
+          .eq('workspace_id', workspaceId)
+          .eq('is_relevant', true)
+          .in('session_id', meta.sessionIds)
+          .range(from, to)
+      ),
+      fetchAllPaged<CommunityItemChannelRow>((from, to) =>
+        supabase
+          .from('community_items')
+          .select('id, platform_id, title, content, sentiment, link, views, published_at')
+          .eq('workspace_id', workspaceId)
+          .eq('is_relevant', true)
+          .in('session_id', meta.sessionIds)
+          .range(from, to)
+      ),
+      fetchAllPaged<SnsItemChannelRow>((from, to) =>
+        supabase
+          .from('sns_items')
+          .select(
+            'id, platform_id, title, content, summary, sentiment, link, author, views, published_at, impact_score'
+          )
+          .eq('workspace_id', workspaceId)
+          .eq('is_relevant', true)
+          .in('session_id', meta.sessionIds)
+          .range(from, to)
+      ),
     ]);
-    return [...normalize(news), ...normalize(community), ...normalize(sns)];
+    return [...news.map(toNewsItem), ...community.map(toCommunityItem), ...sns.map(toSnsItem)];
   }
 
   const [news, community, sns] = await Promise.all([
-    fetchAllPaged<any>((from, to) =>
-      supabase.from('news_items')
-        .select('id, platform_id, title, summary, sentiment, link, source, published_at, critical_type, cluster_id')
-        .eq('workspace_id', workspaceId).eq('is_relevant', true)
-        .range(from, to)),
-    fetchAllPaged<any>((from, to) =>
-      supabase.from('community_items')
-        .select('id, platform_id, title, content, sentiment, link, views, published_at, critical_type')
-        .eq('workspace_id', workspaceId).eq('is_relevant', true)
-        .range(from, to)),
-    fetchAllPaged<any>((from, to) =>
-      supabase.from('sns_items')
-        .select('id, platform_id, title, content, summary, sentiment, link, author, views, published_at, critical_type, impact_score')
-        .eq('workspace_id', workspaceId).eq('is_relevant', true)
-        .range(from, to)),
+    fetchAllPaged<NewsItemChannelRow>((from, to) =>
+      supabase
+        .from('news_items')
+        .select(
+          'id, platform_id, title, summary, sentiment, link, source, published_at, critical_type, cluster_id'
+        )
+        .eq('workspace_id', workspaceId)
+        .eq('is_relevant', true)
+        .range(from, to)
+    ),
+    fetchAllPaged<CommunityItemChannelRow>((from, to) =>
+      supabase
+        .from('community_items')
+        .select(
+          'id, platform_id, title, content, sentiment, link, views, published_at, critical_type'
+        )
+        .eq('workspace_id', workspaceId)
+        .eq('is_relevant', true)
+        .range(from, to)
+    ),
+    fetchAllPaged<SnsItemChannelRow>((from, to) =>
+      supabase
+        .from('sns_items')
+        .select(
+          'id, platform_id, title, content, summary, sentiment, link, author, views, published_at, critical_type, impact_score'
+        )
+        .eq('workspace_id', workspaceId)
+        .eq('is_relevant', true)
+        .range(from, to)
+    ),
   ]);
-  return [...normalize(news), ...normalize(community), ...normalize(sns)];
+  return [...news.map(toNewsItem), ...community.map(toCommunityItem), ...sns.map(toSnsItem)];
 }
 
 // ── 리스크 콘텐츠 ──
 
-const PLATFORM_LABELS: Record<string, string> = {
-  naver_news: '뉴스',
-  naver_blog: '블로그',
-  youtube: '유튜브',
-  naver_stock: '종토방',
-  dcinside: '디시인사이드',
-};
-
 export async function getRiskItems(workspaceId: string, reportId?: string): Promise<RiskItem[]> {
-  const normalize = (rows: any[]): RiskItem[] =>
-    rows.map(r => ({
-      id: r.id,
-      platform_id: r.platform_id,
-      title: r.title ?? '',
-      link: r.link ?? '#',
-      critical_type: r.critical_type,
-      critical_reason: r.critical_reason ?? null,
-      published_at: r.published_at ?? null,
-      session_id: r.session_id ?? null,
-    }));
+  // critical_type IS NOT NULL 필터를 PostgREST 에 걸어 들어오므로 row 타입을 NonNullable 로 좁힘
+  type RiskRow = (CommunityItemRiskRow | SnsItemRiskRow) & {
+    critical_type: NonNullable<CommunityItemRiskRow['critical_type']>;
+  };
+  const toRiskItem = (r: RiskRow): RiskItem => ({
+    id: r.id,
+    platform_id: r.platform_id,
+    title: r.title ?? '',
+    link: r.link ?? '#',
+    critical_type: r.critical_type,
+    critical_reason: r.critical_reason ?? null,
+    published_at: r.published_at ?? null,
+    session_id: r.session_id ?? null,
+  });
 
   if (reportId) {
     const meta = await getReportMeta(reportId);
     if (meta.sessionIds.length === 0) return [];
     const [community, sns] = await Promise.all([
-      fetchAllPaged<any>((from, to) =>
-        supabase.from('community_items')
-          .select('id, platform_id, title, link, critical_type, critical_reason, published_at, session_id')
-          .eq('workspace_id', workspaceId).eq('is_relevant', true).not('critical_type', 'is', null)
+      fetchAllPaged<CommunityItemRiskRow>((from, to) =>
+        supabase
+          .from('community_items')
+          .select(
+            'id, platform_id, title, link, critical_type, critical_reason, published_at, session_id'
+          )
+          .eq('workspace_id', workspaceId)
+          .eq('is_relevant', true)
+          .not('critical_type', 'is', null)
           .in('session_id', meta.sessionIds)
-          .range(from, to)),
-      fetchAllPaged<any>((from, to) =>
-        supabase.from('sns_items')
-          .select('id, platform_id, title, link, critical_type, critical_reason, published_at, session_id')
-          .eq('workspace_id', workspaceId).eq('is_relevant', true).not('critical_type', 'is', null)
+          .range(from, to)
+      ),
+      fetchAllPaged<SnsItemRiskRow>((from, to) =>
+        supabase
+          .from('sns_items')
+          .select(
+            'id, platform_id, title, link, critical_type, critical_reason, published_at, session_id'
+          )
+          .eq('workspace_id', workspaceId)
+          .eq('is_relevant', true)
+          .not('critical_type', 'is', null)
           .in('session_id', meta.sessionIds)
-          .range(from, to)),
+          .range(from, to)
+      ),
     ]);
-    return normalize([...community, ...sns])
+    return [...community, ...sns]
+      .filter((r): r is RiskRow => r.critical_type != null)
+      .map(toRiskItem)
       .sort((a, b) => (b.published_at ?? '').localeCompare(a.published_at ?? ''));
   }
 
   const [community, sns] = await Promise.all([
-    fetchAllPaged<any>((from, to) =>
-      supabase.from('community_items')
-        .select('id, platform_id, title, link, critical_type, critical_reason, published_at, session_id')
-        .eq('workspace_id', workspaceId).eq('is_relevant', true).not('critical_type', 'is', null)
-        .range(from, to)),
-    fetchAllPaged<any>((from, to) =>
-      supabase.from('sns_items')
-        .select('id, platform_id, title, link, critical_type, critical_reason, published_at, session_id')
-        .eq('workspace_id', workspaceId).eq('is_relevant', true).not('critical_type', 'is', null)
-        .range(from, to)),
+    fetchAllPaged<CommunityItemRiskRow>((from, to) =>
+      supabase
+        .from('community_items')
+        .select(
+          'id, platform_id, title, link, critical_type, critical_reason, published_at, session_id'
+        )
+        .eq('workspace_id', workspaceId)
+        .eq('is_relevant', true)
+        .not('critical_type', 'is', null)
+        .range(from, to)
+    ),
+    fetchAllPaged<SnsItemRiskRow>((from, to) =>
+      supabase
+        .from('sns_items')
+        .select(
+          'id, platform_id, title, link, critical_type, critical_reason, published_at, session_id'
+        )
+        .eq('workspace_id', workspaceId)
+        .eq('is_relevant', true)
+        .not('critical_type', 'is', null)
+        .range(from, to)
+    ),
   ]);
-  return normalize([...community, ...sns])
+  return [...community, ...sns]
+    .filter((r): r is RiskRow => r.critical_type != null)
+    .map(toRiskItem)
     .sort((a, b) => (b.published_at ?? '').localeCompare(a.published_at ?? ''));
 }
 
@@ -601,7 +758,10 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 const CATEGORY_ORDER = ['news', 'sns', 'community'];
 
-export async function getStrategies(workspaceId: string, reportId?: string): Promise<StrategyGroup[]> {
+export async function getStrategies(
+  workspaceId: string,
+  reportId?: string
+): Promise<StrategyGroup[]> {
   let query = supabase
     .from('session_strategies')
     .select('category, strategy')
@@ -615,13 +775,22 @@ export async function getStrategies(workspaceId: string, reportId?: string): Pro
 
   const { data } = await query;
 
-  const items = (data ?? []).map((row) => ({
-    category: row.category,
-    label: CATEGORY_LABELS[row.category] ?? row.category,
-    strategy: row.strategy ?? { background: { summary: '', points: [] }, proposal: { summary: '', actions: [] }, effect: { summary: '', points: [] } },
-  }));
+  const EMPTY_STRATEGY: StrategyData = {
+    background: { summary: '', points: [] },
+    proposal: { summary: '', actions: [] },
+  };
+  const items = (data ?? []).map((row) => {
+    const parsed = strategyDataSchema.safeParse(row.strategy);
+    return {
+      category: row.category,
+      label: CATEGORY_LABELS[row.category] ?? row.category,
+      strategy: parsed.success ? parsed.data : EMPTY_STRATEGY,
+    };
+  });
 
-  return items.sort((a, b) => CATEGORY_ORDER.indexOf(a.category) - CATEGORY_ORDER.indexOf(b.category));
+  return items.sort(
+    (a, b) => CATEGORY_ORDER.indexOf(a.category) - CATEGORY_ORDER.indexOf(b.category)
+  );
 }
 
 // ── 이전 리포트 비교 ──
@@ -630,7 +799,10 @@ export async function getStrategies(workspaceId: string, reportId?: string): Pro
  * daily ↔ daily, weekly ↔ weekly|initial 로 매칭해서 비교할 이전 보고서를 찾는다.
  * daily 가 있는 워크스페이스에서 daily 와 weekly 가 혼재해도 비교 기준 기간이 일관되도록.
  */
-export async function getPrevReport(workspaceId: string, currentReportId: string): Promise<PrevReport | null> {
+export async function getPrevReport(
+  workspaceId: string,
+  currentReportId: string
+): Promise<PrevReport | null> {
   const { data } = await supabase
     .from('reports')
     .select('id, type, sir_score, created_at')
@@ -639,13 +811,13 @@ export async function getPrevReport(workspaceId: string, currentReportId: string
 
   if (!data || data.length < 2) return null;
 
-  const currIdx = data.findIndex(r => r.id === currentReportId);
+  const currIdx = data.findIndex((r) => r.id === currentReportId);
   if (currIdx === -1) return null;
 
   const currType = data[currIdx].type;
   const compatibleTypes = currType === 'daily' ? ['daily'] : ['weekly', 'initial'];
 
-  const prev = data.slice(currIdx + 1).find(r => compatibleTypes.includes(r.type));
+  const prev = data.slice(currIdx + 1).find((r) => compatibleTypes.includes(r.type));
   if (!prev) return null;
 
   // 이전 report의 아이템/리스크 건수 조회 (session 기반)
@@ -654,14 +826,45 @@ export async function getPrevReport(workspaceId: string, currentReportId: string
   let riskCount = 0;
 
   if (meta.sessionIds.length > 0) {
-    const [newsCount, communityCount, snsCount, newsRisk, communityRisk, snsRisk] = await Promise.all([
-      supabase.from('news_items').select('id', { count: 'exact', head: true }).eq('workspace_id', workspaceId).eq('is_relevant', true).in('session_id', meta.sessionIds),
-      supabase.from('community_items').select('id', { count: 'exact', head: true }).eq('workspace_id', workspaceId).eq('is_relevant', true).in('session_id', meta.sessionIds),
-      supabase.from('sns_items').select('id', { count: 'exact', head: true }).eq('workspace_id', workspaceId).eq('is_relevant', true).in('session_id', meta.sessionIds),
-      supabase.from('news_items').select('id', { count: 'exact', head: true }).eq('workspace_id', workspaceId).not('critical_type', 'is', null).in('session_id', meta.sessionIds),
-      supabase.from('community_items').select('id', { count: 'exact', head: true }).eq('workspace_id', workspaceId).not('critical_type', 'is', null).in('session_id', meta.sessionIds),
-      supabase.from('sns_items').select('id', { count: 'exact', head: true }).eq('workspace_id', workspaceId).not('critical_type', 'is', null).in('session_id', meta.sessionIds),
-    ]);
+    const [newsCount, communityCount, snsCount, newsRisk, communityRisk, snsRisk] =
+      await Promise.all([
+        supabase
+          .from('news_items')
+          .select('id', { count: 'exact', head: true })
+          .eq('workspace_id', workspaceId)
+          .eq('is_relevant', true)
+          .in('session_id', meta.sessionIds),
+        supabase
+          .from('community_items')
+          .select('id', { count: 'exact', head: true })
+          .eq('workspace_id', workspaceId)
+          .eq('is_relevant', true)
+          .in('session_id', meta.sessionIds),
+        supabase
+          .from('sns_items')
+          .select('id', { count: 'exact', head: true })
+          .eq('workspace_id', workspaceId)
+          .eq('is_relevant', true)
+          .in('session_id', meta.sessionIds),
+        supabase
+          .from('news_items')
+          .select('id', { count: 'exact', head: true })
+          .eq('workspace_id', workspaceId)
+          .not('critical_type', 'is', null)
+          .in('session_id', meta.sessionIds),
+        supabase
+          .from('community_items')
+          .select('id', { count: 'exact', head: true })
+          .eq('workspace_id', workspaceId)
+          .not('critical_type', 'is', null)
+          .in('session_id', meta.sessionIds),
+        supabase
+          .from('sns_items')
+          .select('id', { count: 'exact', head: true })
+          .eq('workspace_id', workspaceId)
+          .not('critical_type', 'is', null)
+          .in('session_id', meta.sessionIds),
+      ]);
     totalItems = (newsCount.count ?? 0) + (communityCount.count ?? 0) + (snsCount.count ?? 0);
     riskCount = (newsRisk.count ?? 0) + (communityRisk.count ?? 0) + (snsRisk.count ?? 0);
   }
@@ -675,7 +878,7 @@ export async function getPrevReport(workspaceId: string, currentReportId: string
 
   const sirByChannel = new Map<string, number[]>();
   for (const s of prevSessions ?? []) {
-    if (s.sir_score == null) continue;
+    if (s.sir_score == null || !s.platform_id) continue;
     const channel = PLATFORM_TO_CHANNEL[s.platform_id] ?? s.platform_id;
     if (!sirByChannel.has(channel)) sirByChannel.set(channel, []);
     sirByChannel.get(channel)!.push(s.sir_score);
@@ -686,7 +889,15 @@ export async function getPrevReport(workspaceId: string, currentReportId: string
     channelSirMap[ch] = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
   }
 
-  return { id: prev.id, type: prev.type as string, sirScore: prev.sir_score ?? 0, createdAt: prev.created_at, totalItems, riskCount, channelSirMap };
+  return {
+    id: prev.id,
+    type: prev.type as string,
+    sirScore: prev.sir_score ?? 0,
+    createdAt: prev.created_at,
+    totalItems,
+    riskCount,
+    channelSirMap,
+  };
 }
 
 // ── 전일 스냅샷 (daily 보고서 전용 비교) ──
@@ -704,7 +915,7 @@ export interface PrevDailySnapshot {
 
 export async function getPrevDailySnapshot(
   workspaceId: string,
-  periodEnd: string,
+  periodEnd: string
 ): Promise<PrevDailySnapshot | null> {
   // 1. 전날 snapshot — date < periodEnd 중 가장 최근
   const { data: snap } = await supabase
@@ -745,15 +956,30 @@ export async function getPrevDailySnapshot(
   const dayEnd = nextDay.toISOString();
 
   const [newsRisk, communityRisk, snsRisk] = await Promise.all([
-    supabase.from('news_items').select('id', { count: 'exact', head: true })
-      .eq('workspace_id', workspaceId).eq('is_relevant', true).not('critical_type', 'is', null)
-      .gte('published_at', dayStart).lt('published_at', dayEnd),
-    supabase.from('community_items').select('id', { count: 'exact', head: true })
-      .eq('workspace_id', workspaceId).eq('is_relevant', true).not('critical_type', 'is', null)
-      .gte('published_at', dayStart).lt('published_at', dayEnd),
-    supabase.from('sns_items').select('id', { count: 'exact', head: true })
-      .eq('workspace_id', workspaceId).eq('is_relevant', true).not('critical_type', 'is', null)
-      .gte('published_at', dayStart).lt('published_at', dayEnd),
+    supabase
+      .from('news_items')
+      .select('id', { count: 'exact', head: true })
+      .eq('workspace_id', workspaceId)
+      .eq('is_relevant', true)
+      .not('critical_type', 'is', null)
+      .gte('published_at', dayStart)
+      .lt('published_at', dayEnd),
+    supabase
+      .from('community_items')
+      .select('id', { count: 'exact', head: true })
+      .eq('workspace_id', workspaceId)
+      .eq('is_relevant', true)
+      .not('critical_type', 'is', null)
+      .gte('published_at', dayStart)
+      .lt('published_at', dayEnd),
+    supabase
+      .from('sns_items')
+      .select('id', { count: 'exact', head: true })
+      .eq('workspace_id', workspaceId)
+      .eq('is_relevant', true)
+      .not('critical_type', 'is', null)
+      .gte('published_at', dayStart)
+      .lt('published_at', dayEnd),
   ]);
   const riskCount = (newsRisk.count ?? 0) + (communityRisk.count ?? 0) + (snsRisk.count ?? 0);
 
@@ -768,7 +994,7 @@ export async function getPrevDailySnapshot(
 
 // ── 검색 트렌드 ──
 
-export async function getSearchTrend(workspaceId: string, reportId?: string): Promise<SearchTrendResult> {
+export async function getSearchTrend(reportId?: string): Promise<SearchTrendResult> {
   if (!reportId) return { naver: [], google: [] };
 
   const { data } = await supabase
@@ -778,27 +1004,59 @@ export async function getSearchTrend(workspaceId: string, reportId?: string): Pr
 
   const result: SearchTrendResult = { naver: [], google: [] };
   for (const row of data ?? []) {
-    if (row.provider === 'naver') result.naver = row.trend_data ?? [];
-    if (row.provider === 'google') result.google = row.trend_data ?? [];
+    const parsed = trendPointSchema.array().safeParse(row.trend_data);
+    if (!parsed.success) continue;
+    if (row.provider === 'naver') result.naver = parsed.data;
+    if (row.provider === 'google') result.google = parsed.data;
   }
   return result;
 }
 
 // ── 신고 대행 요청 ──
 
-export async function getRiskReports(workspaceId: string, reportId?: string): Promise<RiskReport[]> {
+// DB 의 requested_at 은 NOT NULL DEFAULT now() 지만 supabase CLI 가 nullable 로 추출 →
+// 도메인 RiskReport 와 맞추려 created_at fallback. 실제 fallback 은 거의 타지 않음.
+function toRiskReport(row: Row<'risk_reports'>): RiskReport {
+  return {
+    id: row.id,
+    workspace_id: row.workspace_id,
+    report_id: row.report_id,
+    source_table: row.source_table,
+    source_id: row.source_id,
+    platform_id: row.platform_id,
+    title: row.title,
+    link: row.link,
+    critical_type: row.critical_type,
+    reason: row.reason,
+    evidence: row.evidence,
+    file_urls: row.file_urls,
+    status: row.status,
+    admin_note: row.admin_note,
+    requested_at: row.requested_at ?? row.created_at ?? '',
+    resolved_at: row.resolved_at,
+  };
+}
+
+export async function getRiskReports(
+  workspaceId: string,
+  reportId?: string
+): Promise<RiskReport[]> {
   let query = supabase.from('risk_reports').select('*').order('requested_at', { ascending: false });
   if (workspaceId && workspaceId !== '_all') query = query.eq('workspace_id', workspaceId);
   if (reportId) query = query.eq('report_id', reportId);
   const { data } = await query;
-  return data ?? [];
+  return (data ?? []).map(toRiskReport);
 }
 
 /**
  * 보고서 기간 내에 "처리 완료" 또는 "반려" 로 결과가 확정된 신고 건만 반환.
  * 접수 시점이 아닌 resolved_at 기준 → 처리 결과가 확정된 날의 익일 보고서에 반영됨.
  */
-export async function getResolvedRiskReports(workspaceId: string, periodStart: string, periodEnd: string): Promise<RiskReport[]> {
+export async function getResolvedRiskReports(
+  workspaceId: string,
+  periodStart: string,
+  periodEnd: string
+): Promise<RiskReport[]> {
   const startIso = `${periodStart}T00:00:00`;
   const endIso = `${periodEnd}T23:59:59.999`;
   const { data } = await supabase
@@ -809,7 +1067,7 @@ export async function getResolvedRiskReports(workspaceId: string, periodStart: s
     .gte('resolved_at', startIso)
     .lte('resolved_at', endIso)
     .order('resolved_at', { ascending: false });
-  return data ?? [];
+  return (data ?? []).map(toRiskReport);
 }
 
 export async function deleteRiskReport(id: string): Promise<void> {
@@ -870,8 +1128,13 @@ export async function submitRiskReport(input: SubmitRiskReportInput): Promise<vo
   if (error) throw error;
 }
 
-export async function updateRiskReport(id: string, body: { status?: string; admin_note?: string }): Promise<void> {
-  const { data: { session } } = await supabase.auth.getSession();
+export async function updateRiskReport(
+  id: string,
+  body: { status?: string; admin_note?: string }
+): Promise<void> {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
   const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/risk-report/${id}`, {
     method: 'PATCH',
     headers: {
@@ -899,7 +1162,11 @@ export async function clearCriticalType(platformId: string, itemId: string): Pro
   }
 }
 
-export async function updateStrategies(workspaceId: string, reportId: string, strategies: StrategyGroup[]): Promise<void> {
+export async function updateStrategies(
+  workspaceId: string,
+  reportId: string,
+  strategies: StrategyGroup[]
+): Promise<void> {
   for (const group of strategies) {
     const { error } = await supabase
       .from('session_strategies')

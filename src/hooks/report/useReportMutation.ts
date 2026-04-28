@@ -9,6 +9,7 @@ import {
   publishReport,
 } from '@/lib/api/reportApi';
 import { reportKeys } from '@/hooks/report/useReportQuery';
+import { getErrorMessage } from '@/lib/utils';
 import type {
   SummarySection,
   StrategyGroup,
@@ -56,7 +57,7 @@ export function usePublishReport(reportId: string) {
       toast.success('보고서가 발행되었습니다.');
     },
     onError: (err) => {
-      toast.error(err instanceof Error ? err.message : '발행에 실패했습니다.');
+      toast.error(getErrorMessage(err, '발행에 실패했습니다.'));
     },
   });
 }
@@ -73,7 +74,7 @@ export function useClearCriticalType(workspaceId: string) {
       toast.success('리스크 분류를 해제했습니다.');
     },
     onError: (err) => {
-      toast.error(err instanceof Error ? err.message : '리스크 해제에 실패했습니다.');
+      toast.error(getErrorMessage(err, '리스크 해제에 실패했습니다.'));
     },
   });
 }

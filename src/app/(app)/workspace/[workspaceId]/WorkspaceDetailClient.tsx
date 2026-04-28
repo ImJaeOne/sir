@@ -76,7 +76,16 @@ export function WorkspaceDetailClient({ workspaceId }: WorkspaceDetailClientProp
   const [showBlacklist, setShowBlacklist] = useState(false);
   const { data: reports, isPending } = useReports(workspaceId);
   const { data: progressList } = useReportProgress(workspaceId);
-  useReportRealtimeSync(workspaceId);
+  // 진행 중 세션 또는 pending 전략이 하나라도 있을 때만 Realtime 채널을 연다.
+  // 폴링 비용은 채널 lifetime 에 비례하므로 done/failed 만 남은 워크스페이스는 구독을 끊는다.
+  const hasActiveProgress = useMemo(() => {
+    for (const p of progressList ?? []) {
+      if (p.allSessions.some((s) => s.status !== 'done' && s.status !== 'failed')) return true;
+      if (p.strategies.some((s) => s.status !== 'done' && s.status !== 'failed')) return true;
+    }
+    return false;
+  }, [progressList]);
+  useReportRealtimeSync(workspaceId, hasActiveProgress);
   const hasDaily = subscription?.has_daily ?? true;
 
   const filteredReports = useMemo(() => {
@@ -108,11 +117,16 @@ export function WorkspaceDetailClient({ workspaceId }: WorkspaceDetailClientProp
     [progressList]
   );
 
-  // 분석 미시작 initial draft: super_admin 이 첫 분석을 트리거할 대상
+  // 분석 미시작 initial draft: super_admin 이 첫 분석을 트리거할 대상.
+  // initial 은 status 가 분석 후에도 draft 로 유지되므로 sessions 존재 여부로 분기.
   const pendingInitial = useMemo(() => {
     if (!reports) return null;
-    return reports.find((r) => r.type === 'initial' && r.status === 'draft') ?? null;
-  }, [reports]);
+    const candidate = reports.find((r) => r.type === 'initial' && r.status === 'draft');
+    if (!candidate) return null;
+    const progress = progressList?.find((p) => p.reportId === candidate.id);
+    if (progress && progress.sessions.length > 0) return null;
+    return candidate;
+  }, [reports, progressList]);
 
   return (
     <div className="flex w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-10 min-h-full">

@@ -53,7 +53,7 @@ export function ReportSelector() {
           onClick={() => setShowModal(true)}
           className="w-full flex items-center gap-2.5 rounded-lg text-sm transition-colors cursor-pointer justify-center border border-bg-dark px-3 py-2.5 hover:bg-bg-light"
         >
-          <span className="text-text-dark font-semibold text-center">보고서 내역</span>
+          <span className="text-text-dark font-semibold text-center">지난 보고서 보기</span>
         </button>
       </div>
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { getErrorMessage } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -92,10 +93,10 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ id: userId, email });
-  } catch (e: any) {
+  } catch (e) {
     await supabaseAdmin.auth.admin.deleteUser(userId);
     return NextResponse.json(
-      { detail: e?.message ?? '계정 생성 실패' },
+      { detail: getErrorMessage(e, '계정 생성 실패') },
       { status: 500 },
     );
   }

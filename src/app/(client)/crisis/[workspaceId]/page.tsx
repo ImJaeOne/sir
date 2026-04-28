@@ -1,18 +1,31 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { ShieldAlert, Paperclip } from 'lucide-react';
 import { useDeleteRiskReport } from '@/hooks/report/useReportMutation';
 import { useRiskItems, useRiskReports } from '@/hooks/report/useReportQuery';
-import { useWorkspace } from '@/hooks/workspace/useWorkspaceQuery';
+import { useWorkspace, useWorkspaceSubscription } from '@/hooks/workspace/useWorkspaceQuery';
 import { createClient } from '@/lib/supabase/client';
 import { Loading } from '@/components/ui/Loading';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { Button } from '@/components/ui/Button';
 import { ReportCard } from '@/components/report/ReportCard';
 import { ReportSubSection } from '@/components/report/ReportSection';
+import { ReportCalendarSelector } from '@/components/report/ReportCalendarSelector';
 import { RiskDetectionTable } from '@/components/report/risk-content/RiskDetectionTable';
+
+const ServiceUpgradeModal = dynamic(
+  () =>
+    import('@/components/client/sidebar/ServiceUpgradeModal').then((m) => m.ServiceUpgradeModal),
+  { ssr: false },
+);
+
+const ARMOR_UPGRADE_TITLE = '아머 서비스 신청';
+const ARMOR_UPGRADE_DESCRIPTION = '리스크 콘텐츠 신고 대행 서비스(아머)는 별도 구독이 필요합니다.';
+const ARMOR_UPGRADE_SUB = '아래 양식에 맞춰 접수하시면 신속하게 연락드리겠습니다.';
 
 const STATUS_STYLES: Record<string, { label: string; className: string }> = {
   requested: { label: '요청 완료', className: 'bg-slate-100 text-slate-600' },
@@ -55,10 +68,20 @@ export default function CrisisCenterPage() {
   const workspaceId = params?.workspaceId as string;
 
   const { data: workspace } = useWorkspace(workspaceId);
-  const { data: riskItems, isLoading: itemsLoading } = useRiskItems(workspaceId);
-  const { data: riskReports, isLoading: reportsLoading } = useRiskReports(workspaceId);
+  const { data: subscription, isLoading: subLoading } = useWorkspaceSubscription(workspaceId);
+  const hasArmor = subscription?.has_armor ?? false;
+  const armorReady = !subLoading && subscription !== undefined;
+
+  // 빈 문자열 = 전체 보고서 통합 뷰 (default). 특정 reportId 선택 시 해당 보고서로 필터.
+  const [selectedReportId, setSelectedReportId] = useState('');
+  const reportFilter = selectedReportId || undefined;
+
+  const { data: riskItems, isLoading: itemsLoading } = useRiskItems(workspaceId, reportFilter);
+  const { data: riskReports, isLoading: reportsLoading } = useRiskReports(workspaceId, reportFilter);
   const { data: sessionToReportMap } = useSessionToReportMap(workspaceId);
-  const deleteMutation = useDeleteRiskReport(workspaceId, '');
+  const deleteMutation = useDeleteRiskReport(workspaceId, reportFilter ?? '');
+
+  const [showUpgrade, setShowUpgrade] = useState(false);
 
   const { reportedSourceIds, riskReportBySourceId } = useMemo(() => {
     const ids = new Set<string>();
@@ -83,43 +106,65 @@ export default function CrisisCenterPage() {
     <div className="min-h-full bg-bg-light">
       <div className="mx-auto w-full lg:w-[1200px] px-4 lg:px-10 py-6 lg:py-10 flex flex-col gap-6">
         {/* 헤더 */}
-        <div className="flex items-center gap-3">
-          <ShieldAlert size={28} className="text-bg-accent" />
-          <div className="flex flex-col">
-            <h1 className="text-xl lg:text-2xl font-bold text-text-dark">위기 대응 센터</h1>
-            <p className="text-xs text-text-muted">
-              {workspace?.company_name ? `${workspace.company_name} · ` : ''}
-              워크스페이스 전체 리스크 콘텐츠를 확인하고 신고 대행을 요청할 수 있습니다.
-            </p>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <ShieldAlert size={28} className="text-bg-accent" />
+            <div className="flex flex-col">
+              <h1 className="text-xl lg:text-2xl font-bold text-text-dark">위기 대응 센터</h1>
+              <p className="text-xs text-text-muted">
+                {workspace?.company_name ? `${workspace.company_name} · ` : ''}
+                {selectedReportId
+                  ? '선택한 보고서 기간의 리스크 콘텐츠만 표시 중입니다.'
+                  : '워크스페이스 전체 리스크 콘텐츠를 확인하고 신고 대행을 요청할 수 있습니다.'}
+              </p>
+            </div>
           </div>
+          <ReportCalendarSelector
+            workspaceId={workspaceId}
+            selectedReportId={selectedReportId}
+            onChange={setSelectedReportId}
+          />
         </div>
 
-        {loading ? (
+        {!armorReady || loading ? (
           <Loading />
         ) : (
           <>
-            {/* 리스크 탐지 내역 — 전체 리포트 통합, 신고 대행 요청 버튼 노출 */}
+            {/* 리스크 탐지 내역 — 모든 구독자에게 노출. 신고 대행 버튼만 has_armor 게이트 */}
             <RiskDetectionTable
               riskItems={riskItems ?? []}
               workspaceId={workspaceId}
-              reportId=""
+              reportId={selectedReportId}
               reportedSourceIds={reportedSourceIds}
               riskReportBySourceId={riskReportBySourceId}
               onCancelReport={deleteMutation.mutate}
-              allowReport
+              allowReport={hasArmor}
               sessionToReportMap={sessionToReportMap ?? undefined}
             />
 
-            {/* 리스크 처리 결과 — 전체 기간 (workspace 기준) */}
+            {/* 리스크 처리 결과 — has_armor=false 면 업그레이드 안내 카드로 대체 */}
             <ReportSubSection
               title="리스크 콘텐츠 처리 결과"
-              description="처리 완료되거나 반려된 모든 신고 대행 건을 확인할 수 있습니다."
+              description="SIR 팀에서 진행한 리스크 콘텐츠 삭제, 신고 처리 결과를 확인할 수 있습니다."
               tooltip="신고된 게시물은 해당 채널 운영자의 판단에 의해 삭제되지 않을 수 있으며, 신고 후 2주가 지나도 삭제되지 않을 경우 자동으로 반려된 것으로 간주합니다."
             >
-              <ReportCard px={20} py={10}>
-                {processedReports.length === 0 ? (
+              <ReportCard px={20} py={!hasArmor ? 32 : 10}>
+                {!hasArmor ? (
+                  <div className="flex flex-col items-center justify-center gap-3 py-8 text-center">
+                    <ShieldAlert size={32} className="text-bg-accent" />
+                    <p className="text-base font-semibold text-text-dark">
+                      서비스 업그레이드가 필요합니다
+                    </p>
+                    <p className="text-sm text-text-muted leading-relaxed">
+                      신고 대행(아머)은 별도 구독이 필요한 서비스입니다.
+                    </p>
+                    <Button variant="outlineAccent" size="lg" onClick={() => setShowUpgrade(true)} className="mt-2">
+                      서비스 신청하기
+                    </Button>
+                  </div>
+                ) : processedReports.length === 0 ? (
                   <>
-                    <EmptyState message="처리 완료된 신고 대행 내역이 없습니다." />
+                    <EmptyState message="처리된 내역이 없습니다." />
                     <p className="text-xs text-text-muted text-center py-2">총 0건</p>
                   </>
                 ) : (
@@ -233,6 +278,14 @@ export default function CrisisCenterPage() {
           </>
         )}
       </div>
+
+      <ServiceUpgradeModal
+        open={showUpgrade}
+        onClose={() => setShowUpgrade(false)}
+        title={ARMOR_UPGRADE_TITLE}
+        description={ARMOR_UPGRADE_DESCRIPTION}
+        subDescription={ARMOR_UPGRADE_SUB}
+      />
     </div>
   );
 }

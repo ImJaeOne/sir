@@ -177,7 +177,7 @@ export function ReportCalendarModal({
     <Modal
       open
       onClose={onClose}
-      title="보고서 내역"
+      title="지난 보고서 보기"
       size="md"
       footer={
         <Button onClick={handleApply} disabled={!isChanged} fullWidth>

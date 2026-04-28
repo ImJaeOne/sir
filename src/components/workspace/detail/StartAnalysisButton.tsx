@@ -5,6 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { workspaceKeys } from '@/hooks/workspace/workspaceKeys';
 import { createClient } from '@/lib/supabase/client';
+import { getErrorMessage } from '@/lib/utils';
 
 interface StartAnalysisButtonProps {
   workspaceId: string;
@@ -56,9 +57,8 @@ export function StartAnalysisButton({
       queryClient.invalidateQueries({ queryKey: workspaceKeys.reports(workspaceId) });
       queryClient.invalidateQueries({ queryKey: workspaceKeys.progress(workspaceId) });
       toast.success('분석을 시작했습니다.');
-    } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : '분석 시작에 실패했습니다.';
-      toast.error(message);
+    } catch (e) {
+      toast.error(getErrorMessage(e, '분석 시작에 실패했습니다.'));
     } finally {
       setLoading(false);
     }

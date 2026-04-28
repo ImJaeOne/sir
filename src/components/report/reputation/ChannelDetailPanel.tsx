@@ -15,7 +15,7 @@ export function ChannelDetailPanel({ channelStats, channelItems, newsClusters }:
   return (
     <ReportSubSection
       title="채널별 수집 데이터 상세 보기"
-      description="각 채널명을 클릭하면 접고 펼치는 방식으로 수집된 세부 콘텐츠 목록을 확인할 수 있습니다."
+      description="각 채널명을 클릭하면 수집된 모든 콘텐츠와 AI가 요약한 핵심 내용을 확인할 수 있습니다."
     >
       <ReportCard px={20} py={20}>
         <ChannelDetailList

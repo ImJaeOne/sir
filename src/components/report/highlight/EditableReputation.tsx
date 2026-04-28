@@ -23,19 +23,19 @@ const SUMMARY_SECTIONS = [
     borderColor: 'border-blue-400',
   },
   {
-    label: '채널별 분석',
+    label: '채널별 평판 분석',
     icon: DynamicsIcon,
     bg: 'bg-bg-pupple-15',
     borderColor: 'border-purple-400',
   },
   {
-    label: '긍정 모멘텀',
+    label: '긍정 여론 분석',
     icon: MomentumIcon,
     bg: 'bg-bg-green-15',
     borderColor: 'border-emerald-400',
   },
   {
-    label: '리스크 분석',
+    label: '부정 여론 분석',
     icon: LiskIcon,
     bg: 'bg-bg-danger',
     borderColor: 'border-red-400',
@@ -46,9 +46,11 @@ interface EditableReputationProps {
   summary: SummarySection[];
   workspaceId: string;
   reportId: string;
+  isInitial?: boolean;
 }
 
-export function EditableReputation({ summary, workspaceId, reportId }: EditableReputationProps) {
+export function EditableReputation({ summary, workspaceId, reportId, isInitial = false }: EditableReputationProps) {
+  const title = isInitial ? '월간 총평' : '주간 총평';
   const [editing, setEditing] = useState(false);
   const [sections, setSections] = useState<SummarySection[]>(summary);
   const [activeTab, setActiveTab] = useState(0);
@@ -167,7 +169,7 @@ export function EditableReputation({ summary, workspaceId, reportId }: EditableR
 
   if (!data || data.length === 0) {
     return (
-      <ReportSubSection title="주간 총평" action={actionButton}>
+      <ReportSubSection title={title} action={actionButton}>
         <ReportCard px={20} py={5}>
           <EmptyState message={'총평 데이터가 없습니다.\n총평 생성을 실행해주세요.'} />
         </ReportCard>
@@ -179,7 +181,7 @@ export function EditableReputation({ summary, workspaceId, reportId }: EditableR
   const activeConfig = SUMMARY_SECTIONS[activeTab];
 
   return (
-    <ReportSubSection title="주간 총평" action={actionButton}>
+    <ReportSubSection title={title} action={actionButton}>
       <ReportCard px={0} py={0}>
         <div className="flex flex-col">
           {/* 탭 — 모바일 가로 스크롤 */}

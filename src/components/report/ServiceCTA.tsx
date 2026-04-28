@@ -28,10 +28,10 @@ export function ServiceCTA() {
         <ServiceIcon width={isMobile ? 60 : 89} height={isMobile ? 38 : 57} />
         <div className="flex flex-col gap-1 lg:gap-2 text-center">
           <h3 className="text-sm lg:text-xl font-bold text-text-dark">
-            전략 실행이 어렵다면, SIR 팀이 함께 대응합니다.
+            SIR 팀에 기업 평판 관리를 맡겨보세요.
           </h3>
           <p className="text-xs lg:text-sm text-text-muted">
-            위 제안을 기반으로 전문 컨설턴트가 실행 계획을 수립하고 모니터링합니다.
+            평판 관리부터 전략 수립 및 실행까지 원스톱 서비스를 제공합니다.
           </p>
         </div>
         <Button

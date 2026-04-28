@@ -17,10 +17,10 @@ const CHANNEL_CONFIG: Record<string, { icon: React.ComponentType<{ size?: number
   };
 
 const channelDescriptions: Record<string, string> = {
-  뉴스: '국내 주요 언론사',
-  블로그: '포털 및 개인 블로그',
-  유튜브: '기업 관련 영상',
-  커뮤니티: '증권 관련 온라인 커뮤니티',
+  뉴스: '동일한 주제의 기사로 많이 발행된 뉴스가 나온 이후 최신순으로 정렬',
+  블로그: 'AI분석으로 기업 평판과 관련도가 높은 순으로 정렬',
+  유튜브: '조회수 높은 순으로 정렬',
+  커뮤니티: '조회수 높은 순으로 정렬',
 };
 
 interface ChannelAccordionProps {
@@ -37,8 +37,10 @@ export function ChannelAccordion({ name, total, trend, children }: ChannelAccord
   return (
     <div className="border-b lg:border pb-2 lg:pb-0 lg:rounded-xl overflow-hidden transition-colors border-slate-100">
       <button
+        type="button"
         onClick={() => !isEmpty && setOpen(!open)}
-        className={`w-full flex items-center justify-between lg:px-4 lg:py-4 transition-colors text-left hover:cursor-pointer`}
+        disabled={isEmpty}
+        className={`w-full flex items-center justify-between lg:px-4 lg:py-4 transition-colors text-left ${isEmpty ? 'cursor-default' : 'hover:cursor-pointer'}`}
       >
         <div className="flex items-center justify-between flex-1">
           <div className="flex items-center gap-3 lg:gap-4">
@@ -78,12 +80,13 @@ export function ChannelAccordion({ name, total, trend, children }: ChannelAccord
             {!isEmpty && <Badge variant={trend.includes('긍정') ? 'blue' : 'red'}>{trend}</Badge>}
           </div>
         </div>
-        {!isEmpty &&
-          (open ? (
-            <ChevronUp size={16} className="text-slate-400" />
-          ) : (
-            <ChevronDown size={16} className="text-slate-400" />
-          ))}
+        {isEmpty ? (
+          <ChevronDown size={16} className="text-slate-200" />
+        ) : open ? (
+          <ChevronUp size={16} className="text-slate-400" />
+        ) : (
+          <ChevronDown size={16} className="text-slate-400" />
+        )}
       </button>
       {open && (
         <div className="border-t border-slate-50 pl-0 pr-0 lg:pl-[72px] lg:pr-10 py-2">

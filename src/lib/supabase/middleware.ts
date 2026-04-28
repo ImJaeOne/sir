@@ -1,11 +1,20 @@
 import { createServerClient } from '@supabase/ssr';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
+import type { Database } from '@/types/database.types';
 import { resolveUserReportPath } from '@/lib/auth/resolveLandingPath';
 
 export async function updateSession(request: NextRequest) {
+  // /report-pdf — Playwright headless 가 URL 토큰(?at/?rt) 으로 자체 setSession 하므로
+  // middleware 의 cookie 기반 인증 검사를 통째로 우회. (matcher negative lookahead 가
+  // 일부 환경에서 안 먹어 코드 레벨 early return 으로 처리)
+  if (request.nextUrl.pathname.startsWith('/report-pdf')) {
+    return NextResponse.next({ request });
+  }
+
   let supabaseResponse = NextResponse.next({ request });
 
-  const supabase = createServerClient(
+  const supabase = createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
@@ -86,7 +95,7 @@ export async function updateSession(request: NextRequest) {
 }
 
 // 역할 조회 (캐시 없이 매번 조회 — middleware는 서버에서 실행)
-async function getUserRole(supabase: any, userId: string): Promise<string> {
+async function getUserRole(supabase: SupabaseClient<Database>, userId: string): Promise<string> {
   const { data } = await supabase
     .from('user_profiles')
     .select('role')

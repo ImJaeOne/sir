@@ -137,7 +137,7 @@ export function ReportResult() {
             <path d="M8 2v8M8 10l-3-3M8 10l3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
             <path d="M3 13h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
           </svg>
-          PDF 다운로드
+          보고서 다운로드(PDF)
         </button>
         <button
           onClick={handleDownloadDocx}

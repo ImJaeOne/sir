@@ -48,8 +48,15 @@ export function PdfDownloadButton() {
       const {
         data: { session },
       } = await supabase.auth.getSession();
+      if (!session?.access_token || !session?.refresh_token) {
+        throw new Error('로그인 세션 만료');
+      }
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/report/${workspaceId}/${reportId}/pdf`, {
-        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          // 백엔드 → Playwright 가 setSession 으로 사용자 신원 위임받기 위해 refresh_token 도 전달.
+          'X-Supabase-Refresh-Token': session.refresh_token,
+        },
       });
       if (!res.ok) throw new Error('PDF 생성 실패');
       const blob = await res.blob();
@@ -82,7 +89,7 @@ export function PdfDownloadButton() {
           className="w-full flex items-center gap-2.5 rounded-lg text-sm transition-colors cursor-pointer justify-center border border-bg-dark px-3 py-2.5 hover:bg-bg-light disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <span className="text-text-dark font-semibold text-center">
-            {downloading ? 'PDF 생성 중...' : 'PDF 다운로드'}
+            {downloading ? 'PDF 생성 중...' : '보고서 다운로드(PDF)'}
           </span>
         </button>
       </div>

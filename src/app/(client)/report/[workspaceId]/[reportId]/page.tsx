@@ -6,7 +6,6 @@ import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigat
 import { ReportHeader } from '@/components/report/ReportHeader';
 import { Highlight } from '@/components/report/Highlight';
 import { OnlineReputation } from '@/components/report/OnlineReputation';
-import { TopContent } from '@/components/report/TopContent';
 import { RiskContent } from '@/components/report/RiskContent';
 import { Strategy } from '@/components/report/Strategy';
 import { ServiceCTA } from '@/components/report/ServiceCTA';
@@ -77,7 +76,7 @@ function ClientReportContent() {
   const isDaily = report?.type === 'daily';
   const pdfMode = searchParams?.get('pdf') === '1';
 
-  const sections = getClientReportSections(isDaily);
+  const sections = getClientReportSections(report?.type);
   const allowedIds = new Set(sections.map((s) => s.id));
   const sectionParam = searchParams?.get('section');
   const activeSection =
@@ -91,9 +90,35 @@ function ClientReportContent() {
     document.getElementById('client-main')?.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // PDF 모드 또는 daily: 모든 섹션을 수직 나열 (탭 없이 하나의 페이지)
-  // daily 는 섹션 자체가 적어 탭으로 분리할 이유 없음 — 스크롤 기반 one-page 로 일원화.
-  if (pdfMode || isDaily) {
+  // 주간/월간 PDF: 모든 섹션 bg-light 통일 (인쇄물 톤)
+  if (pdfMode && !isDaily) {
+    return (
+      <div className="lg:min-w-fit">
+        <SectionBg color="bg-light" id="section-highlight">
+          <div className="flex flex-col lg:gap-10">
+            <ReportHeader workspaceId={workspaceId} reportId={reportId} showPdfButton={false} />
+            <Highlight workspaceId={workspaceId} reportId={reportId} pdfMode />
+          </div>
+        </SectionBg>
+        <SectionBg color="bg-light" id="section-reputation">
+          <OnlineReputation workspaceId={workspaceId} reportId={reportId} pdfMode />
+        </SectionBg>
+        <SectionBg color="bg-light" id="section-risk">
+          <RiskContent workspaceId={workspaceId} reportId={reportId} />
+        </SectionBg>
+        <SectionBg color="bg-light" id="section-strategy">
+          <Strategy workspaceId={workspaceId} reportId={reportId} />
+        </SectionBg>
+        <SectionBg color="bg-light">
+          <ServiceCTA />
+          <ReportDisclaimer />
+        </SectionBg>
+      </div>
+    );
+  }
+
+  // 일간: 섹션 적어 one-page 알터네이팅 (Strategy 없음)
+  if (isDaily) {
     return (
       <div className="lg:min-w-fit">
         <SectionBg color="bg-light" id="section-highlight">
@@ -105,20 +130,10 @@ function ClientReportContent() {
         <SectionBg color="blue" gradient="from-light" id="section-reputation">
           <OnlineReputation workspaceId={workspaceId} reportId={reportId} pdfMode={pdfMode} />
         </SectionBg>
-        {!isDaily && (
-          <SectionBg color="bg-light" gradient="from-blue" id="section-top-content">
-            <TopContent workspaceId={workspaceId} reportId={reportId} />
-          </SectionBg>
-        )}
-        <SectionBg color="blue" gradient={isDaily ? undefined : 'from-light'} id="section-risk">
+        <SectionBg color="bg-light" gradient="from-blue" id="section-risk">
           <RiskContent workspaceId={workspaceId} reportId={reportId} />
         </SectionBg>
-        {!isDaily && (
-          <SectionBg color="bg-light" gradient="from-blue" id="section-strategy">
-            <Strategy workspaceId={workspaceId} reportId={reportId} />
-          </SectionBg>
-        )}
-        <SectionBg color="blue" gradient={isDaily ? undefined : 'from-light'}>
+        <SectionBg color="blue" gradient="from-light">
           <ServiceCTA />
           <ReportDisclaimer />
         </SectionBg>
@@ -172,11 +187,6 @@ function ClientReportContent() {
       {activeSection === 'section-reputation' && (
         <SectionBg color="bg-light">
           <OnlineReputation workspaceId={workspaceId} reportId={reportId} />
-        </SectionBg>
-      )}
-      {activeSection === 'section-top-content' && !isDaily && (
-        <SectionBg color="bg-light">
-          <TopContent workspaceId={workspaceId} reportId={reportId} />
         </SectionBg>
       )}
       {activeSection === 'section-risk' && (

@@ -35,7 +35,7 @@ export function Snapshot({
         ? '전월 대비 '
         : '전주 대비 ';
 
-  const period = isDaily ? '일간' : '주간';
+  const period = isDaily ? '일간' : isInitial ? '월간' : '주간';
 
   const sirCard = {
     title: `${period} SIR 지수`,
@@ -50,7 +50,7 @@ export function Snapshot({
   const itemsCard = {
     title: `${period} 수집된 평판 데이터 수`,
     mobileTitle: `${period} 수집된\n평판 데이터 수`,
-    description: '6개 채널 통합 수집',
+    description: '뉴스, 영상, 게시글 수집',
     value: `${totalItems.toLocaleString()}개`,
     change: snapshotDiff
       ? formatChange(snapshotDiff.itemsDiff, '개', '증가', '감소', prefix)
@@ -58,8 +58,8 @@ export function Snapshot({
   };
 
   const riskCard = {
-    title: `${period} 리스크 높은 콘텐츠 수`,
-    mobileTitle: `${period} 리스크\n높은 콘텐츠 수`,
+    title: `${period} 수집된 리스크 콘텐츠 수`,
+    mobileTitle: `${period} 수집된\n리스크 콘텐츠 수`,
     description: '즉시 검토 권장',
     value: `${riskCount.toLocaleString()}개`,
     change: snapshotDiff

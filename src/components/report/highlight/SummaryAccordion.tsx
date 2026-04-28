@@ -13,9 +13,9 @@ import type { SummarySection } from '@/lib/api/reportApi';
 
 const SUMMARY_SECTIONS = [
   { label: '평판 분석', icon: ReputationIcon, bg: 'bg-bg-blue' },
-  { label: '채널별 분석', icon: DynamicsIcon, bg: 'bg-bg-pupple-15' },
-  { label: '긍정 모멘텀 분석', icon: MomentumIcon, bg: 'bg-bg-green-15' },
-  { label: '리스크 분석', icon: LiskIcon, bg: 'bg-bg-danger' },
+  { label: '채널별 평판 분석', icon: DynamicsIcon, bg: 'bg-bg-pupple-15' },
+  { label: '긍정 여론 분석', icon: MomentumIcon, bg: 'bg-bg-green-15' },
+  { label: '부정 여론 분석', icon: LiskIcon, bg: 'bg-bg-danger' },
 ];
 
 export function SummaryAccordion({ sections, pdfMode = false }: { sections: SummarySection[]; pdfMode?: boolean }) {

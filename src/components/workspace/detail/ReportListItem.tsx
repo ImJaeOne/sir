@@ -19,8 +19,26 @@ function ChannelMiniDots({
   const dotClassFor = (status: string) =>
     (STATUS_CONFIG[status] ?? STATUS_FALLBACK).dot;
 
-  const summaryStatus = progress?.hasSummary ? 'done' : 'pending';
-  const strategyStatus = (progress?.strategyCategories?.length ?? 0) > 0 ? 'done' : 'pending';
+  // session_strategies 의 실제 status 를 dot 에 반영 (analyzing/pending/failed/done)
+  const sumStrategy = progress?.strategies.find((s) => s.category === 'summary');
+  const summaryStatus = sumStrategy?.status ?? 'pending';
+  const channelStrategies = progress?.strategies.filter((s) => s.category !== 'summary') ?? [];
+  const channelDoneCount = channelStrategies.filter((s) => s.status === 'done').length;
+  const channelTotal = channelStrategies.length;
+  const channelHasFailed = channelStrategies.some((s) => s.status === 'failed');
+  const channelHasActive = channelStrategies.some((s) =>
+    ['analyzing', 'pending_analysis', 'crawling', 'clustering'].includes(s.status),
+  );
+  const strategyStatus =
+    channelTotal === 0
+      ? 'pending'
+      : channelDoneCount === channelTotal
+        ? 'done'
+        : channelHasActive
+          ? 'analyzing'
+          : channelHasFailed
+            ? 'failed'
+            : 'pending';
 
   return (
     <div className="flex items-center gap-1" aria-label="진행 상태 요약">
@@ -40,11 +58,17 @@ function ChannelMiniDots({
           <span className="mx-0.5 w-px h-2 bg-slate-200" aria-hidden />
           <span
             className={`w-1.5 h-1.5 rounded-full ${dotClassFor(summaryStatus)}`}
-            title={`총평: ${summaryStatus === 'done' ? '완료' : '작업 전'}`}
+            title={`총평: ${(STATUS_CONFIG[summaryStatus] ?? STATUS_FALLBACK).label}`}
           />
           <span
             className={`w-1.5 h-1.5 rounded-full ${dotClassFor(strategyStatus)}`}
-            title={`대응 전략: ${strategyStatus === 'done' ? '완료' : '작업 전'}`}
+            title={`대응 전략: ${
+              strategyStatus === 'done'
+                ? `${channelDoneCount}개 채널`
+                : strategyStatus === 'analyzing'
+                  ? `분석 중 (${channelDoneCount}/${channelTotal})`
+                  : (STATUS_CONFIG[strategyStatus] ?? STATUS_FALLBACK).label
+            }`}
           />
         </>
       )}
