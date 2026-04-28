@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { TickerBadge } from '@/components/ui/Badge';
 import {
@@ -86,7 +86,17 @@ export function WorkspaceDetailClient({ workspaceId }: WorkspaceDetailClientProp
     return false;
   }, [progressList]);
   useReportRealtimeSync(workspaceId, hasActiveProgress);
+  // subscription 이 아직 안 왔으면 일단 노출 (?? true) — 깜빡임 방지. 도착 후 false 면 effect 가 정리.
   const hasDaily = subscription?.has_daily ?? true;
+
+  // 주간 전용(has_daily=false) 구독자는 일간 탭에 진입 못 하게 강제 — H2.
+  // subscription 도착 후 currentTab='daily' 면 'all' 로 정리.
+  useEffect(() => {
+    if (subscription && !subscription.has_daily && currentTab === 'daily') {
+      setTab('all');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subscription, currentTab]);
 
   const filteredReports = useMemo(() => {
     if (!reports) return reports;
@@ -210,9 +220,11 @@ export function WorkspaceDetailClient({ workspaceId }: WorkspaceDetailClientProp
               <ReportTabButton active={currentTab === 'weekly'} onClick={() => setTab('weekly')}>
                 주간
               </ReportTabButton>
-              <ReportTabButton active={currentTab === 'daily'} onClick={() => setTab('daily')}>
-                일간
-              </ReportTabButton>
+              {hasDaily && (
+                <ReportTabButton active={currentTab === 'daily'} onClick={() => setTab('daily')}>
+                  일간
+                </ReportTabButton>
+              )}
             </div>
           </div>
 

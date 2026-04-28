@@ -1,16 +1,19 @@
 'use client';
 
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { AlertTriangle, CheckCircle2, ChevronDown, ChevronRight, Clock, Loader2 } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
+import { AlertTriangle, CheckCircle2, ChevronDown, ChevronRight, Clock, Loader2, RefreshCw } from 'lucide-react';
 import {
   getOpsQueue,
+  retrySession,
   type OpsActiveSession,
   type OpsCompletion,
   type OpsQueue,
   type OpsUpcomingCron,
   type OpsWaitingSession,
 } from '@/lib/api/opsApi';
+import { retryFailedReport } from '@/lib/api/reportApi';
 import { getErrorMessage } from '@/lib/utils';
 
 const PLATFORM_LABELS: Record<string, string> = {
@@ -145,17 +148,57 @@ function WorkspaceActiveCard({ name, items }: { name: string; items: OpsActiveSe
 
 function WorkspaceWaitingCard({ name, items }: { name: string; items: OpsWaitingSession[] }) {
   const [openId, setOpenId] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+
+  // 워크스페이스 카드의 모든 failed 세션이 같은 report 에 묶여 있을 때만 batch retry-failed 노출.
+  // 다른 report 가 섞여 있으면 finalize 흐름이 어느 보고서에 적용되는지 모호 → per-session 만 유도.
+  const reportIds = Array.from(new Set(items.map((s) => s.report_id).filter((v): v is string => !!v)));
+  const batchReportId = reportIds.length === 1 ? reportIds[0] : null;
+
+  const retryOne = useMutation({
+    mutationFn: (sessionId: string) => retrySession(sessionId),
+    onSuccess: () => {
+      toast.success('세션 재시도를 시작했습니다.');
+      queryClient.invalidateQueries({ queryKey: ['ops', 'queue'] });
+    },
+    onError: (err) => toast.error(getErrorMessage(err, '재시도 요청 실패')),
+  });
+
+  const retryAll = useMutation({
+    mutationFn: (reportId: string) => retryFailedReport(reportId),
+    onSuccess: () => {
+      toast.success('보고서 일괄 재시도를 시작했습니다.');
+      queryClient.invalidateQueries({ queryKey: ['ops', 'queue'] });
+    },
+    onError: (err) => toast.error(getErrorMessage(err, '일괄 재시도 요청 실패')),
+  });
+
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm flex overflow-hidden">
       <div className="w-1 shrink-0 bg-red-400" aria-hidden />
       <div className="flex-1 min-w-0 flex flex-col">
-        <div className="px-4 pt-3 pb-2">
-          <h3 className="text-sm font-semibold text-slate-800 truncate">{name}</h3>
-          <p className="text-[11px] text-red-600 mt-0.5">실패 {items.length}건 · 재시도 대기</p>
+        <div className="px-4 pt-3 pb-2 flex items-start gap-2">
+          <div className="flex-1 min-w-0">
+            <h3 className="text-sm font-semibold text-slate-800 truncate">{name}</h3>
+            <p className="text-[11px] text-red-600 mt-0.5">실패 {items.length}건 · 재시도 대기</p>
+          </div>
+          {batchReportId && (
+            <button
+              type="button"
+              onClick={() => retryAll.mutate(batchReportId)}
+              disabled={retryAll.isPending}
+              className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-md bg-red-50 text-red-700 hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer shrink-0"
+              title="이 보고서의 실패 세션 모두 재시도 + 자동 마감"
+            >
+              <RefreshCw size={11} className={retryAll.isPending ? 'animate-spin' : ''} />
+              {retryAll.isPending ? '재시도 중' : '일괄 재시도'}
+            </button>
+          )}
         </div>
         <ul className="border-t border-slate-100 divide-y divide-slate-100">
           {items.map((s) => {
             const open = openId === s.session_id;
+            const pending = retryOne.isPending && retryOne.variables === s.session_id;
             return (
               <li key={s.session_id}>
                 <button
@@ -174,12 +217,24 @@ function WorkspaceWaitingCard({ name, items }: { name: string; items: OpsWaiting
                   )}
                 </button>
                 {open && (
-                  <div className="px-4 py-3 bg-red-50 border-t border-slate-100">
+                  <div className="px-4 py-3 bg-red-50 border-t border-slate-100 flex flex-col gap-2">
                     <div className="text-[11px] text-red-700 whitespace-pre-wrap break-words font-mono leading-relaxed">
                       {s.error_message ?? 'error_message 가 비어있음 (legacy 세션 가능성).'}
                     </div>
-                    <div className="mt-2 text-[10px] text-slate-400 break-all">
-                      session {s.session_id}
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-slate-400 break-all flex-1 min-w-0">
+                        session {s.session_id}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => retryOne.mutate(s.session_id)}
+                        disabled={retryOne.isPending}
+                        className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-md bg-white border border-red-200 text-red-700 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer shrink-0"
+                        title="이 세션만 재시도 (마감은 별도)"
+                      >
+                        <RefreshCw size={11} className={pending ? 'animate-spin' : ''} />
+                        {pending ? '요청 중' : '이 세션 재시도'}
+                      </button>
                     </div>
                   </div>
                 )}

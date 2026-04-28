@@ -100,3 +100,22 @@ export async function getOpsQueue(): Promise<OpsQueue> {
   }
   return res.json();
 }
+
+/** 단일 실패 세션 재시도. 백엔드: POST /api/sessions/{id}/retry (super_admin).
+ *  retry-failed 와 달리 finalize 까지 이어지지 않으므로 보고서 마감은 별도. */
+export async function retrySession(sessionId: string): Promise<void> {
+  const { data: { session: auth } } = await supabase.auth.getSession();
+  if (!auth) throw new Error('로그인이 필요합니다.');
+
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL}/api/sessions/${sessionId}/retry`,
+    {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${auth.access_token}` },
+    },
+  );
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail ?? '재시도 요청 실패');
+  }
+}

@@ -169,6 +169,12 @@ export interface ReportProgress {
   }[];
 }
 
+// done 이 가장 강함 — 데이터 확보 사실은 이후 retry 의 failed/in-progress 로 가려져선 안 됨.
+const SESSION_STATUS_RANK: Record<string, number> = { done: 3, failed: 2 };
+function sessionStatusRank(status: string | null | undefined): number {
+  return SESSION_STATUS_RANK[status ?? ''] ?? 1;
+}
+
 export async function getReportProgress(workspaceId: string): Promise<ReportProgress[]> {
   const [reportsRes, sessionsRes, strategiesRes] = await Promise.all([
     supabase
@@ -193,11 +199,13 @@ export async function getReportProgress(workspaceId: string): Promise<ReportProg
   const strategies = strategiesRes.data ?? [];
 
   return reports.map(report => {
-    // 해당 리포트에 속하는 세션만 필터 + 플랫폼별 최신 1개
+    // 해당 리포트에 속하는 세션만 필터 + 플랫폼별 best-status 1개
+    // (latest 만 보면 retry 의 failed 가 첫 collect 의 done 을 가려 거짓 "수집 실패" 표시됨 — H10)
     const reportSessions = sessions.filter(s => s.report_id === report.id);
     const byPlatform = new Map<string, typeof sessions[number]>();
     for (const s of reportSessions) {
-      if (!byPlatform.has(s.platform_id!)) {
+      const existing = byPlatform.get(s.platform_id!);
+      if (!existing || sessionStatusRank(s.status) > sessionStatusRank(existing.status)) {
         byPlatform.set(s.platform_id!, s);
       }
     }
