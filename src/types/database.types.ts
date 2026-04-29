@@ -631,6 +631,7 @@ export type Database = {
           source_id: string
           source_table: string
           status: string
+          status_changed_at: string
           title: string
           workspace_id: string
         }
@@ -650,6 +651,7 @@ export type Database = {
           source_id: string
           source_table: string
           status?: string
+          status_changed_at?: string
           title: string
           workspace_id: string
         }
@@ -669,6 +671,7 @@ export type Database = {
           source_id?: string
           source_table?: string
           status?: string
+          status_changed_at?: string
           title?: string
           workspace_id?: string
         }
@@ -1257,6 +1260,7 @@ export type Database = {
     }
     Functions: {
       _assert_admin_for_subscriptions: { Args: never; Returns: undefined }
+      auto_reject_stale_risk_reports: { Args: never; Returns: Json }
       can_read_workspace: { Args: { ws_id: string }; Returns: boolean }
       cancel_subscription: {
         Args: { p_cancel_at?: string; p_workspace_id: string }
@@ -1270,6 +1274,7 @@ export type Database = {
         }
         Returns: string
       }
+      cleanup_zombie_pipeline_state: { Args: never; Returns: Json }
       correct_subscription: {
         Args: {
           p_ended_at?: string
@@ -1337,6 +1342,16 @@ export type Database = {
           sentiment: string
         }[]
       }
+      subscription_status: { Args: { ws_id: string }; Returns: string }
+      try_start_pipeline_run: {
+        Args: {
+          p_report_id: string
+          p_report_type: string
+          p_triggered_by?: string
+          p_workspace_id: string
+        }
+        Returns: string
+      }
       user_has_workspace_access: { Args: { ws_id: string }; Returns: boolean }
       workspace_sentiment_counts: {
         Args: { ws_id: string }
@@ -1358,7 +1373,13 @@ export type Database = {
         | "failed"
       critical_type: "defamation" | "insult" | "rumor" | "spam"
       critical_type_new: "defamation" | "insult" | "rumor" | "spam"
-      failed_reason: "collect" | "save" | "analyze" | "calculate" | "generate"
+      failed_reason:
+        | "collect"
+        | "save"
+        | "analyze"
+        | "calculate"
+        | "generate"
+        | "health"
       profile_role: "super_admin" | "user" | "admin"
       report_status: "draft" | "published"
       report_type: "initial" | "weekly" | "daily"
@@ -1511,7 +1532,14 @@ export const Constants = {
       ],
       critical_type: ["defamation", "insult", "rumor", "spam"],
       critical_type_new: ["defamation", "insult", "rumor", "spam"],
-      failed_reason: ["collect", "save", "analyze", "calculate", "generate"],
+      failed_reason: [
+        "collect",
+        "save",
+        "analyze",
+        "calculate",
+        "generate",
+        "health",
+      ],
       profile_role: ["super_admin", "user", "admin"],
       report_status: ["draft", "published"],
       report_type: ["initial", "weekly", "daily"],
