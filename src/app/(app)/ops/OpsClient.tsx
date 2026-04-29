@@ -54,6 +54,7 @@ const FAILED_REASON_LABELS: Record<string, string> = {
   analyze: '분석 실패',
   calculate: '계산 실패',
   generate: '생성 실패',
+  health: '헬스체크 실패',
 };
 
 function formatCronSchedule(iso: string): string {
