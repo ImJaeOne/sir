@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { Search } from 'lucide-react';
 
 interface BlacklistEditorProps {
   title: string;
@@ -11,8 +12,12 @@ interface BlacklistEditorProps {
   onRemove: (value: string) => void;
 }
 
+// 항목이 이 수치를 넘으면 칩 영역을 스크롤 컨테이너로 가두고 검색 필터를 노출.
+const SEARCH_THRESHOLD = 10;
+
 export function BlacklistEditor({ title, description, placeholder, items, onAdd, onRemove }: BlacklistEditorProps) {
   const [input, setInput] = useState('');
+  const [filter, setFilter] = useState('');
 
   const handleAdd = () => {
     const v = input.trim();
@@ -21,18 +26,41 @@ export function BlacklistEditor({ title, description, placeholder, items, onAdd,
     setInput('');
   };
 
+  const filteredItems = useMemo(() => {
+    const q = filter.trim();
+    if (!q) return items;
+    return items.filter((it) => it.includes(q));
+  }, [items, filter]);
+
+  const showSearch = items.length > SEARCH_THRESHOLD;
+
   return (
     <div className="flex flex-col gap-2">
-      <label className="text-xs font-semibold text-slate-700 uppercase tracking-wide">
-        {title}
-      </label>
+      <div className="flex items-baseline justify-between gap-2">
+        <label className="text-xs font-semibold text-slate-700 uppercase tracking-wide">
+          {title}
+        </label>
+        {items.length > 0 && (
+          <span className="text-[11px] text-slate-400 tabular-nums shrink-0">
+            총 {items.length.toLocaleString()}건
+          </span>
+        )}
+      </div>
       <p className="text-[11px] text-slate-400">{description}</p>
       <div className="flex gap-2">
         <input
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
+          onKeyDown={(e) => {
+            // 한글 IME 조합 중 Enter → 글자 commit 만 하고 submit 무시
+            // (조합 중 keydown 이 두 번 발생해 마지막 글자가 단독으로 추가되는 버그 방지)
+            if (e.nativeEvent.isComposing || e.keyCode === 229) return;
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              handleAdd();
+            }
+          }}
           placeholder={placeholder}
           className="flex-1 text-sm border border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-blue-400 transition-colors"
         />
@@ -45,23 +73,48 @@ export function BlacklistEditor({ title, description, placeholder, items, onAdd,
           추가
         </button>
       </div>
+
+      {showSearch && (
+        <div className="relative mt-1">
+          <Search
+            size={13}
+            className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+          />
+          <input
+            type="text"
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            placeholder="목록에서 검색"
+            className="w-full text-xs border border-slate-200 rounded-lg pl-7 pr-2 py-1.5 outline-none focus:border-blue-400 transition-colors"
+          />
+        </div>
+      )}
+
       {items.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 mt-1">
-          {items.map((item) => (
-            <span
-              key={item}
-              className="inline-flex items-center gap-1 bg-red-50 text-red-700 px-2.5 py-1 rounded-lg text-xs font-medium"
-            >
-              {item}
-              <button
-                type="button"
-                onClick={() => onRemove(item)}
-                className="hover:text-red-900 cursor-pointer ml-0.5"
+        <div
+          className={`flex flex-wrap gap-1.5 mt-1 ${
+            showSearch ? 'max-h-[180px] overflow-y-auto pr-1' : ''
+          }`}
+        >
+          {filteredItems.length === 0 ? (
+            <p className="text-[11px] text-slate-400 py-2">검색 결과 없음</p>
+          ) : (
+            filteredItems.map((item) => (
+              <span
+                key={item}
+                className="inline-flex items-center gap-1 bg-red-50 text-red-700 px-2.5 py-1 rounded-lg text-xs font-medium"
               >
-                &times;
-              </button>
-            </span>
-          ))}
+                {item}
+                <button
+                  type="button"
+                  onClick={() => onRemove(item)}
+                  className="hover:text-red-900 cursor-pointer ml-0.5"
+                >
+                  &times;
+                </button>
+              </span>
+            ))
+          )}
         </div>
       )}
     </div>
