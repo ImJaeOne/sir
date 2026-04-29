@@ -177,6 +177,8 @@ function ClientReportContent() {
           </div>
         </div>
       </div>
+      {/* 탭과 첫 섹션 사이 spacing 확보 — 탭 모드 본문 시작점이 너무 붙어있던 문제 해소 */}
+      <div className="hidden lg:block h-12" style={{ backgroundColor: 'var(--color-bg-light)' }} />
 
       {/* 주간/월간 탭 모드에서는 섹션 간 배경 구분 없이 단일 bg-light 유지 */}
       {activeSection === 'section-highlight' && (

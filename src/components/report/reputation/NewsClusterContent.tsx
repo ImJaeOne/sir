@@ -58,7 +58,7 @@ function ClusterRow({
           </p>
           {cluster.summary && (
             <div className="flex items-center gap-2 mt-0.5">
-              <p className="text-[14px] lg:text-sm text-text-mobile-muted lg:text-text-muted">
+              <p className="text-[14px] lg:text-sm text-text-dark">
                 {cluster.summary}
               </p>
               <span className="lg:hidden shrink-0">
@@ -97,6 +97,11 @@ function ClusterRow({
                   {item.source}
                 </span>
               )}
+              {item.published_at && (
+                <span className="text-[10px] text-text-muted shrink-0 tabular-nums">
+                  {item.published_at.slice(0, 10).replace(/-/g, '.')}
+                </span>
+              )}
             </a>
           ))}
         </div>
@@ -106,6 +111,9 @@ function ClusterRow({
 }
 
 function ItemRow({ item }: { item: ChannelItem }) {
+  const dateLabel = item.published_at
+    ? item.published_at.slice(0, 10).replace(/-/g, '.')
+    : null;
   return (
     <div className="border-b border-slate-50 pr-1 lg:pr-4">
       <div className="flex gap-2 py-4">
@@ -126,10 +134,18 @@ function ItemRow({ item }: { item: ChannelItem }) {
             {item.source && (
               <span className="text-[10px] text-text-muted shrink-0">{item.source}</span>
             )}
+            {dateLabel && (
+              <span className="text-[10px] text-text-muted shrink-0 tabular-nums ml-auto">
+                {dateLabel}
+              </span>
+            )}
           </div>
           {/* 모바일 */}
           <span className="lg:hidden inline-flex items-center gap-2 mr-1 align-middle">
             <SentimentBadge sentiment={item.sentiment} />
+            {dateLabel && (
+              <span className="text-[10px] text-text-muted tabular-nums">{dateLabel}</span>
+            )}
           </span>
           <p className="lg:hidden text-sm text-text-dark font-semibold leading-relaxed">
             <a
@@ -142,7 +158,7 @@ function ItemRow({ item }: { item: ChannelItem }) {
             </a>
           </p>
           {item.summary && (
-            <p className="text-[14px] lg:text-sm text-text-mobile-muted lg:text-text-muted mt-0.5">{item.summary}</p>
+            <p className="text-[14px] lg:text-sm text-text-dark mt-0.5">{item.summary}</p>
           )}
         </div>
       </div>

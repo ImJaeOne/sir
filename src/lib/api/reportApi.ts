@@ -64,7 +64,10 @@ async function fetchAllPaged<T>(
 }
 
 // ── fetchAllPaged 호출지에서 select 컬럼에 맞춰 좁힌 row 타입 ──
-type NewsItemMinRow = Pick<Row<'news_items'>, 'cluster_id' | 'title' | 'source' | 'link'>;
+type NewsItemMinRow = Pick<
+  Row<'news_items'>,
+  'cluster_id' | 'title' | 'source' | 'link' | 'published_at'
+>;
 type NewsClusterMinRow = Pick<
   Row<'news_clusters'>,
   'id' | 'representative_title' | 'sentiment' | 'summary'
@@ -471,7 +474,7 @@ export async function getNewsClusters(
     const items = await fetchAllPaged<NewsItemMinRow>((from, to) =>
       supabase
         .from('news_items')
-        .select('cluster_id, title, source, link')
+        .select('cluster_id, title, source, link, published_at')
         .eq('workspace_id', workspaceId)
         .not('cluster_id', 'is', null)
         .in('session_id', meta.sessionIds)
@@ -510,7 +513,7 @@ export async function getNewsClusters(
     fetchAllPaged<NewsItemMinRow>((from, to) =>
       supabase
         .from('news_items')
-        .select('cluster_id, title, source, link')
+        .select('cluster_id, title, source, link, published_at')
         .eq('workspace_id', workspaceId)
         .not('cluster_id', 'is', null)
         .range(from, to)
@@ -524,13 +527,19 @@ function buildClusters(
   clusters: NewsClusterMinRow[],
   items: NewsItemMinRow[]
 ): NewsClusterResponse[] {
-  const itemsByCluster = new Map<string, { title: string; source: string; link: string }[]>();
+  const itemsByCluster = new Map<
+    string,
+    { title: string; source: string; link: string; published_at: string | null }[]
+  >();
   for (const item of items) {
     if (!item.cluster_id) continue;
     if (!itemsByCluster.has(item.cluster_id)) itemsByCluster.set(item.cluster_id, []);
-    itemsByCluster
-      .get(item.cluster_id)!
-      .push({ title: item.title, source: item.source ?? '', link: item.link ?? '#' });
+    itemsByCluster.get(item.cluster_id)!.push({
+      title: item.title,
+      source: item.source ?? '',
+      link: item.link ?? '#',
+      published_at: item.published_at ?? null,
+    });
   }
 
   return clusters.map((c) => ({
