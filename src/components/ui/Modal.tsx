@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { X } from 'lucide-react';
 
 const SIZE_CLASS: Record<string, string> = {
@@ -13,12 +14,32 @@ interface ModalProps {
   open: boolean;
   onClose: () => void;
   title?: string;
+  // 제목 우측에 붙는 작은 보조 노드 (Tooltip 등)
+  titleAccessory?: React.ReactNode;
   size?: 'sm' | 'md' | 'lg' | 'xl';
   children: React.ReactNode;
   footer?: React.ReactNode;
 }
 
-export function Modal({ open, onClose, title, size = 'md', children, footer }: ModalProps) {
+export function Modal({
+  open,
+  onClose,
+  title,
+  titleAccessory,
+  size = 'md',
+  children,
+  footer,
+}: ModalProps) {
+  // Esc 닫기 — open 동안만 리스너 부착
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, onClose]);
+
   if (!open) return null;
 
   return (
@@ -32,7 +53,12 @@ export function Modal({ open, onClose, title, size = 'md', children, footer }: M
       >
         {/* header (fixed) */}
         <div className="flex items-center justify-between px-6 pt-6 pb-4 shrink-0">
-          {title && <h2 className="text-base font-bold text-text-dark">{title}</h2>}
+          {title && (
+            <div className="flex items-center gap-1.5 min-w-0">
+              <h2 className="text-base font-bold text-text-dark truncate">{title}</h2>
+              {titleAccessory}
+            </div>
+          )}
           <button
             onClick={onClose}
             className="text-text-muted hover:text-text-dark transition-colors cursor-pointer ml-auto"

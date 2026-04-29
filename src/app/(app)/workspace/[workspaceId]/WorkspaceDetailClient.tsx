@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { TickerBadge } from '@/components/ui/Badge';
 import {
@@ -11,6 +12,7 @@ import {
   useReportRealtimeSync,
   useWorkspaceSubscription,
 } from '@/hooks/workspace/useWorkspaceQuery';
+import { workspaceKeys } from '@/hooks/workspace/workspaceKeys';
 import { AdminLoading } from '@/components/ui/AdminLoading';
 import { WeeklyReportCard } from '@/components/workspace/detail/WeeklyReportCard';
 import { EditProfileModal } from '@/components/workspace/detail/EditProfileModal';
@@ -54,6 +56,7 @@ interface WorkspaceDetailClientProps {
 
 export function WorkspaceDetailClient({ workspaceId }: WorkspaceDetailClientProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const searchParams = useSearchParams();
 
   const typeParam = searchParams?.get('type') ?? null;
@@ -97,6 +100,18 @@ export function WorkspaceDetailClient({ workspaceId }: WorkspaceDetailClientProp
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [subscription, currentTab]);
+
+  // 보고서가 0건일 때 — 워크스페이스 생성 직후 cron 이 initial 보고서를 만들어 줄 때까지
+  // 사용자에게 "잠시 후 새로고침" 요구하지 않고 자동으로 갱신한다 (5초 폴링).
+  // 1건이라도 도착하면 effect cleanup 으로 폴링 정지.
+  useEffect(() => {
+    if (isPending) return;
+    if (reports && reports.length > 0) return;
+    const id = setInterval(() => {
+      queryClient.invalidateQueries({ queryKey: workspaceKeys.reports(workspaceId) });
+    }, 5000);
+    return () => clearInterval(id);
+  }, [isPending, reports, queryClient, workspaceId]);
 
   const filteredReports = useMemo(() => {
     if (!reports) return reports;
@@ -151,14 +166,14 @@ export function WorkspaceDetailClient({ workspaceId }: WorkspaceDetailClientProp
           </button>
         </div>
         {workspace && (
-          <div className="flex items-center justify-between gap-3 pb-4 border-b border-slate-100 -mt-3">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-4 border-b border-slate-100 -mt-3">
             <div className="flex items-center gap-3 min-w-0">
               <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight truncate">
                 {workspace.company_name}
               </h1>
               <TickerBadge ticker={workspace.ticker} />
             </div>
-            <div className="shrink-0 flex items-center gap-2">
+            <div className="shrink-0 flex items-center justify-end flex-wrap gap-2">
               {isSuperAdmin && pendingInitial && (
                 <StartAnalysisButton
                   workspaceId={workspaceId}
@@ -234,7 +249,7 @@ export function WorkspaceDetailClient({ workspaceId }: WorkspaceDetailClientProp
             <div className="bg-white rounded-2xl border border-dashed border-slate-200 shadow-sm py-14 flex flex-col items-center gap-2">
               <span className="text-sm text-slate-400">아직 생성된 보고서가 없습니다.</span>
               <span className="text-xs text-slate-400">
-                워크스페이스 생성 시 자동으로 보고서가 만들어집니다. 잠시 후 새로고침해 주세요.
+                워크스페이스 생성 시 자동으로 보고서가 만들어집니다. 자동으로 갱신 중입니다…
               </span>
             </div>
           )}

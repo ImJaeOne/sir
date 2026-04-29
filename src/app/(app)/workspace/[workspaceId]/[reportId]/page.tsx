@@ -11,6 +11,7 @@ import { RiskContent } from '@/components/report/RiskContent';
 import { Strategy } from '@/components/report/Strategy';
 import { Loading } from '@/components/ui/Loading';
 import { AdminButton } from '@/components/ui/AdminButton';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import {
   useWorkspaceSuspense,
   useReportProgressSuspense,
@@ -90,6 +91,7 @@ function ReportPageContent() {
   const { data: report } = useReportInfoSuspense(reportId);
   const { data: progressList } = useReportProgressSuspense(workspaceId);
   const publishMutation = usePublishReport(reportId);
+  const [showPublishConfirm, setShowPublishConfirm] = useState(false);
 
   const isPublished = report?.status === 'published';
   const isDraft = report?.status === 'draft';
@@ -203,9 +205,12 @@ function ReportPageContent() {
       {/* 종이와 발행 바 사이 여백 — daily 는 자동 발행이므로 바 자체 숨김 */}
       {!isDaily && <div className="h-8 lg:h-10" />}
 
-      {/* 하단 고정 발행 바 (주간/월간 전용) */}
+      {/* 하단 고정 발행 바 (주간/월간 전용) — iOS safe-area 가림 방지 */}
       {!isDaily && (
-        <div className="sticky bottom-0 z-30 bg-white/90 backdrop-blur-md border-t border-slate-200 -mx-6 lg:-mx-10">
+        <div
+          className="sticky bottom-0 z-30 bg-white/90 backdrop-blur-md border-t border-slate-200 -mx-6 lg:-mx-10"
+          style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+        >
           <div className="mx-auto max-w-[1280px] px-6 lg:px-10 py-3 flex flex-col gap-2">
             {!platformsOk && failedPlatforms.length > 0 && !isPublished && (
               <div className="flex items-start gap-2 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
@@ -231,7 +236,7 @@ function ReportPageContent() {
               </div>
               <AdminButton
                 variant={isPublished ? 'secondary' : 'primary'}
-                onClick={() => publishMutation.mutate()}
+                onClick={() => setShowPublishConfirm(true)}
                 disabled={publishMutation.isPending || !isDraft || !platformsOk}
               >
                 {publishMutation.isPending
@@ -246,6 +251,34 @@ function ReportPageContent() {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        open={showPublishConfirm}
+        onClose={() => setShowPublishConfirm(false)}
+        onConfirm={() => {
+          publishMutation.mutate(undefined, {
+            onSettled: () => setShowPublishConfirm(false),
+          });
+        }}
+        loading={publishMutation.isPending}
+        title="보고서 발행"
+        confirmLabel="발행"
+        message={
+          <div className="flex flex-col gap-2">
+            <p>
+              <span className="font-semibold text-slate-800">
+                {workspace?.company_name ?? '이 워크스페이스'}
+              </span>
+              {' '}
+              보고서를 고객에게 발행합니다.
+            </p>
+            <p className="text-text-muted text-xs">
+              발행 후에는 모든 고객이 즉시 이 보고서를 열람할 수 있으며, 되돌리려면 별도
+              조치가 필요합니다. 본문/리스크/전략을 모두 검토했는지 다시 한번 확인해 주세요.
+            </p>
+          </div>
+        }
+      />
     </div>
   );
 }
