@@ -10,6 +10,7 @@ import { ChevronDown, ChevronLeft, ChevronRight, Check, Paperclip, Download, Shi
 import { useWorkspaces, useWorkspaceSubscription } from '@/hooks/workspace/useWorkspaceQuery';
 import { useRiskReports, reportKeys } from '@/hooks/report/useReportQuery';
 import { updateRiskReport } from '@/lib/api/reportApi';
+import { getErrorMessage } from '@/lib/utils';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
@@ -142,8 +143,8 @@ function DetailModal({ report, onClose, onUpdate }: { report: RiskReport; onClos
       toast.success('업데이트 완료');
       onUpdate();
       onClose();
-    } catch {
-      toast.error('업데이트 실패');
+    } catch (e) {
+      toast.error(getErrorMessage(e, '업데이트 실패'));
     } finally {
       setSaving(false);
       setShowConfirm(false);
@@ -213,14 +214,24 @@ function DetailModal({ report, onClose, onUpdate }: { report: RiskReport; onClos
               const ext = filename.split('.').pop()?.toUpperCase() ?? '';
               const handleDownload = async () => {
                 const supabase = createClient();
-                const { data } = await supabase.storage.from('risk-attachments').download(url);
-                if (data) {
+                try {
+                  const { data, error } = await supabase.storage
+                    .from('risk-attachments')
+                    .download(url);
+                  if (error || !data) {
+                    toast.error('첨부 다운로드에 실패했습니다.');
+                    console.error('[risk attachment download]', error);
+                    return;
+                  }
                   const blobUrl = URL.createObjectURL(data);
                   const a = document.createElement('a');
                   a.href = blobUrl;
                   a.download = filename;
                   a.click();
                   URL.revokeObjectURL(blobUrl);
+                } catch (e) {
+                  toast.error('첨부 다운로드에 실패했습니다.');
+                  console.error('[risk attachment download]', e);
                 }
               };
               return (
@@ -462,8 +473,9 @@ export function RiskReportsClient({ assignedIds }: RiskReportsClientProps) {
 
         {/* 테이블 (탭 + 바디 통합) */}
         <div className="flex-1 flex flex-col bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-          {/* 상태 필터 (탭 스타일) - 모바일 가로 스크롤 */}
-          <div className="flex gap-3 sm:gap-4 px-4 pt-3 border-b border-border-light shrink-0 overflow-x-auto">
+          {/* 상태 필터 (탭 스타일) - 모바일 가로 스크롤.
+              flex-1 overflow-y-auto 위 sibling 이라 항상 상단 고정. */}
+          <div className="bg-white flex gap-3 sm:gap-4 px-4 pt-3 border-b border-border-light shrink-0 overflow-x-auto">
             {STATUS_FILTERS.map((f) => {
               const count = f.key === 'all'
                 ? (riskReports ?? []).length
@@ -483,8 +495,8 @@ export function RiskReportsClient({ assignedIds }: RiskReportsClientProps) {
               );
             })}
           </div>
-          {/* 헤더 (데스크톱만) */}
-          <div className="hidden lg:grid grid-cols-[8%_10%_8%_8%_1fr_12%] border-b border-slate-100 py-3 px-4 text-xs font-semibold text-slate-500 text-center shrink-0">
+          {/* 헤더 (데스크톱만) — 탭과 함께 flex-1 overflow-y-auto 위에 위치해 자동 고정 */}
+          <div className="hidden lg:grid bg-white grid-cols-[8%_10%_8%_8%_1fr_12%] border-b border-slate-100 py-3 px-4 text-xs font-semibold text-slate-500 text-center shrink-0">
             <div>신고일</div>
             <div>회사명</div>
             <div>채널명</div>
@@ -511,8 +523,32 @@ export function RiskReportsClient({ assignedIds }: RiskReportsClientProps) {
               </div>
             </div>
           ) : sorted.length === 0 ? (
-            <div className="flex-1 flex items-center justify-center">
-              <p className="text-xs text-text-muted">신고 대행 요청이 없습니다.</p>
+            <div className="flex-1 flex items-center justify-center px-6 text-center">
+              {(riskReports?.length ?? 0) === 0 ? (
+                <p className="text-xs text-text-muted">
+                  {selectedReportId
+                    ? '선택한 보고서에 등록된 신고 대행 요청이 없습니다.'
+                    : selectedWsId
+                      ? '이 워크스페이스에 등록된 신고 대행 요청이 없습니다.'
+                      : '신고 대행 요청이 없습니다.'}
+                </p>
+              ) : (
+                <div className="flex flex-col items-center gap-2">
+                  <p className="text-xs text-text-muted">
+                    <span className="font-semibold text-slate-700">
+                      {STATUS_FILTERS.find((s) => s.key === statusFilter)?.label}
+                    </span>
+                    {' '}상태의 신고가 없습니다.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => handleStatusFilterChange('all')}
+                    className="text-[11px] font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-md transition-colors cursor-pointer"
+                  >
+                    전체 보기
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <div className="flex-1 overflow-y-auto">

@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMemo, useState } from 'react';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { AlertTriangle, CheckCircle2, ChevronDown, ChevronRight, Clock, Loader2, RefreshCw } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ChevronDown, ChevronRight, Clock, Loader2, RefreshCw, Search, X } from 'lucide-react';
 import {
   getOpsQueue,
   retrySession,
@@ -459,24 +459,48 @@ export function OpsClient() {
     queryFn: getOpsQueue,
     refetchInterval: 3000,
     refetchOnWindowFocus: true,
+    // 폴링 중 일시적 fetch 실패에도 직전 스냅샷 유지 — UI 깜빡임 방지.
+    // error 는 별도로 status 뱃지/배너에 노출되므로 사용자에게는 명확.
+    placeholderData: keepPreviousData,
   });
+
+  const [search, setSearch] = useState('');
+  const trimmedSearch = search.trim().toLowerCase();
+  const matchesSearch = (name: string) =>
+    !trimmedSearch || name.toLowerCase().includes(trimmedSearch);
 
   const waiting = data?.waiting_sessions ?? [];
   const active = data?.active_sessions ?? [];
   const completions = (data?.recent_completions ?? []).filter((c) => c.status === 'done');
   const upcoming = data?.upcoming_cron ?? null;
 
-  const waitingGroups = groupByWorkspace(waiting);
-  const activeGroups = groupByWorkspace(active);
-  const completedGroups = groupByWorkspace(completions);
+  const waitingGroups = useMemo(
+    () => groupByWorkspace(waiting).filter((g) => matchesSearch(g.name)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [waiting, trimmedSearch],
+  );
+  const activeGroups = useMemo(
+    () => groupByWorkspace(active).filter((g) => matchesSearch(g.name)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [active, trimmedSearch],
+  );
+  const completedGroups = useMemo(
+    () => groupByWorkspace(completions).filter((g) => matchesSearch(g.name)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [completions, trimmedSearch],
+  );
 
   const hasLock = Boolean(data?.lock_holder);
   const hasFinalize = Boolean(data?.finalize);
   const hasRetry = Boolean(data?.retry_batch);
   const hasUpcoming = Boolean(upcoming && upcoming.workspaces.length > 0);
+  // 검색 활성 시 lock/finalize/retry/upcoming 카드는 워크스페이스 단위가 아니므로 전부 숨김
+  const showSystemCards = !trimmedSearch;
 
-  const waitingCount = waitingGroups.length + (hasRetry ? 1 : 0) + (hasUpcoming ? 1 : 0);
-  const workingCount = activeGroups.length + (hasLock ? 1 : 0) + (hasFinalize ? 1 : 0);
+  const waitingCount =
+    waitingGroups.length + (showSystemCards && hasRetry ? 1 : 0) + (showSystemCards && hasUpcoming ? 1 : 0);
+  const workingCount =
+    activeGroups.length + (showSystemCards && hasLock ? 1 : 0) + (showSystemCards && hasFinalize ? 1 : 0);
   const completedCount = completedGroups.length;
 
   const statusInfo = error
@@ -513,32 +537,69 @@ export function OpsClient() {
               {getErrorMessage(error, '데이터 조회 실패')}
             </div>
           )}
+
+          {/* 워크스페이스 검색 — 3 컬럼 그룹 모두에 적용 */}
+          <div className="relative max-w-sm">
+            <Search
+              size={14}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+            />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="워크스페이스 이름 검색"
+              className="w-full text-xs bg-white border border-slate-200 rounded-lg pl-8 pr-8 py-1.5 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 flex items-center justify-center transition-colors cursor-pointer"
+                aria-label="검색어 지우기"
+              >
+                <X size={12} strokeWidth={2.2} />
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <Column title="대기" count={waitingCount}>
-            {hasRetry && data?.retry_batch && <RetryBatchCard batch={data.retry_batch} />}
+            {showSystemCards && hasRetry && data?.retry_batch && <RetryBatchCard batch={data.retry_batch} />}
             {waitingGroups.map((g) => (
               <WorkspaceWaitingCard key={g.workspace_id} name={g.name} items={g.items} />
             ))}
-            {hasUpcoming && upcoming && <UpcomingCronCard upcoming={upcoming} />}
-            {waitingCount === 0 && <EmptyCard>대기 중인 작업 없음</EmptyCard>}
+            {showSystemCards && hasUpcoming && upcoming && <UpcomingCronCard upcoming={upcoming} />}
+            {waitingCount === 0 && (
+              <EmptyCard>
+                {trimmedSearch ? '검색 결과 없음' : '대기 중인 작업 없음'}
+              </EmptyCard>
+            )}
           </Column>
 
           <Column title="진행 중" count={workingCount}>
-            {hasLock && data?.lock_holder && <LockHolderCard holder={data.lock_holder} />}
-            {hasFinalize && data?.finalize && <FinalizeCard finalize={data.finalize} />}
+            {showSystemCards && hasLock && data?.lock_holder && <LockHolderCard holder={data.lock_holder} />}
+            {showSystemCards && hasFinalize && data?.finalize && <FinalizeCard finalize={data.finalize} />}
             {activeGroups.map((g) => (
               <WorkspaceActiveCard key={g.workspace_id} name={g.name} items={g.items} />
             ))}
-            {workingCount === 0 && <EmptyCard>진행 중인 작업 없음</EmptyCard>}
+            {workingCount === 0 && (
+              <EmptyCard>
+                {trimmedSearch ? '검색 결과 없음' : '진행 중인 작업 없음'}
+              </EmptyCard>
+            )}
           </Column>
 
           <Column title="완료" count={completedCount}>
             {completedGroups.map((g) => (
               <WorkspaceCompletedCard key={g.workspace_id} name={g.name} items={g.items} />
             ))}
-            {completedCount === 0 && <EmptyCard>최근 완료된 작업 없음</EmptyCard>}
+            {completedCount === 0 && (
+              <EmptyCard>
+                {trimmedSearch ? '검색 결과 없음' : '최근 완료된 작업 없음'}
+              </EmptyCard>
+            )}
           </Column>
         </div>
       </div>

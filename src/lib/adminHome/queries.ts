@@ -1,5 +1,10 @@
 /** 관리자 홈 대시보드 전용 서버 쿼리 */
 import { createClient } from '@/lib/supabase/server';
+import type { AdminHomeWindowHours } from '@/lib/adminHome/window';
+
+// 클라이언트 / 서버 양쪽에서 쓰는 토글 상수·파서는 ./window 로 분리됨 (server import 회피).
+export type { AdminHomeWindowHours } from '@/lib/adminHome/window';
+export { ADMIN_HOME_WINDOWS, parseAdminHomeWindow } from '@/lib/adminHome/window';
 
 export interface FailedPipelineRun {
   id: string;
@@ -34,9 +39,9 @@ export interface AdminHomeData {
   newCriticalCount: number;
   workspaceAlerts: WorkspaceAlert[];
   scope: 'all' | 'assigned';
+  windowHours: AdminHomeWindowHours;
+  generatedAt: string;
 }
-
-const HOURS_24_MS = 24 * 60 * 60 * 1000;
 
 /** 대상 workspace 집합. super_admin 은 null(= 필터 없음), admin 은 배정된 ws 배열. */
 async function resolveScope(role: string, userId: string): Promise<string[] | null> {
@@ -49,11 +54,16 @@ async function resolveScope(role: string, userId: string): Promise<string[] | nu
   return (data ?? []).map((r) => r.workspace_id);
 }
 
-export async function loadAdminHome(role: string, userId: string): Promise<AdminHomeData> {
+export async function loadAdminHome(
+  role: string,
+  userId: string,
+  windowHours: AdminHomeWindowHours = 24,
+): Promise<AdminHomeData> {
   const supabase = await createClient();
   const assignedIds = await resolveScope(role, userId);
   const scope: 'all' | 'assigned' = assignedIds === null ? 'all' : 'assigned';
-  const since = new Date(Date.now() - HOURS_24_MS).toISOString();
+  const generatedAt = new Date().toISOString();
+  const since = new Date(Date.now() - windowHours * 60 * 60 * 1000).toISOString();
 
   // admin 인데 배정된 ws 가 없으면 빈 결과
   if (assignedIds !== null && assignedIds.length === 0) {
@@ -64,6 +74,8 @@ export async function loadAdminHome(role: string, userId: string): Promise<Admin
       newCriticalCount: 0,
       workspaceAlerts: [],
       scope,
+      windowHours,
+      generatedAt,
     };
   }
 
@@ -176,5 +188,7 @@ export async function loadAdminHome(role: string, userId: string): Promise<Admin
     newCriticalCount,
     workspaceAlerts,
     scope,
+    windowHours,
+    generatedAt,
   };
 }

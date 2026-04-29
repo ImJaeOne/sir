@@ -32,9 +32,9 @@ export function useUpdateSummary(workspaceId: string, reportId: string) {
       queryClient.setQueryData(queryKey, sections);
       return { previous };
     },
-    onError: (_err, _sections, context) => {
+    onError: (err, _sections, context) => {
       if (context?.previous) queryClient.setQueryData(queryKey, context.previous);
-      toast.error('총평 수정에 실패했습니다.');
+      toast.error(getErrorMessage(err, '총평 수정에 실패했습니다.'));
     },
     onSuccess: () => {
       toast.success('총평 수정에 성공했습니다.');
@@ -90,8 +90,8 @@ export function useDeleteRiskReport(workspaceId: string, reportId: string) {
       queryClient.invalidateQueries({ queryKey: reportKeys.riskReports(workspaceId, reportId) });
       toast.success('신고가 취소되었습니다.');
     },
-    onError: () => {
-      toast.error('신고 대행 취소에 실패했습니다.');
+    onError: (err) => {
+      toast.error(getErrorMessage(err, '신고 대행 취소에 실패했습니다.'));
     },
   });
 }
@@ -108,8 +108,8 @@ export function useSubmitRiskReport(workspaceId: string, reportId: string) {
       queryClient.invalidateQueries({ queryKey: reportKeys.riskReports(workspaceId, reportId) });
       toast.success('신고 대행 요청이 접수되었습니다.');
     },
-    onError: () => {
-      toast.error('신고 요청에 실패했습니다.');
+    onError: (err) => {
+      toast.error(getErrorMessage(err, '신고 요청에 실패했습니다.'));
     },
   });
 }
@@ -129,9 +129,9 @@ export function useUpdateStrategies(workspaceId: string, reportId: string) {
       queryClient.setQueryData(queryKey, strategies);
       return { previous };
     },
-    onError: (_err, _strategies, context) => {
+    onError: (err, _strategies, context) => {
       if (context?.previous) queryClient.setQueryData(queryKey, context.previous);
-      toast.error('전략 수정에 실패했습니다.');
+      toast.error(getErrorMessage(err, '전략 수정에 실패했습니다.'));
     },
     onSuccess: () => {
       toast.success('전략 수정에 성공했습니다.');

@@ -60,12 +60,12 @@ function EmptyRow({ message }: { message: string }) {
 }
 
 export function AutomationFailureCard({ data }: { data: AdminHomeData }) {
-  const { failedPipelines } = data;
+  const { failedPipelines, windowHours } = data;
   return (
     <Card
       icon={<AlertTriangle size={18} className="text-rose-500" />}
       title="지난 밤 자동화 실패"
-      description="최근 24시간 동안 실패한 파이프라인 실행"
+      description={`최근 ${windowHours}시간 동안 실패한 파이프라인 실행`}
     >
       {failedPipelines.length === 0 ? (
         <EmptyRow message="이상 없음 — 모든 실행이 정상 완료됐습니다." />
@@ -107,13 +107,13 @@ export function AutomationFailureCard({ data }: { data: AdminHomeData }) {
 }
 
 export function RiskDigestCard({ data }: { data: AdminHomeData }) {
-  const { pendingRiskReports, pendingRiskReportCount, newCriticalCount } = data;
+  const { pendingRiskReports, pendingRiskReportCount, newCriticalCount, windowHours } = data;
   const hasAnything = pendingRiskReportCount > 0 || newCriticalCount > 0;
   return (
     <Card
       icon={<ShieldAlert size={18} className="text-amber-500" />}
       title="리스크 현황"
-      description="최근 24시간 신규 리스크 콘텐츠 + 신고 대행 대기"
+      description={`최근 ${windowHours}시간 신규 리스크 콘텐츠 + 신고 대행 대기`}
     >
       <div className="grid grid-cols-2 gap-2 sm:gap-3">
         <div className="rounded-xl bg-slate-50 p-3 sm:p-4">
@@ -168,15 +168,15 @@ export function RiskDigestCard({ data }: { data: AdminHomeData }) {
 }
 
 export function WorkspaceAlertsCard({ data }: { data: AdminHomeData }) {
-  const { workspaceAlerts, scope } = data;
+  const { workspaceAlerts, scope, windowHours } = data;
   return (
     <Card
       icon={<AlertTriangle size={18} className="text-slate-500" />}
       title="이상 워크스페이스"
       description={
         scope === 'all'
-          ? '최근 24시간 실패 세션이 발생한 워크스페이스'
-          : '담당 워크스페이스 중 실패 세션이 발생한 곳'
+          ? `최근 ${windowHours}시간 실패 세션이 발생한 워크스페이스`
+          : `담당 워크스페이스 중 최근 ${windowHours}시간 실패 세션 발생`
       }
     >
       {workspaceAlerts.length === 0 ? (

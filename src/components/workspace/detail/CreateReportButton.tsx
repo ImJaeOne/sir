@@ -5,6 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { workspaceKeys } from '@/hooks/workspace/workspaceKeys';
 import { createClient } from '@/lib/supabase/client';
+import { getErrorMessage } from '@/lib/utils';
 
 interface CreateReportButtonProps {
   workspaceId: string;
@@ -40,13 +41,16 @@ export function CreateReportButton({ workspaceId }: CreateReportButtonProps) {
         body: JSON.stringify({ workspace_id: workspaceId }),
       });
 
-      if (!res.ok) throw new Error('보고서 생성 실패');
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.detail ?? '보고서 생성 실패');
+      }
 
       const data = await res.json();
       queryClient.invalidateQueries({ queryKey: workspaceKeys.reports(workspaceId) });
       toast.success(`보고서가 생성되었습니다. (${data.period_start} ~ ${data.period_end})`);
-    } catch {
-      toast.error('보고서 생성에 실패했습니다.');
+    } catch (e) {
+      toast.error(getErrorMessage(e, '보고서 생성에 실패했습니다.'));
     } finally {
       setLoading(false);
     }
