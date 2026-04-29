@@ -11,10 +11,10 @@ interface CustomerTableProps {
 }
 
 export function CustomerTable({ users, onSelect }: CustomerTableProps) {
-  // 종료일 빠른 순: 종료일 있는 것 먼저 (이른 순) → 무기한/구독 없음 뒤로
+  // 종료일 빠른 순. 구독 없는 사용자는 뒤로.
   const sorted = [...users].sort((a, b) => {
-    const aEnd = a.subscription?.ended_at ?? null;
-    const bEnd = b.subscription?.ended_at ?? null;
+    const aEnd = a.subscription?.ended_at;
+    const bEnd = b.subscription?.ended_at;
     if (!aEnd && !bEnd) return 0;
     if (!aEnd) return 1;
     if (!bEnd) return -1;
@@ -41,9 +41,7 @@ export function CustomerTable({ users, onSelect }: CustomerTableProps) {
           const summary = getContractSummary(sub);
           const style = CONTRACT_STATUS_STYLE[summary.status];
           const periodLabel = sub
-            ? `${format(parseISO(sub.started_at), 'yy.MM.dd')} ~ ${
-                sub.ended_at ? format(parseISO(sub.ended_at), 'yy.MM.dd') : '무기한'
-              }`
+            ? `${format(parseISO(sub.started_at), 'yy.MM.dd')} ~ ${format(parseISO(sub.ended_at), 'yy.MM.dd')}`
             : '-';
           const remainLabel =
             summary.daysUntilExpiry === null

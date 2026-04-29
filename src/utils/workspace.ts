@@ -29,6 +29,8 @@ export const FAILED_REASON_LABELS: Record<string, string> = {
   save: '저장 실패',
   analyze: '분석 실패',
   calculate: '계산 실패',
+  generate: '생성 실패',
+  health: '헬스체크 실패',
 };
 
 export function addDays(iso: string, n: number): string {

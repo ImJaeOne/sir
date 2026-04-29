@@ -1,19 +1,33 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
-import { Combobox, ComboboxButton, ComboboxInput, ComboboxOption, ComboboxOptions } from '@headlessui/react';
-import { ChevronDown, Check, Paperclip, Download, ShieldAlert } from 'lucide-react';
+import { Combobox, ComboboxButton, ComboboxInput, ComboboxOption, ComboboxOptions, Listbox, ListboxButton, ListboxOption, ListboxOptions } from '@headlessui/react';
+import { ChevronDown, ChevronLeft, ChevronRight, Check, Paperclip, Download, ShieldAlert } from 'lucide-react';
 import { useWorkspaces, useWorkspaceSubscription } from '@/hooks/workspace/useWorkspaceQuery';
 import { useRiskReports, reportKeys } from '@/hooks/report/useReportQuery';
 import { updateRiskReport } from '@/lib/api/reportApi';
+import { getErrorMessage } from '@/lib/utils';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { ReportCalendarSelector } from '@/components/report/ReportCalendarSelector';
 import type { RiskReport } from '@/lib/api/reportApi';
 import type { Workspace } from '@/types/workspace';
+
+const PAGE_SIZE = 50;
+
+type SortKey = 'requested_desc' | 'requested_asc' | 'company' | 'status';
+
+const SORT_OPTIONS: { value: SortKey; label: string }[] = [
+  { value: 'requested_desc', label: '신청일 최신순' },
+  { value: 'requested_asc', label: '신청일 오래된순' },
+  { value: 'company', label: '회사명' },
+  { value: 'status', label: '처리 상태' },
+];
 
 const STATUS_OPTIONS = [
   { value: 'requested', label: '요청 완료' },
@@ -113,31 +127,46 @@ function DetailModal({ report, onClose, onUpdate }: { report: RiskReport; onClos
   const [status, setStatus] = useState(report.status);
   const [adminNote, setAdminNote] = useState(report.admin_note ?? '');
   const [saving, setSaving] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
-  const hasChanges = status !== report.status || adminNote !== (report.admin_note ?? '');
+  const statusChanged = status !== report.status;
+  const noteChanged = adminNote !== (report.admin_note ?? '');
+  const hasChanges = statusChanged || noteChanged;
 
-  const handleSave = async () => {
+  const oldStatusLabel = STATUS_STYLES[report.status]?.label ?? report.status;
+  const newStatusLabel = STATUS_OPTIONS.find((s) => s.value === status)?.label ?? status;
+
+  const doSave = async () => {
     setSaving(true);
     try {
       await updateRiskReport(report.id, { status, admin_note: adminNote });
       toast.success('업데이트 완료');
       onUpdate();
       onClose();
-    } catch {
-      toast.error('업데이트 실패');
+    } catch (e) {
+      toast.error(getErrorMessage(e, '업데이트 실패'));
     } finally {
       setSaving(false);
+      setShowConfirm(false);
     }
   };
 
+  // 처리 상태 변경은 destructive (고객 노출용 신고 처리 결과) — confirm 게이트.
+  // 메모만 변경된 경우엔 바로 저장.
+  const handleSaveClick = () => {
+    if (statusChanged) setShowConfirm(true);
+    else doSave();
+  };
+
   return (
+    <>
     <Modal
       open
       onClose={onClose}
       title="신고 대행 요청 상세"
       size="lg"
       footer={
-        <Button onClick={handleSave} disabled={!hasChanges || saving}>
+        <Button onClick={handleSaveClick} disabled={!hasChanges || saving}>
           {saving ? '저장 중...' : '저장'}
         </Button>
       }
@@ -185,14 +214,24 @@ function DetailModal({ report, onClose, onUpdate }: { report: RiskReport; onClos
               const ext = filename.split('.').pop()?.toUpperCase() ?? '';
               const handleDownload = async () => {
                 const supabase = createClient();
-                const { data } = await supabase.storage.from('risk-attachments').download(url);
-                if (data) {
+                try {
+                  const { data, error } = await supabase.storage
+                    .from('risk-attachments')
+                    .download(url);
+                  if (error || !data) {
+                    toast.error('첨부 다운로드에 실패했습니다.');
+                    console.error('[risk attachment download]', error);
+                    return;
+                  }
                   const blobUrl = URL.createObjectURL(data);
                   const a = document.createElement('a');
                   a.href = blobUrl;
                   a.download = filename;
                   a.click();
                   URL.revokeObjectURL(blobUrl);
+                } catch (e) {
+                  toast.error('첨부 다운로드에 실패했습니다.');
+                  console.error('[risk attachment download]', e);
                 }
               };
               return (
@@ -240,6 +279,21 @@ function DetailModal({ report, onClose, onUpdate }: { report: RiskReport; onClos
         />
       </div>
     </Modal>
+      <ConfirmModal
+        open={showConfirm}
+        onClose={() => setShowConfirm(false)}
+        onConfirm={doSave}
+        title="처리 상태 변경"
+        message={
+          <>
+            처리 상태를 <strong>{oldStatusLabel}</strong>에서{' '}
+            <strong>{newStatusLabel}</strong>(으)로 변경하시겠습니까?
+          </>
+        }
+        confirmLabel="변경"
+        loading={saving}
+      />
+    </>
   );
 }
 
@@ -261,8 +315,23 @@ export function RiskReportsClient({ assignedIds }: RiskReportsClientProps) {
   const [selectedWsId, setSelectedWsId] = useState('');
   const [selectedReportId, setSelectedReportId] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [selected, setSelected] = useState<RiskReport | null>(null);
+  const [sort, setSort] = useState<SortKey>('requested_desc');
+  const [page, setPage] = useState(1);
   const queryClient = useQueryClient();
+
+  // 모달 오픈 상태는 URL 의 ?riskReportId= 에서 derive — 관리자 홈에서 deep-link 로 들어오면 자동 오픈
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const targetId = searchParams?.get('riskReportId') ?? '';
+  const setSelectedId = (id: string | null) => {
+    const next = new URLSearchParams(searchParams?.toString() ?? '');
+    if (id) next.set('riskReportId', id);
+    else next.delete('riskReportId');
+    const qs = next.toString();
+    const path = pathname ?? '/risk-reports';
+    router.replace(qs ? `${path}?${qs}` : path, { scroll: false });
+  };
 
   const { data: rawRiskReports, isLoading } = useRiskReports(
     selectedWsId || '_all',
@@ -283,11 +352,27 @@ export function RiskReportsClient({ assignedIds }: RiskReportsClientProps) {
     return (rawRiskReports ?? []).filter((r) => allowed.has(r.workspace_id));
   }, [rawRiskReports, assignedIds]);
 
-  // workspace 변경 시 report 선택 초기화
+  // workspace 변경 시 report 선택 초기화 + 1페이지로
   const handleWsChange = (wsId: string) => {
     setSelectedWsId(wsId);
     setSelectedReportId('');
+    setPage(1);
   };
+  const handleReportIdChange = (id: string) => {
+    setSelectedReportId(id);
+    setPage(1);
+  };
+  const handleStatusFilterChange = (val: string) => {
+    setStatusFilter(val);
+    setPage(1);
+  };
+  const handleSortChange = (val: SortKey) => {
+    setSort(val);
+    setPage(1);
+  };
+
+  // workspace명 매핑
+  const wsMap = useMemo(() => new Map(workspaces.map((ws) => [ws.id, ws.company_name])), [workspaces]);
 
   const filtered = useMemo(() => {
     let list = riskReports ?? [];
@@ -297,12 +382,41 @@ export function RiskReportsClient({ assignedIds }: RiskReportsClientProps) {
     return list;
   }, [riskReports, statusFilter]);
 
+  const sorted = useMemo(() => {
+    const arr = [...filtered];
+    arr.sort((a, b) => {
+      switch (sort) {
+        case 'requested_desc':
+          return (b.requested_at ?? '').localeCompare(a.requested_at ?? '');
+        case 'requested_asc':
+          return (a.requested_at ?? '').localeCompare(b.requested_at ?? '');
+        case 'company':
+          return (wsMap.get(a.workspace_id) ?? '').localeCompare(wsMap.get(b.workspace_id) ?? '');
+        case 'status':
+          return a.status.localeCompare(b.status);
+        default:
+          return 0;
+      }
+    });
+    return arr;
+  }, [filtered, sort, wsMap]);
+
+  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const paged = useMemo(
+    () => sorted.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE),
+    [sorted, safePage],
+  );
+
+  // URL 의 riskReportId 와 매칭되는 보고서 — 데이터 로드 후 자동 매칭, 없거나 권한 밖이면 null
+  const selected = useMemo(() => {
+    if (!targetId) return null;
+    return riskReports?.find((r) => r.id === targetId) ?? null;
+  }, [targetId, riskReports]);
+
   const handleUpdate = () => {
     queryClient.invalidateQueries({ queryKey: reportKeys.riskReports(selectedWsId || '_all', selectedReportId || undefined) });
   };
-
-  // workspace명 매핑
-  const wsMap = useMemo(() => new Map(workspaces.map((ws) => [ws.id, ws.company_name])), [workspaces]);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 h-full bg-slate-50">
@@ -322,14 +436,46 @@ export function RiskReportsClient({ assignedIds }: RiskReportsClientProps) {
           <ReportCalendarSelector
             workspaceId={selectedWsId}
             selectedReportId={selectedReportId}
-            onChange={setSelectedReportId}
+            onChange={handleReportIdChange}
           />
+
+          <div className="sm:ml-auto">
+            <Listbox value={sort} onChange={handleSortChange}>
+              <div className="relative">
+                <ListboxButton className="flex items-center gap-2 text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white hover:bg-slate-50 transition-colors cursor-pointer min-w-[140px]">
+                  <span className="text-slate-700 flex-1 text-left">
+                    {SORT_OPTIONS.find((o) => o.value === sort)?.label}
+                  </span>
+                  <ChevronDown size={14} className="text-slate-400 shrink-0" />
+                </ListboxButton>
+                <ListboxOptions className="absolute z-50 mt-1 w-full overflow-hidden rounded-lg bg-white border border-slate-200 shadow-lg py-1">
+                  {SORT_OPTIONS.map((opt) => (
+                    <ListboxOption
+                      key={opt.value}
+                      value={opt.value}
+                      className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer data-[focus]:bg-blue-50 transition-colors"
+                    >
+                      {({ selected: isSelected }) => (
+                        <>
+                          <Check size={14} className={isSelected ? 'text-blue-600' : 'text-transparent'} />
+                          <span className={isSelected ? 'font-semibold text-blue-600' : 'text-slate-700'}>
+                            {opt.label}
+                          </span>
+                        </>
+                      )}
+                    </ListboxOption>
+                  ))}
+                </ListboxOptions>
+              </div>
+            </Listbox>
+          </div>
         </div>
 
         {/* 테이블 (탭 + 바디 통합) */}
         <div className="flex-1 flex flex-col bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-          {/* 상태 필터 (탭 스타일) - 모바일 가로 스크롤 */}
-          <div className="flex gap-3 sm:gap-4 px-4 pt-3 border-b border-border-light shrink-0 overflow-x-auto">
+          {/* 상태 필터 (탭 스타일) - 모바일 가로 스크롤.
+              flex-1 overflow-y-auto 위 sibling 이라 항상 상단 고정. */}
+          <div className="bg-white flex gap-3 sm:gap-4 px-4 pt-3 border-b border-border-light shrink-0 overflow-x-auto">
             {STATUS_FILTERS.map((f) => {
               const count = f.key === 'all'
                 ? (riskReports ?? []).length
@@ -338,7 +484,7 @@ export function RiskReportsClient({ assignedIds }: RiskReportsClientProps) {
               return (
                 <button
                   key={f.key}
-                  onClick={() => setStatusFilter(f.key)}
+                  onClick={() => handleStatusFilterChange(f.key)}
                   className="flex flex-col items-center gap-1 cursor-pointer shrink-0"
                 >
                   <span className={`text-xs px-2 whitespace-nowrap transition-colors ${active ? 'text-text-dark font-semibold' : 'text-text-muted font-normal'}`}>
@@ -349,8 +495,8 @@ export function RiskReportsClient({ assignedIds }: RiskReportsClientProps) {
               );
             })}
           </div>
-          {/* 헤더 (데스크톱만) */}
-          <div className="hidden lg:grid grid-cols-[8%_10%_8%_8%_1fr_12%] border-b border-slate-100 py-3 px-4 text-xs font-semibold text-slate-500 text-center shrink-0">
+          {/* 헤더 (데스크톱만) — 탭과 함께 flex-1 overflow-y-auto 위에 위치해 자동 고정 */}
+          <div className="hidden lg:grid bg-white grid-cols-[8%_10%_8%_8%_1fr_12%] border-b border-slate-100 py-3 px-4 text-xs font-semibold text-slate-500 text-center shrink-0">
             <div>신고일</div>
             <div>회사명</div>
             <div>채널명</div>
@@ -376,13 +522,37 @@ export function RiskReportsClient({ assignedIds }: RiskReportsClientProps) {
                 </p>
               </div>
             </div>
-          ) : filtered.length === 0 ? (
-            <div className="flex-1 flex items-center justify-center">
-              <p className="text-xs text-text-muted">신고 대행 요청이 없습니다.</p>
+          ) : sorted.length === 0 ? (
+            <div className="flex-1 flex items-center justify-center px-6 text-center">
+              {(riskReports?.length ?? 0) === 0 ? (
+                <p className="text-xs text-text-muted">
+                  {selectedReportId
+                    ? '선택한 보고서에 등록된 신고 대행 요청이 없습니다.'
+                    : selectedWsId
+                      ? '이 워크스페이스에 등록된 신고 대행 요청이 없습니다.'
+                      : '신고 대행 요청이 없습니다.'}
+                </p>
+              ) : (
+                <div className="flex flex-col items-center gap-2">
+                  <p className="text-xs text-text-muted">
+                    <span className="font-semibold text-slate-700">
+                      {STATUS_FILTERS.find((s) => s.key === statusFilter)?.label}
+                    </span>
+                    {' '}상태의 신고가 없습니다.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => handleStatusFilterChange('all')}
+                    className="text-[11px] font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-md transition-colors cursor-pointer"
+                  >
+                    전체 보기
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <div className="flex-1 overflow-y-auto">
-              {filtered.map((rr) => {
+              {paged.map((rr) => {
                 const statusCfg = STATUS_STYLES[rr.status] ?? { label: rr.status, className: 'bg-slate-100 text-slate-600' };
                 const requestedLabel = rr.requested_at?.slice(5, 10).replace(/-/g, '.') ?? '';
                 const companyLabel = wsMap.get(rr.workspace_id) ?? '';
@@ -390,7 +560,7 @@ export function RiskReportsClient({ assignedIds }: RiskReportsClientProps) {
                 return (
                   <div
                     key={rr.id}
-                    onClick={() => setSelected(rr)}
+                    onClick={() => setSelectedId(rr.id)}
                     className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors cursor-pointer"
                   >
                     {/* 데스크톱 행 */}
@@ -460,14 +630,42 @@ export function RiskReportsClient({ assignedIds }: RiskReportsClientProps) {
             </div>
           )}
 
-          <p className="text-xs text-text-muted text-center py-2 shrink-0 border-t border-slate-50">총 {filtered.length}건</p>
+          {/* 페이지네이션 + 총 건수 */}
+          <div className="flex items-center justify-between gap-3 px-4 py-2 shrink-0 border-t border-slate-50">
+            <p className="text-xs text-text-muted tabular-nums">총 {sorted.length}건</p>
+            {sorted.length > PAGE_SIZE && (
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={safePage === 1}
+                  className="flex items-center justify-center w-7 h-7 rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                  aria-label="이전 페이지"
+                >
+                  <ChevronLeft size={14} />
+                </button>
+                <span className="text-xs text-text-muted tabular-nums px-2">
+                  {safePage} / {totalPages}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={safePage === totalPages}
+                  className="flex items-center justify-center w-7 h-7 rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                  aria-label="다음 페이지"
+                >
+                  <ChevronRight size={14} />
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       {selected && (
         <DetailModal
           report={selected}
-          onClose={() => setSelected(null)}
+          onClose={() => setSelectedId(null)}
           onUpdate={handleUpdate}
         />
       )}

@@ -13,6 +13,9 @@ export interface LatestReport {
   has_failed_session: boolean;
   has_running_session: boolean;
   has_any_session: boolean;
+  // 최근 실패 세션의 메타 — failed=true 일 때만 채움
+  last_failed_at: string | null;
+  last_failed_message: string | null;
 }
 
 export async function getWorkspaces(): Promise<(Workspace & { latest_report?: LatestReport })[]> {
@@ -30,7 +33,17 @@ export async function getWorkspaces(): Promise<(Workspace & { latest_report?: La
     .select('id, workspace_id, period_start, period_end, type, status')
     .order('created_at', { ascending: false });
 
-  const latestByWs = new Map<string, Omit<LatestReport, 'has_failed_session' | 'has_running_session' | 'has_any_session'>>();
+  const latestByWs = new Map<
+    string,
+    Omit<
+      LatestReport,
+      | 'has_failed_session'
+      | 'has_running_session'
+      | 'has_any_session'
+      | 'last_failed_at'
+      | 'last_failed_message'
+    >
+  >();
   for (const r of reports ?? []) {
     if (!latestByWs.has(r.workspace_id)) {
       latestByWs.set(r.workspace_id, {
@@ -48,27 +61,40 @@ export async function getWorkspaces(): Promise<(Workspace & { latest_report?: La
   const failedSet = new Set<string>();
   const runningSet = new Set<string>();
   const anySessionSet = new Set<string>();
+  // 카드 헤더 노출용 — report 별 가장 최근 failed 세션의 updated_at + error_message
+  const lastFailedByReport = new Map<string, { at: string; message: string | null }>();
   if (latestReportIds.length > 0) {
     const { data: sessions } = await supabase
       .from('sessions')
-      .select('report_id, status')
+      .select('report_id, status, updated_at, error_message')
       .in('report_id', latestReportIds);
     for (const s of sessions ?? []) {
       if (!s.report_id) continue;
       anySessionSet.add(s.report_id);
-      if (s.status === 'failed') failedSet.add(s.report_id);
-      else if (['pending', 'crawling', 'analyzing', 'clustering', 'pending_analysis'].includes(s.status)) runningSet.add(s.report_id);
+      if (s.status === 'failed') {
+        failedSet.add(s.report_id);
+        const existing = lastFailedByReport.get(s.report_id);
+        if (!existing || (s.updated_at && s.updated_at > existing.at)) {
+          lastFailedByReport.set(s.report_id, {
+            at: s.updated_at,
+            message: s.error_message ?? null,
+          });
+        }
+      } else if (['pending', 'crawling', 'analyzing', 'clustering', 'pending_analysis'].includes(s.status)) runningSet.add(s.report_id);
     }
   }
 
   return workspaces.map((ws) => {
     const base = latestByWs.get(ws.id);
+    const failed = base ? lastFailedByReport.get(base.id) : undefined;
     const latest_report: LatestReport | undefined = base
       ? {
           ...base,
           has_failed_session: failedSet.has(base.id),
           has_running_session: runningSet.has(base.id),
           has_any_session: anySessionSet.has(base.id),
+          last_failed_at: failed?.at ?? null,
+          last_failed_message: failed?.message ?? null,
         }
       : undefined;
     return { ...ws, latest_report };
@@ -169,6 +195,12 @@ export interface ReportProgress {
   }[];
 }
 
+// done 이 가장 강함 — 데이터 확보 사실은 이후 retry 의 failed/in-progress 로 가려져선 안 됨.
+const SESSION_STATUS_RANK: Record<string, number> = { done: 3, failed: 2 };
+function sessionStatusRank(status: string | null | undefined): number {
+  return SESSION_STATUS_RANK[status ?? ''] ?? 1;
+}
+
 export async function getReportProgress(workspaceId: string): Promise<ReportProgress[]> {
   const [reportsRes, sessionsRes, strategiesRes] = await Promise.all([
     supabase
@@ -193,11 +225,13 @@ export async function getReportProgress(workspaceId: string): Promise<ReportProg
   const strategies = strategiesRes.data ?? [];
 
   return reports.map(report => {
-    // 해당 리포트에 속하는 세션만 필터 + 플랫폼별 최신 1개
+    // 해당 리포트에 속하는 세션만 필터 + 플랫폼별 best-status 1개
+    // (latest 만 보면 retry 의 failed 가 첫 collect 의 done 을 가려 거짓 "수집 실패" 표시됨 — H10)
     const reportSessions = sessions.filter(s => s.report_id === report.id);
     const byPlatform = new Map<string, typeof sessions[number]>();
     for (const s of reportSessions) {
-      if (!byPlatform.has(s.platform_id!)) {
+      const existing = byPlatform.get(s.platform_id!);
+      if (!existing || sessionStatusRank(s.status) > sessionStatusRank(existing.status)) {
         byPlatform.set(s.platform_id!, s);
       }
     }

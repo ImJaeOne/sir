@@ -43,7 +43,7 @@ export function StrategyCard({ category, strategy, pdfMode = false }: StrategyCa
           <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${config.bg}`}>
             <Icon size={20} />
           </div>
-          <span className="text-sm font-semibold text-text-muted text-center whitespace-pre-line">
+          <span className="text-sm font-semibold text-text-dark text-center whitespace-pre-line">
             {config.label}
           </span>
         </div>
@@ -67,7 +67,7 @@ export function StrategyCard({ category, strategy, pdfMode = false }: StrategyCa
             <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${config.bg}`}>
               <Icon size={16} />
             </div>
-            <span className="text-base font-semibold text-text-mobile-muted">{config.label}</span>
+            <span className="text-base font-semibold text-text-dark">{config.label}</span>
           </div>
           {!pdfMode && (isOpen ? (
             <ChevronUp size={16} className="text-slate-400 shrink-0" />

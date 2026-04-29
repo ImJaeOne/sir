@@ -19,6 +19,16 @@ interface ChannelItemContentProps {
   items: ChannelItem[];
 }
 
+function formatMeta(name: string, item: ChannelItem): string | null {
+  if (name === '블로그' && item.impact_score != null) {
+    return `영향력 ${item.impact_score.toFixed(1)}`;
+  }
+  if ((name === '유튜브' || name === '커뮤니티') && item.views != null) {
+    return `조회수 ${item.views.toLocaleString()}`;
+  }
+  return null;
+}
+
 export function ChannelItemContent({ name, items }: ChannelItemContentProps) {
   const [filter, setFilter] = useState<string>('all');
   const parentRef = useRef<HTMLDivElement>(null);
@@ -68,6 +78,10 @@ export function ChannelItemContent({ name, items }: ChannelItemContentProps) {
           >
             {rowVirtualizer.getVirtualItems().map((virtualRow) => {
               const item = filtered[virtualRow.index];
+              const dateLabel = item.published_at
+                ? item.published_at.slice(0, 10).replace(/-/g, '.')
+                : null;
+              const meta = formatMeta(name, item);
               return (
                 <div
                   key={virtualRow.key}
@@ -102,10 +116,28 @@ export function ChannelItemContent({ name, items }: ChannelItemContentProps) {
                             {item.source}
                           </span>
                         )}
+                        <div className="ml-auto flex items-center gap-2 shrink-0">
+                          {meta && (
+                            <span className="text-[10px] text-text-muted tabular-nums">{meta}</span>
+                          )}
+                          {dateLabel && (
+                            <span className="text-[10px] text-text-muted tabular-nums">
+                              {dateLabel}
+                            </span>
+                          )}
+                        </div>
                       </div>
                       {/* 모바일 */}
-                      <span className="lg:hidden inline-flex items-center gap-2 mr-1 align-middle">
+                      <span className="lg:hidden inline-flex flex-wrap items-center gap-2 mr-1 align-middle">
                         <SentimentBadge sentiment={item.sentiment} />
+                        {meta && (
+                          <span className="text-[10px] text-text-muted tabular-nums">{meta}</span>
+                        )}
+                        {dateLabel && (
+                          <span className="text-[10px] text-text-muted tabular-nums">
+                            {dateLabel}
+                          </span>
+                        )}
                       </span>
                       <p className="lg:hidden text-sm text-text-dark font-semibold leading-relaxed">
                         <a
@@ -118,7 +150,7 @@ export function ChannelItemContent({ name, items }: ChannelItemContentProps) {
                         </a>
                       </p>
                       {showBody && (item.summary || item.content) && (
-                        <p className="text-[14px] lg:text-sm text-text-mobile-muted lg:text-text-muted mt-0.5">
+                        <p className="text-[14px] lg:text-sm text-text-dark mt-0.5">
                           {(item.summary || item.content || '').length > 200
                             ? (item.summary || item.content || '').slice(0, 200) + '…'
                             : item.summary || item.content}

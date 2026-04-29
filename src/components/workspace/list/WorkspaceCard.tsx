@@ -6,9 +6,18 @@ import type { LatestReport } from '@/lib/api/workspaceApi';
 
 export type WorkspaceWithLatest = Workspace & { latest_report?: LatestReport };
 
-type ReportHealth = 'empty' | 'pending' | 'failed' | 'running' | 'published' | 'review';
+export type ReportHealth = 'empty' | 'pending' | 'failed' | 'running' | 'published' | 'review';
 
-function getReportHealth(latest: LatestReport | undefined): ReportHealth {
+export const REPORT_HEALTHS: ReportHealth[] = [
+  'failed',
+  'running',
+  'review',
+  'published',
+  'pending',
+  'empty',
+];
+
+export function getReportHealth(latest: LatestReport | undefined): ReportHealth {
   if (!latest) return 'empty';
   if (latest.has_failed_session) return 'failed';
   if (latest.has_running_session) return 'running';
@@ -27,6 +36,19 @@ const HEALTH_STYLE: Record<ReportHealth, { stripe: string; chip: string; label: 
   published: { stripe: 'bg-emerald-400', chip: 'bg-emerald-50 text-emerald-700', label: '검토 완료' },
 };
 
+export const REPORT_HEALTH_LABEL: Record<ReportHealth, string> = Object.fromEntries(
+  (Object.entries(HEALTH_STYLE) as [ReportHealth, { label: string }][]).map(([k, v]) => [k, v.label]),
+) as Record<ReportHealth, string>;
+
+function formatFailureRelative(iso: string): string {
+  const diffMin = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+  if (diffMin < 1) return '방금';
+  if (diffMin < 60) return `${diffMin}분 전`;
+  const h = Math.floor(diffMin / 60);
+  if (h < 24) return `${h}시간 전`;
+  return `${Math.floor(h / 24)}일 전`;
+}
+
 interface WorkspaceCardProps {
   workspace: WorkspaceWithLatest;
   onSelect: (ws: Workspace) => void;
@@ -41,6 +63,11 @@ export function WorkspaceCard({ workspace, onSelect }: WorkspaceCardProps) {
       ? latest.period_start.replace(/-/g, '.')
       : `${latest.period_start.replace(/-/g, '.')} ~ ${latest.period_end.replace(/-/g, '.')}`
     : null;
+
+  const failureSummary =
+    health === 'failed' && latest?.last_failed_at
+      ? `${formatFailureRelative(latest.last_failed_at)}${latest.last_failed_message ? ` · ${latest.last_failed_message}` : ''}`
+      : null;
 
   return (
     <div className="group w-full bg-white rounded-2xl border border-slate-100 shadow-sm flex items-stretch overflow-hidden hover:shadow-md hover:border-slate-200 hover:-translate-y-px transition-all duration-200">
@@ -72,6 +99,14 @@ export function WorkspaceCard({ workspace, onSelect }: WorkspaceCardProps) {
               <span className="italic text-slate-300">보고서 없음</span>
             )}
           </span>
+          {failureSummary && (
+            <p
+              className="text-[11px] text-red-600 mt-1 line-clamp-1"
+              title={latest?.last_failed_message ?? undefined}
+            >
+              {failureSummary}
+            </p>
+          )}
         </div>
         <ChevronRight
           size={16}

@@ -49,7 +49,7 @@ export function SummaryAccordion({ sections, pdfMode = false }: { sections: Summ
                       </>
                     );
                   })()}
-                <div className="lg:w-[130px] whitespace-pre-line text-sm text-text-mobile-muted lg:text-text-muted font-semibold">
+                <div className="lg:w-[130px] whitespace-pre-line text-sm text-text-dark font-semibold">
                   {SUMMARY_SECTIONS[i]?.label ?? `섹션 ${i + 1}`}
                 </div>
               </div>
@@ -77,7 +77,7 @@ export function SummaryAccordion({ sections, pdfMode = false }: { sections: Summ
                           {sub.points.map((point, k) => (
                             <li key={k} className="flex gap-2">
                               <CheckListIcon size={16} className="shrink-0 mt-0.5" />
-                              <span className="text-sm text-text-mobile-muted lg:text-text-muted leading-relaxed">
+                              <span className="text-sm text-text-dark leading-relaxed">
                                 {point}
                               </span>
                             </li>

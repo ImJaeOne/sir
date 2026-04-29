@@ -65,8 +65,14 @@ interface RiskTableProps {
   /** 위기 대응 센터(workspace 전체 모드) 용 — item.session_id → reportId 매핑. 있으면
    *  신고 대행 요청 모달에 해당 item 의 고유 reportId 가 전달됨. */
   sessionToReportMap?: Map<string, string>;
+  /** 위기 대응 센터 모드: reportId → type 매핑. initial 보고서 item 의 신고 버튼 비활성용. */
+  reportTypeMap?: Map<string, string>;
+  /** true 면 부모(flex container)의 남은 높이를 채움 — 위기 대응 센터 전용. 보고서 페이지는 false (max-h 600). */
+  fillHeight?: boolean;
   pdfMode?: boolean;
 }
+
+const INITIAL_NOT_REPORTABLE_MSG = '초기 종합 보고서에 대한 신고는 불가능합니다';
 
 const PDF_ROW_LIMIT = 10;
 
@@ -80,6 +86,8 @@ export function RiskTable({
   editable = false,
   allowReport = false,
   sessionToReportMap,
+  reportTypeMap,
+  fillHeight = false,
   pdfMode = false,
 }: RiskTableProps) {
   const [tab, setTab] = useState<string>('all');
@@ -88,6 +96,13 @@ export function RiskTable({
   const reportTargetReportId = reportTarget
     ? (sessionToReportMap?.get(reportTarget.session_id ?? '') ?? reportId)
     : reportId;
+
+  // 각 item 이 속한 보고서 type — 위기 센터 모드(reportTypeMap 있음)에서만 의미. initial 신고 차단용.
+  const getItemReportType = (item: RiskItem): string | undefined => {
+    if (!reportTypeMap) return undefined;
+    const itemReportId = sessionToReportMap?.get(item.session_id ?? '') ?? reportId;
+    return reportTypeMap.get(itemReportId);
+  };
   const parentRef = useRef<HTMLDivElement>(null);
   const clearMutation = useClearCriticalType(workspaceId);
   const clearingId = clearMutation.isPending ? clearMutation.variables?.id ?? null : null;
@@ -125,9 +140,9 @@ export function RiskTable({
   }, [riskItems]);
 
   return (
-    <div>
+    <div className={fillHeight ? 'flex flex-col min-h-0 flex-1' : ''}>
       {/* 채널 탭 */}
-      <div className="flex gap-4 mt-1 border-b border-border-light">
+      <div className="flex gap-4 mt-1 border-b border-border-light shrink-0">
         {CHANNEL_TABS.map((t) => {
           const active = tab === t.key;
           return (
@@ -154,13 +169,15 @@ export function RiskTable({
       </div>
 
       {filtered.length === 0 ? (
-        <EmptyState message="탐지된 리스크 콘텐츠가 없습니다." />
+        <div className={fillHeight ? 'flex-1 min-h-0 flex items-center justify-center' : ''}>
+          <EmptyState message="탐지된 리스크 콘텐츠가 없습니다." />
+        </div>
       ) : (
         <>
           {/* 데스크톱: grid 테이블 */}
-          <div className="hidden lg:block">
+          <div className={fillHeight ? 'hidden lg:flex flex-col flex-1 min-h-0' : 'hidden lg:block'}>
             <div
-              className="grid border-b border-border-light py-3 px-3 text-xs font-semibold text-text-muted text-center"
+              className="grid border-b border-border-light py-3 px-3 text-xs font-semibold text-text-muted text-center shrink-0"
               style={{ gridTemplateColumns: COL_TEMPLATE }}
             >
               <div>수집일</div>
@@ -169,7 +186,16 @@ export function RiskTable({
               <div>세부내용</div>
               <div></div>
             </div>
-            <div ref={parentRef} className={pdfMode ? '' : 'max-h-[600px] overflow-y-auto'}>
+            <div
+              ref={parentRef}
+              className={
+                pdfMode
+                  ? ''
+                  : fillHeight
+                    ? 'flex-1 min-h-0 overflow-y-auto'
+                    : 'max-h-[600px] overflow-y-auto'
+              }
+            >
               {pdfMode ? (
                 displayed.map((item) => {
                   const config = criticalTypeConfig[item.critical_type] ?? {
@@ -205,7 +231,7 @@ export function RiskTable({
                                 {item.title}
                               </span>
                               {item.critical_reason && (
-                                <p className="text-xs text-text-muted leading-relaxed">
+                                <p className="text-xs text-text-dark leading-relaxed">
                                   {item.critical_reason}
                                 </p>
                               )}
@@ -276,7 +302,7 @@ export function RiskTable({
                                 {item.title}
                               </a>
                               {item.critical_reason && (
-                                <p className="text-xs text-text-muted leading-relaxed">
+                                <p className="text-xs text-text-dark leading-relaxed">
                                   {item.critical_reason}
                                 </p>
                               )}
@@ -314,6 +340,20 @@ export function RiskTable({
                                 신고 대행 취소
                               </Badge>
                             </button>
+                          ) : getItemReportType(item) === 'initial' ? (
+                            <button
+                              type="button"
+                              disabled
+                              title={INITIAL_NOT_REPORTABLE_MSG}
+                              className="cursor-not-allowed"
+                            >
+                              <Badge
+                                variant="slate"
+                                className="px-3 py-1.5 opacity-50"
+                              >
+                                신고 대행 요청
+                              </Badge>
+                            </button>
                           ) : (
                             <button
                               type="button"
@@ -339,7 +379,13 @@ export function RiskTable({
           </div>
 
           {/* 모바일: 카드 리스트 */}
-          <div className="lg:hidden flex flex-col gap-3 py-3 max-h-[400px] overflow-y-auto">
+          <div
+            className={
+              fillHeight
+                ? 'lg:hidden flex flex-col gap-3 py-3 flex-1 min-h-0 overflow-y-auto'
+                : 'lg:hidden flex flex-col gap-3 py-3 max-h-[400px] overflow-y-auto'
+            }
+          >
             {filtered.map((item) => {
               const config = criticalTypeConfig[item.critical_type] ?? {
                 label: item.critical_type,
@@ -391,7 +437,7 @@ export function RiskTable({
                         {item.title}
                       </a>
                       {item.critical_reason && (
-                        <p className="text-[14px] text-text-mobile-muted leading-relaxed">
+                        <p className="text-[14px] text-text-dark leading-relaxed">
                           {item.critical_reason}
                         </p>
                       )}
@@ -417,6 +463,19 @@ export function RiskTable({
                     >
                       신고 대행 취소
                     </button>
+                  ) : getItemReportType(item) === 'initial' ? (
+                    <div className="flex flex-col gap-1">
+                      <button
+                        type="button"
+                        disabled
+                        className="w-full py-2.5 rounded-xl text-xs font-semibold bg-slate-100 text-slate-400 cursor-not-allowed"
+                      >
+                        신고 대행 요청
+                      </button>
+                      <p className="text-[11px] text-text-muted text-center">
+                        {INITIAL_NOT_REPORTABLE_MSG}
+                      </p>
+                    </div>
                   ) : (
                     <button
                       type="button"
@@ -432,7 +491,7 @@ export function RiskTable({
           </div>
         </>
       )}
-      <p className="text-xs text-text-muted text-center py-2">
+      <p className="text-xs text-text-muted text-center py-2 shrink-0">
         {pdfMode && filtered.length > PDF_ROW_LIMIT
           ? `총 ${filtered.length}건 중 상위 ${PDF_ROW_LIMIT}건 표시`
           : `총 ${filtered.length}건`}

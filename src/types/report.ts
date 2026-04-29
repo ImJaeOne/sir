@@ -147,6 +147,7 @@ export const newsClusterResponseSchema = z.object({
     title: z.string(),
     source: z.string(),
     link: z.string(),
+    published_at: z.string().nullable(),
   })),
 });
 

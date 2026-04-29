@@ -1,24 +1,77 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  updateSubscriptionPeriod,
-  type UpdateSubscriptionPeriodInput,
+  changeSubscriptionTier,
+  extendSubscription,
+  renewSubscription,
+  pauseSubscription,
+  resumeSubscription,
+  cancelSubscription,
+  correctSubscription,
 } from '@/lib/api/subscriptionApi';
 import { subscriptionKeys } from '@/hooks/subscription/useSubscriptionQuery';
 
-export function useUpdateSubscriptionPeriod() {
+function useInvalidateOnSuccess() {
   const queryClient = useQueryClient();
+  return (workspaceId: string) => {
+    queryClient.invalidateQueries({ queryKey: subscriptionKeys.active(workspaceId) });
+    queryClient.invalidateQueries({ queryKey: ['admin', 'users', 'detailed'] });
+  };
+}
 
+export function useChangeSubscriptionTier() {
+  const invalidate = useInvalidateOnSuccess();
   return useMutation({
-    mutationFn: (input: UpdateSubscriptionPeriodInput) =>
-      updateSubscriptionPeriod(input),
-    onSuccess: (_, vars) => {
-      queryClient.invalidateQueries({
-        queryKey: subscriptionKeys.active(vars.workspaceId),
-      });
-      // 유저 상세 목록에도 구독 정보가 포함되므로 무효화
-      queryClient.invalidateQueries({
-        queryKey: ['admin', 'users', 'detailed'],
-      });
+    mutationFn: changeSubscriptionTier,
+    onSuccess: (_, vars) => invalidate(vars.workspaceId),
+  });
+}
+
+export function useExtendSubscription() {
+  const invalidate = useInvalidateOnSuccess();
+  return useMutation({
+    mutationFn: extendSubscription,
+    onSuccess: (_, vars) => invalidate(vars.workspaceId),
+  });
+}
+
+export function useRenewSubscription() {
+  const invalidate = useInvalidateOnSuccess();
+  return useMutation({
+    mutationFn: renewSubscription,
+    onSuccess: (_, vars) => invalidate(vars.workspaceId),
+  });
+}
+
+export function usePauseSubscription() {
+  const invalidate = useInvalidateOnSuccess();
+  return useMutation({
+    mutationFn: pauseSubscription,
+    onSuccess: (_, vars) => invalidate(vars.workspaceId),
+  });
+}
+
+export function useResumeSubscription() {
+  const invalidate = useInvalidateOnSuccess();
+  return useMutation({
+    mutationFn: resumeSubscription,
+    onSuccess: (_, vars) => invalidate(vars.workspaceId),
+  });
+}
+
+export function useCancelSubscription() {
+  const invalidate = useInvalidateOnSuccess();
+  return useMutation({
+    mutationFn: cancelSubscription,
+    onSuccess: (_, vars) => invalidate(vars.workspaceId),
+  });
+}
+
+export function useCorrectSubscription(workspaceId: string | undefined) {
+  const invalidate = useInvalidateOnSuccess();
+  return useMutation({
+    mutationFn: correctSubscription,
+    onSuccess: () => {
+      if (workspaceId) invalidate(workspaceId);
     },
   });
 }

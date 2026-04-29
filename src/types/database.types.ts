@@ -631,6 +631,7 @@ export type Database = {
           source_id: string
           source_table: string
           status: string
+          status_changed_at: string
           title: string
           workspace_id: string
         }
@@ -650,6 +651,7 @@ export type Database = {
           source_id: string
           source_table: string
           status?: string
+          status_changed_at?: string
           title: string
           workspace_id: string
         }
@@ -669,6 +671,7 @@ export type Database = {
           source_id?: string
           source_table?: string
           status?: string
+          status_changed_at?: string
           title?: string
           workspace_id?: string
         }
@@ -1022,11 +1025,12 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string | null
-          ended_at: string | null
+          ended_at: string
           has_armor: boolean | null
           has_booster: boolean | null
           has_daily: boolean | null
           id: string
+          reason: string | null
           started_at: string
           tier: Database["public"]["Enums"]["service_tier"]
           workspace_id: string
@@ -1034,11 +1038,12 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by?: string | null
-          ended_at?: string | null
+          ended_at: string
           has_armor?: boolean | null
           has_booster?: boolean | null
           has_daily?: boolean | null
           id?: string
+          reason?: string | null
           started_at?: string
           tier: Database["public"]["Enums"]["service_tier"]
           workspace_id: string
@@ -1046,11 +1051,12 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string | null
-          ended_at?: string | null
+          ended_at?: string
           has_armor?: boolean | null
           has_booster?: boolean | null
           has_daily?: boolean | null
           id?: string
+          reason?: string | null
           started_at?: string
           tier?: Database["public"]["Enums"]["service_tier"]
           workspace_id?: string
@@ -1253,7 +1259,31 @@ export type Database = {
       }
     }
     Functions: {
+      _assert_admin_for_subscriptions: { Args: never; Returns: undefined }
+      auto_reject_stale_risk_reports: { Args: never; Returns: Json }
       can_read_workspace: { Args: { ws_id: string }; Returns: boolean }
+      cancel_subscription: {
+        Args: { p_cancel_at?: string; p_workspace_id: string }
+        Returns: string
+      }
+      change_subscription_tier: {
+        Args: {
+          p_effective_at?: string
+          p_new_tier: Database["public"]["Enums"]["service_tier"]
+          p_workspace_id: string
+        }
+        Returns: string
+      }
+      cleanup_zombie_pipeline_state: { Args: never; Returns: Json }
+      correct_subscription: {
+        Args: {
+          p_ended_at?: string
+          p_started_at?: string
+          p_subscription_id: string
+          p_tier?: Database["public"]["Enums"]["service_tier"]
+        }
+        Returns: string
+      }
       create_user_workspace_bundle: {
         Args: {
           p_business_summary: string
@@ -1267,9 +1297,14 @@ export type Database = {
         }
         Returns: Json
       }
+      cron_silent_fail_check: { Args: never; Returns: undefined }
       delete_sns_items_by_links: {
         Args: { p_links: string[]; p_session_id: string }
         Returns: number
+      }
+      extend_subscription: {
+        Args: { p_new_ended_at: string; p_workspace_id: string }
+        Returns: string
       }
       get_sir_ranking: {
         Args: { p_report_id?: string; p_workspace_id: string }
@@ -1277,6 +1312,28 @@ export type Database = {
       }
       is_admin: { Args: never; Returns: boolean }
       is_super_admin: { Args: never; Returns: boolean }
+      pause_subscription: {
+        Args: { p_pause_at?: string; p_workspace_id: string }
+        Returns: string
+      }
+      renew_subscription: {
+        Args: {
+          p_new_ended_at: string
+          p_new_started_at: string
+          p_new_tier: Database["public"]["Enums"]["service_tier"]
+          p_workspace_id: string
+        }
+        Returns: string
+      }
+      resume_subscription: {
+        Args: {
+          p_new_ended_at: string
+          p_new_started_at: string
+          p_new_tier: Database["public"]["Enums"]["service_tier"]
+          p_workspace_id: string
+        }
+        Returns: string
+      }
       session_sentiment_counts: {
         Args: { s_id: string }
         Returns: {
@@ -1284,6 +1341,16 @@ export type Database = {
           platform_id: string
           sentiment: string
         }[]
+      }
+      subscription_status: { Args: { ws_id: string }; Returns: string }
+      try_start_pipeline_run: {
+        Args: {
+          p_report_id: string
+          p_report_type: string
+          p_triggered_by?: string
+          p_workspace_id: string
+        }
+        Returns: string
       }
       user_has_workspace_access: { Args: { ws_id: string }; Returns: boolean }
       workspace_sentiment_counts: {
@@ -1306,7 +1373,13 @@ export type Database = {
         | "failed"
       critical_type: "defamation" | "insult" | "rumor" | "spam"
       critical_type_new: "defamation" | "insult" | "rumor" | "spam"
-      failed_reason: "collect" | "save" | "analyze" | "calculate" | "generate"
+      failed_reason:
+        | "collect"
+        | "save"
+        | "analyze"
+        | "calculate"
+        | "generate"
+        | "health"
       profile_role: "super_admin" | "user" | "admin"
       report_status: "draft" | "published"
       report_type: "initial" | "weekly" | "daily"
@@ -1459,7 +1532,14 @@ export const Constants = {
       ],
       critical_type: ["defamation", "insult", "rumor", "spam"],
       critical_type_new: ["defamation", "insult", "rumor", "spam"],
-      failed_reason: ["collect", "save", "analyze", "calculate", "generate"],
+      failed_reason: [
+        "collect",
+        "save",
+        "analyze",
+        "calculate",
+        "generate",
+        "health",
+      ],
       profile_role: ["super_admin", "user", "admin"],
       report_status: ["draft", "published"],
       report_type: ["initial", "weekly", "daily"],

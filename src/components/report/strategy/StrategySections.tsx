@@ -37,14 +37,12 @@ export function StrategySections({ strategy }: StrategySectionsProps) {
     <div className="flex-1 flex flex-col gap-4">
       {/* 전략 도출 배경 */}
       <SectionBlock title="전략 도출 배경" bg="bg-bg-light" textColor="text-text-dark">
-        <p className="font-medium mb-2 text-text-mobile-muted lg:text-text-dark">
-          {background.summary}
-        </p>
+        <p className="font-medium mb-2 text-text-dark">{background.summary}</p>
         <ul className="flex flex-col gap-1">
           {background.points.map((point, i) => (
             <li key={i} className="flex gap-2">
               <CheckListIcon size={16} className="shrink-0 mt-0.5" />
-              <span className="text-text-mobile-muted lg:text-text-sub">{point}</span>
+              <span className="text-text-dark">{point}</span>
             </li>
           ))}
         </ul>
@@ -68,7 +66,7 @@ export function StrategySections({ strategy }: StrategySectionsProps) {
                 {action.contents.map((content, j) => (
                   <li key={j} className="flex gap-2">
                     <CheckListIcon size={16} color="#362cff" className="shrink-0 mt-0.5" />
-                    <span className="text-text-mobile-muted lg:text-text-dark">{content}</span>
+                    <span className="text-text-dark">{content}</span>
                   </li>
                 ))}
               </ul>
