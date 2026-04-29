@@ -1058,16 +1058,22 @@ export async function getRiskReports(
 }
 
 /**
- * 보고서 기간 내에 "처리 완료" 또는 "반려" 로 결과가 확정된 신고 건만 반환.
- * 접수 시점이 아닌 resolved_at 기준 → 처리 결과가 확정된 날의 익일 보고서에 반영됨.
+ * 보고서 기간(period_start ~ period_end) 내에 "처리 완료"/"반려" 로 결과가
+ * 확정된 신고 건을 모두 반환. daily(1일) / weekly(월~일) 공통.
+ * 접수 시점이 아닌 resolved_at 기준 → 처리 결과가 확정된 날의 보고서(=익일 daily,
+ * 또는 그 주 weekly) 에 반영됨.
+ *
+ * resolved_at 은 timestamptz(UTC 저장) 이고 period_start/end 는 KST 달력 일자이므로
+ * `+09:00` 명시로 KST 자정 경계를 정확히 표현해야 한다 (없으면 PG 가 UTC 자정으로 해석해
+ * 9시간 어긋남 — 4/28 새벽 KST 처리 건이 4/27 period 보고서에 잘못 들어가거나 누락됨).
  */
 export async function getResolvedRiskReports(
   workspaceId: string,
   periodStart: string,
   periodEnd: string
 ): Promise<RiskReport[]> {
-  const startIso = `${periodStart}T00:00:00`;
-  const endIso = `${periodEnd}T23:59:59.999`;
+  const startIso = `${periodStart}T00:00:00+09:00`;
+  const endIso = `${periodEnd}T23:59:59.999+09:00`;
   const { data } = await supabase
     .from('risk_reports')
     .select('*')
