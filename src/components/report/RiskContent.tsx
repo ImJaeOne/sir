@@ -47,11 +47,10 @@ export function RiskContent({ workspaceId, reportId, editable = false, allowRepo
   }, [riskReports]);
 
   const isDaily = report?.type === 'daily';
-  // initial 보고서에 속한 항목은 신고 대행 요청 불가 (DB trigger 도 함께 enforce)
-  const isInitial = report?.type === 'initial';
   // has_armor=false 워크스페이스는 신고 대행 자체가 차단 (RLS + UI)
   const hasArmor = subscription?.has_armor ?? false;
-  const effectiveAllowReport = allowReport && !isInitial && hasArmor;
+  // 보고서 페이지는 단순 확인용 — 신고는 위기 대응 센터에서만 진행 (allowReport default false)
+  const effectiveAllowReport = allowReport && hasArmor;
 
   return (
     <div className="print-break">
