@@ -72,22 +72,32 @@ export function AutomationFailureCard({ data }: { data: AdminHomeData }) {
       ) : (
         <ul className="flex flex-col divide-y divide-slate-100 -mx-1">
           {failedPipelines.map((run) => (
-            <li key={run.id} className="px-1 py-2.5 flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3">
-              <div className="flex items-center gap-2 shrink-0 sm:w-32">
-                <span className="text-xs font-medium text-slate-700 truncate">
-                  {run.workspace_name}
+            <li key={run.id}>
+              <Link
+                href={`/workspace/${run.workspace_id}`}
+                className="px-2 py-2.5 -mx-1 flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3 rounded-lg hover:bg-slate-50 transition-colors"
+              >
+                <div className="flex items-center gap-2 shrink-0 sm:w-32">
+                  <span className="text-xs font-medium text-slate-700 truncate">
+                    {run.workspace_name}
+                  </span>
+                  <span className="text-[10px] text-slate-400 shrink-0">{run.report_type}</span>
+                </div>
+                <div className="flex-1 min-w-0 text-xs text-slate-600">
+                  <span className="inline-block px-1.5 py-0.5 mr-1.5 rounded bg-rose-50 text-rose-600 text-[10px] font-medium">
+                    {run.error_stage ?? 'unknown'}
+                  </span>
+                  <span
+                    className="line-clamp-2 break-words"
+                    title={run.error_message ?? undefined}
+                  >
+                    {run.error_message ?? '—'}
+                  </span>
+                </div>
+                <span className="text-[11px] text-slate-400 shrink-0 tabular-nums">
+                  {relativeKst(run.started_at)}
                 </span>
-                <span className="text-[10px] text-slate-400 shrink-0">{run.report_type}</span>
-              </div>
-              <div className="flex-1 min-w-0 text-xs text-slate-600">
-                <span className="inline-block px-1.5 py-0.5 mr-1.5 rounded bg-rose-50 text-rose-600 text-[10px] font-medium">
-                  {run.error_stage ?? 'unknown'}
-                </span>
-                <span className="break-all">{run.error_message ?? '—'}</span>
-              </div>
-              <span className="text-[11px] text-slate-400 shrink-0 tabular-nums">
-                {relativeKst(run.started_at)}
-              </span>
+              </Link>
             </li>
           ))}
         </ul>
@@ -125,22 +135,27 @@ export function RiskDigestCard({ data }: { data: AdminHomeData }) {
       {pendingRiskReports.length > 0 && (
         <ul className="flex flex-col divide-y divide-slate-100 -mx-1">
           {pendingRiskReports.map((r) => (
-            <li key={r.id} className="px-1 py-2.5 flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
-              <Flag size={12} className="text-amber-500 shrink-0 hidden sm:block" />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium text-slate-700 truncate">
-                    {r.workspace_name}
-                  </span>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 shrink-0">
-                    {criticalLabel[r.critical_type] ?? r.critical_type}
-                  </span>
+            <li key={r.id}>
+              <Link
+                href={`/risk-reports?riskReportId=${r.id}`}
+                className="px-2 py-2.5 -mx-1 flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 rounded-lg hover:bg-slate-50 transition-colors"
+              >
+                <Flag size={12} className="text-amber-500 shrink-0 hidden sm:block" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-medium text-slate-700 truncate">
+                      {r.workspace_name}
+                    </span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 shrink-0">
+                      {criticalLabel[r.critical_type] ?? r.critical_type}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 truncate mt-0.5">{r.title}</p>
                 </div>
-                <p className="text-xs text-slate-500 truncate mt-0.5">{r.title}</p>
-              </div>
-              <span className="text-[11px] text-slate-400 shrink-0 tabular-nums">
-                {relativeKst(r.requested_at)}
-              </span>
+                <span className="text-[11px] text-slate-400 shrink-0 tabular-nums">
+                  {relativeKst(r.requested_at)}
+                </span>
+              </Link>
             </li>
           ))}
         </ul>

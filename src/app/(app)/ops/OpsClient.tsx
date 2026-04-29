@@ -15,6 +15,17 @@ import {
 } from '@/lib/api/opsApi';
 import { retryFailedReport } from '@/lib/api/reportApi';
 import { getErrorMessage } from '@/lib/utils';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
+
+function formatRelativeTime(iso: string): string {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const min = Math.floor(diffMs / 60000);
+  if (min < 1) return '방금';
+  if (min < 60) return `${min}분 전`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return `${h}시간 전`;
+  return `${Math.floor(h / 24)}일 전`;
+}
 
 const PLATFORM_LABELS: Record<string, string> = {
   naver_news: 'Naver News',
@@ -148,6 +159,8 @@ function WorkspaceActiveCard({ name, items }: { name: string; items: OpsActiveSe
 
 function WorkspaceWaitingCard({ name, items }: { name: string; items: OpsWaitingSession[] }) {
   const [openId, setOpenId] = useState<string | null>(null);
+  const [confirmOneId, setConfirmOneId] = useState<string | null>(null);
+  const [confirmAllId, setConfirmAllId] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   // 워크스페이스 카드의 모든 failed 세션이 같은 report 에 묶여 있을 때만 batch retry-failed 노출.
@@ -174,6 +187,7 @@ function WorkspaceWaitingCard({ name, items }: { name: string; items: OpsWaiting
   });
 
   return (
+    <>
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm flex overflow-hidden">
       <div className="w-1 shrink-0 bg-red-400" aria-hidden />
       <div className="flex-1 min-w-0 flex flex-col">
@@ -185,7 +199,7 @@ function WorkspaceWaitingCard({ name, items }: { name: string; items: OpsWaiting
           {batchReportId && (
             <button
               type="button"
-              onClick={() => retryAll.mutate(batchReportId)}
+              onClick={() => setConfirmAllId(batchReportId)}
               disabled={retryAll.isPending}
               className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-md bg-red-50 text-red-700 hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer shrink-0"
               title="이 보고서의 실패 세션 모두 재시도 + 자동 마감"
@@ -210,6 +224,9 @@ function WorkspaceWaitingCard({ name, items }: { name: string; items: OpsWaiting
                   <span className="text-xs text-red-700 flex-1 truncate">
                     {FAILED_REASON_LABELS[s.failed_reason ?? ''] ?? s.failed_reason ?? '실패'}
                   </span>
+                  <span className="text-[10px] text-slate-400 tabular-nums shrink-0">
+                    {formatRelativeTime(s.updated_at)}
+                  </span>
                   {open ? (
                     <ChevronDown size={14} className="text-slate-400 shrink-0" />
                   ) : (
@@ -227,7 +244,7 @@ function WorkspaceWaitingCard({ name, items }: { name: string; items: OpsWaiting
                       </span>
                       <button
                         type="button"
-                        onClick={() => retryOne.mutate(s.session_id)}
+                        onClick={() => setConfirmOneId(s.session_id)}
                         disabled={retryOne.isPending}
                         className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-md bg-white border border-red-200 text-red-700 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer shrink-0"
                         title="이 세션만 재시도 (마감은 별도)"
@@ -244,6 +261,46 @@ function WorkspaceWaitingCard({ name, items }: { name: string; items: OpsWaiting
         </ul>
       </div>
     </div>
+    <ConfirmModal
+      open={confirmAllId !== null}
+      onClose={() => setConfirmAllId(null)}
+      onConfirm={async () => {
+        if (!confirmAllId) return;
+        try {
+          await retryAll.mutateAsync(confirmAllId);
+        } catch {
+          // toast 는 mutation 에서 처리
+        }
+        setConfirmAllId(null);
+      }}
+      title="일괄 재시도"
+      message={
+        <>
+          <strong>{name}</strong> 의 실패 세션 {items.length}건을 모두 재시도하고,
+          완료 시 보고서를 자동 마감합니다. 진행하시겠습니까?
+        </>
+      }
+      confirmLabel="재시도"
+      loading={retryAll.isPending}
+    />
+    <ConfirmModal
+      open={confirmOneId !== null}
+      onClose={() => setConfirmOneId(null)}
+      onConfirm={async () => {
+        if (!confirmOneId) return;
+        try {
+          await retryOne.mutateAsync(confirmOneId);
+        } catch {
+          // toast 는 mutation 에서 처리
+        }
+        setConfirmOneId(null);
+      }}
+      title="세션 재시도"
+      message="이 세션만 재시도합니다. 보고서 마감은 별도로 진행해야 합니다."
+      confirmLabel="재시도"
+      loading={retryOne.isPending}
+    />
+    </>
   );
 }
 
@@ -431,29 +488,32 @@ export function OpsClient() {
   return (
     <div className="p-6 lg:p-8 min-h-full bg-white">
       <div className="max-w-7xl mx-auto flex flex-col gap-6">
-        <div className="flex items-start sm:items-center justify-between gap-4 flex-col sm:flex-row">
-          <div className="flex flex-col gap-1">
-            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
-              운영 모니터링
-            </h1>
-            <p className="text-xs text-slate-400">
-              현재 서버에서 돌고 있는 수집·분석·재생성 작업 스냅샷. 3초 간격 자동 갱신.
-            </p>
+        {/* sticky 헤더 — 스크롤해도 LIVE 뱃지·에러 배너가 항상 보이도록 */}
+        <div className="sticky top-0 z-10 bg-white -mx-6 lg:-mx-8 px-6 lg:px-8 -mt-6 lg:-mt-8 pt-6 lg:pt-8 pb-3 flex flex-col gap-3 border-b border-slate-100">
+          <div className="flex items-start sm:items-center justify-between gap-4 flex-col sm:flex-row">
+            <div className="flex flex-col gap-1">
+              <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+                운영 모니터링
+              </h1>
+              <p className="text-xs text-slate-400">
+                현재 서버에서 돌고 있는 수집·분석·재생성 작업 스냅샷. 3초 간격 자동 갱신.
+              </p>
+            </div>
+            <span
+              className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2 py-1 rounded-full ${statusInfo.chip}`}
+            >
+              <span className={`inline-block w-1.5 h-1.5 rounded-full ${statusInfo.dot}`} />
+              {statusInfo.label}
+            </span>
           </div>
-          <span
-            className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2 py-1 rounded-full ${statusInfo.chip}`}
-          >
-            <span className={`inline-block w-1.5 h-1.5 rounded-full ${statusInfo.dot}`} />
-            {statusInfo.label}
-          </span>
-        </div>
 
-        {error && (
-          <div className="border border-red-100 bg-red-50 rounded-xl px-4 py-3 text-sm text-red-700 flex items-center gap-2">
-            <AlertTriangle size={14} />
-            {getErrorMessage(error, '데이터 조회 실패')}
-          </div>
-        )}
+          {error && (
+            <div className="border border-red-100 bg-red-50 rounded-xl px-4 py-3 text-sm text-red-700 flex items-center gap-2">
+              <AlertTriangle size={14} />
+              {getErrorMessage(error, '데이터 조회 실패')}
+            </div>
+          )}
+        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <Column title="대기" count={waitingCount}>
