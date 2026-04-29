@@ -14,7 +14,6 @@ export function getContractSummary(
   sub: Subscription | null | undefined,
 ): ContractSummary {
   if (!sub) return { status: 'none', daysUntilExpiry: null };
-  if (!sub.ended_at) return { status: 'active', daysUntilExpiry: null };
 
   const end = parseISO(sub.ended_at);
   const days = differenceInCalendarDays(end, new Date());

@@ -59,7 +59,8 @@ export async function getUsersWithDetails(): Promise<UserWithDetails[]> {
     supabase
       .from('subscriptions')
       .select('*')
-      .or(`ended_at.is.null,ended_at.gt.${nowIso}`)
+      .lte('started_at', nowIso)
+      .gt('ended_at', nowIso)
       .order('started_at', { ascending: false }),
   ]);
 
@@ -71,7 +72,6 @@ export async function getUsersWithDetails(): Promise<UserWithDetails[]> {
   const wsById = new Map(workspaces.map((w) => [w.id, w]));
   const subByWorkspace = new Map<string, Subscription>();
   for (const s of subs) {
-    // 동일 workspace 에 여러 active 가 있을 가능성은 희박하지만 최신 하나만
     if (!subByWorkspace.has(s.workspace_id)) {
       subByWorkspace.set(s.workspace_id, s);
     }

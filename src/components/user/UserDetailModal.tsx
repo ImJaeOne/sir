@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
-import { addMonths, format, parseISO } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { X, Plus } from 'lucide-react';
 import { AdminButton } from '@/components/ui/AdminButton';
 import { Button } from '@/components/ui/Button';
@@ -10,12 +10,28 @@ import { Modal } from '@/components/ui/Modal';
 import { ContractPeriodPicker } from '@/components/ui/ContractPeriodPicker';
 import { useUpdateUser } from '@/hooks/user/useUserMutation';
 import { useActiveSubscription } from '@/hooks/subscription/useSubscriptionQuery';
-import { useUpdateSubscriptionPeriod } from '@/hooks/subscription/useSubscriptionMutation';
+import {
+  useChangeSubscriptionTier,
+  useExtendSubscription,
+  useRenewSubscription,
+  usePauseSubscription,
+  useCancelSubscription,
+  useCorrectSubscription,
+} from '@/hooks/subscription/useSubscriptionMutation';
 import { ROLE_LABEL } from '@/constants/role';
 import { TIER_LABELS, TIER_OPTIONS, type Tier } from '@/types/subscription';
 import type { UserProfile, WorkspaceMember } from '@/lib/api/userApi';
 import type { Subscription } from '@/lib/api/subscriptionApi';
 import type { ProfileRole } from '@/types/auth';
+
+type SubMode =
+  | 'idle'
+  | 'change_tier'
+  | 'extend'
+  | 'pause'
+  | 'cancel'
+  | 'new'
+  | 'correct';
 
 interface UserDetailModalProps {
   user: UserProfile | null;
@@ -39,18 +55,21 @@ export function UserDetailModal({
   const [pendingRole, setPendingRole] = useState<ProfileRole>('user');
   const [pendingWs, setPendingWs] = useState<string[]>([]);
 
-  // subscription 편집 state — 실제 값은 beginEditSub 에서 activeSub 기준으로 초기화
-  // TODO: 현 계약 종료 후 자동 전환(예약 변경) 지원 — 결제 연동 or 운영 요청 생기면 도입
-  const [editingSub, setEditingSub] = useState(false);
-  const [newTier, setNewTier] = useState<Tier | undefined>(undefined);
-  const [newStartDate, setNewStartDate] = useState<Date | undefined>(undefined);
-  const [newEndDate, setNewEndDate] = useState<Date | undefined>(undefined);
+  // 구독 작업 mode + 작업별 입력값
+  const [subMode, setSubMode] = useState<SubMode>('idle');
+  const [formTier, setFormTier] = useState<Tier | undefined>(undefined);
+  const [formStart, setFormStart] = useState<Date | undefined>(undefined);
+  const [formEnd, setFormEnd] = useState<Date | undefined>(undefined);
 
-  // workspace 검색 state
+  // workspace 검색
   const [wsSearch, setWsSearch] = useState('');
 
   const updateUser = useUpdateUser();
-  const updateSubPeriod = useUpdateSubscriptionPeriod();
+  const changeTier = useChangeSubscriptionTier();
+  const extendSub = useExtendSubscription();
+  const renewSub = useRenewSubscription();
+  const pauseSub = usePauseSubscription();
+  const cancelSub = useCancelSubscription();
 
   const userWorkspaceId =
     user && user.role === 'user'
@@ -63,30 +82,45 @@ export function UserDetailModal({
       ? (fetchedSub ?? null)
       : (initialSubscription ?? null);
 
+  const correctSub = useCorrectSubscription(userWorkspaceId);
+
   useEffect(() => {
     if (user) {
       setPendingRole(user.role);
       setPendingWs(
         members.filter((m) => m.profile_id === user.id).map((m) => m.workspace_id),
       );
-      setEditingSub(false);
-      setNewTier(undefined);
-      setNewStartDate(undefined);
-      setNewEndDate(undefined);
+      resetSubForm();
       setWsSearch('');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
-  // "계약 변경" 진입 시 현재 계약 값으로 초기화 (+ 무기한인 경우 1년 뒤로 가정)
-  const beginEditSub = () => {
-    if (!activeSub) return;
-    const started = parseISO(activeSub.started_at);
-    const ended = activeSub.ended_at ? parseISO(activeSub.ended_at) : addMonths(started, 12);
-    setNewTier(activeSub.tier);
-    setNewStartDate(started);
-    setNewEndDate(ended);
-    setEditingSub(true);
+  const resetSubForm = () => {
+    setSubMode('idle');
+    setFormTier(undefined);
+    setFormStart(undefined);
+    setFormEnd(undefined);
+  };
+
+  const enterMode = (mode: SubMode) => {
+    if (mode === 'change_tier' && activeSub) {
+      setFormTier(activeSub.tier);
+    } else if (mode === 'extend' && activeSub) {
+      setFormEnd(parseISO(activeSub.ended_at));
+    } else if (mode === 'correct' && activeSub) {
+      setFormTier(activeSub.tier);
+      setFormStart(parseISO(activeSub.started_at));
+      setFormEnd(parseISO(activeSub.ended_at));
+    } else if (mode === 'new') {
+      const today = new Date();
+      const oneYearLater = new Date(today);
+      oneYearLater.setFullYear(today.getFullYear() + 1);
+      setFormTier('black_plus');
+      setFormStart(today);
+      setFormEnd(oneYearLater);
+    }
+    setSubMode(mode);
   };
 
   const filteredWs = useMemo(() => {
@@ -103,7 +137,6 @@ export function UserDetailModal({
 
   const isSuperAdmin = myRole === 'super_admin';
   const isUserRole = user.role === 'user';
-  // 편집 권한은 super_admin 단독. 일반 admin 은 열람만.
   const canEditWorkspace = isSuperAdmin;
   const canEditRole = isSuperAdmin;
   const canEditSub = isSuperAdmin;
@@ -117,28 +150,18 @@ export function UserDetailModal({
   const wsChanged =
     JSON.stringify([...pendingWs].sort()) !==
     JSON.stringify([...currentWs].sort());
-  const subChanged = Boolean(
-    editingSub &&
-      newTier &&
-      newStartDate &&
-      newEndDate &&
-      newEndDate > newStartDate &&
-      activeSub &&
-      (newTier !== activeSub.tier ||
-        newStartDate.toISOString() !== activeSub.started_at ||
-        (activeSub.ended_at ?? '') !== newEndDate.toISOString()),
-  );
 
-  const handlePeriodChange = ({ start, end }: { start: Date | undefined; end: Date | undefined }) => {
-    setNewStartDate(start);
-    setNewEndDate(end);
-  };
+  const subBusy =
+    changeTier.isPending ||
+    extendSub.isPending ||
+    renewSub.isPending ||
+    pauseSub.isPending ||
+    cancelSub.isPending ||
+    correctSub.isPending;
+  const saving = updateUser.isPending || subBusy;
 
-  const hasChanges = isUserRole
-    ? roleChanged || subChanged
-    : roleChanged || wsChanged;
-
-  const saving = updateUser.isPending || updateSubPeriod.isPending;
+  // 사용자 역할은 sub 작업이 별도 흐름이므로, 메인 저장은 role 변경만 다룸
+  const hasMainChanges = isUserRole ? roleChanged : roleChanged || wsChanged;
 
   const handleRoleChange = (newRole: ProfileRole) => {
     setPendingRole(newRole);
@@ -167,22 +190,6 @@ export function UserDetailModal({
           wsRemove: [],
         });
       }
-      if (
-        isUserRole &&
-        subChanged &&
-        userWorkspaceId &&
-        activeSub &&
-        newTier &&
-        newStartDate &&
-        newEndDate
-      ) {
-        await updateSubPeriod.mutateAsync({
-          workspaceId: userWorkspaceId,
-          tier: newTier,
-          startedAt: newStartDate.toISOString(),
-          endedAt: newEndDate.toISOString(),
-        });
-      }
       if (!isUserRole && wsChanged && canEditWorkspace) {
         await updateUser.mutateAsync({
           userId: user.id,
@@ -191,10 +198,96 @@ export function UserDetailModal({
         });
       }
       toast.success('변경사항이 저장되었습니다.');
+      onClose();
     } catch {
       toast.error('저장에 실패했습니다.');
-    } finally {
-      onClose();
+    }
+  };
+
+  // ── 구독 액션 핸들러 ──
+
+  const formatErr = (e: unknown) =>
+    e instanceof Error ? e.message : '실패했습니다.';
+
+  const submitChangeTier = async () => {
+    if (!userWorkspaceId || !formTier) return;
+    try {
+      await changeTier.mutateAsync({
+        workspaceId: userWorkspaceId,
+        newTier: formTier,
+      });
+      toast.success('플랜이 변경되었습니다.');
+      resetSubForm();
+    } catch (e) {
+      toast.error(`플랜 변경 실패: ${formatErr(e)}`);
+    }
+  };
+
+  const submitExtend = async () => {
+    if (!userWorkspaceId || !formEnd) return;
+    try {
+      await extendSub.mutateAsync({
+        workspaceId: userWorkspaceId,
+        newEndedAt: formEnd.toISOString(),
+      });
+      toast.success('계약 기간이 연장되었습니다.');
+      resetSubForm();
+    } catch (e) {
+      toast.error(`기간 연장 실패: ${formatErr(e)}`);
+    }
+  };
+
+  const submitNew = async () => {
+    if (!userWorkspaceId || !formTier || !formStart || !formEnd) return;
+    try {
+      await renewSub.mutateAsync({
+        workspaceId: userWorkspaceId,
+        newTier: formTier,
+        newStartedAt: formStart.toISOString(),
+        newEndedAt: formEnd.toISOString(),
+      });
+      toast.success('새 구독이 등록되었습니다.');
+      resetSubForm();
+    } catch (e) {
+      toast.error(`구독 등록 실패: ${formatErr(e)}`);
+    }
+  };
+
+  const submitPause = async () => {
+    if (!userWorkspaceId) return;
+    try {
+      await pauseSub.mutateAsync({ workspaceId: userWorkspaceId });
+      toast.success('구독이 일시 정지되었습니다.');
+      resetSubForm();
+    } catch (e) {
+      toast.error(`정지 실패: ${formatErr(e)}`);
+    }
+  };
+
+  const submitCancel = async () => {
+    if (!userWorkspaceId) return;
+    try {
+      await cancelSub.mutateAsync({ workspaceId: userWorkspaceId });
+      toast.success('구독이 해지되었습니다.');
+      resetSubForm();
+    } catch (e) {
+      toast.error(`해지 실패: ${formatErr(e)}`);
+    }
+  };
+
+  const submitCorrect = async () => {
+    if (!activeSub || !formTier || !formStart || !formEnd) return;
+    try {
+      await correctSub.mutateAsync({
+        subscriptionId: activeSub.id,
+        tier: formTier,
+        startedAt: formStart.toISOString(),
+        endedAt: formEnd.toISOString(),
+      });
+      toast.success('구독 정보가 정정되었습니다.');
+      resetSubForm();
+    } catch (e) {
+      toast.error(`정정 실패: ${formatErr(e)}`);
     }
   };
 
@@ -208,9 +301,9 @@ export function UserDetailModal({
       title="유저 상세"
       size="md"
       footer={
-        isSuperAdmin ? (
-          <Button onClick={handleSave} disabled={saving || !hasChanges} fullWidth>
-            {saving ? '저장 중...' : '수정하기'}
+        isSuperAdmin && hasMainChanges ? (
+          <Button onClick={handleSave} disabled={saving} fullWidth>
+            {saving ? '저장 중...' : '권한·워크스페이스 변경 저장'}
           </Button>
         ) : undefined
       }
@@ -227,7 +320,7 @@ export function UserDetailModal({
           </div>
         </div>
 
-        {canEditRole ? (
+        {canEditRole && !isUserRole ? (
           <div>
             <span className="text-xs font-semibold text-slate-600 mb-2 block">권한</span>
             <div className="flex gap-2">
@@ -263,74 +356,169 @@ export function UserDetailModal({
                   {' · '}
                   {format(parseISO(activeSub.started_at), 'yyyy-MM-dd')}
                   {' ~ '}
-                  {activeSub.ended_at
-                    ? format(parseISO(activeSub.ended_at), 'yyyy-MM-dd')
-                    : '무기한'}
+                  {format(parseISO(activeSub.ended_at), 'yyyy-MM-dd')}
                 </p>
               ) : (
                 <p className="text-sm text-slate-400">활성 구독이 없습니다.</p>
               )}
             </div>
 
-            {activeSub && !editingSub && canEditSub && (
-              <AdminButton
-                variant="secondary"
-                size="sm"
-                onClick={beginEditSub}
-                disabled={saving}
-              >
-                계약 변경
+            {canEditSub && subMode === 'idle' && activeSub && (
+              <div className="flex flex-col gap-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <AdminButton size="sm" variant="primary" onClick={() => enterMode('change_tier')}>
+                    플랜 변경
+                  </AdminButton>
+                  <AdminButton size="sm" variant="primary" onClick={() => enterMode('extend')}>
+                    기간 연장
+                  </AdminButton>
+                  <AdminButton size="sm" variant="secondary" onClick={() => enterMode('pause')}>
+                    일시 정지
+                  </AdminButton>
+                  <AdminButton size="sm" variant="secondary" onClick={() => enterMode('cancel')}>
+                    해지
+                  </AdminButton>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => enterMode('correct')}
+                  className="text-xs text-slate-500 hover:text-slate-700 self-start cursor-pointer"
+                >
+                  ✏ 정보 정정 (오타 수정)
+                </button>
+              </div>
+            )}
+
+            {canEditSub && subMode === 'idle' && !activeSub && (
+              <AdminButton size="sm" variant="primary" onClick={() => enterMode('new')}>
+                새 구독 시작
               </AdminButton>
             )}
 
-            {activeSub && editingSub && canEditSub && (
+            {subMode !== 'idle' && (
               <div className="p-4 bg-slate-50 rounded-lg flex flex-col gap-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-slate-600">계약 변경</span>
+                  <span className="text-xs font-semibold text-slate-600">
+                    {subMode === 'change_tier' && '플랜 변경'}
+                    {subMode === 'extend' && '기간 연장'}
+                    {subMode === 'pause' && '일시 정지 확인'}
+                    {subMode === 'cancel' && '해지 확인'}
+                    {subMode === 'new' && '새 구독'}
+                    {subMode === 'correct' && '정보 정정'}
+                  </span>
                   <button
                     type="button"
-                    onClick={() => {
-                      setEditingSub(false);
-                      setNewTier(undefined);
-                      setNewStartDate(undefined);
-                      setNewEndDate(undefined);
-                    }}
+                    onClick={resetSubForm}
                     className="text-xs text-slate-500 hover:text-slate-700 cursor-pointer"
                   >
                     취소
                   </button>
                 </div>
 
-                <div>
-                  <label className="text-xs text-slate-500 mb-1 block">티어</label>
-                  <div className="grid grid-cols-4 gap-1">
-                    {TIER_OPTIONS.map((t) => (
-                      <button
-                        key={t}
-                        type="button"
-                        onClick={() => setNewTier(t)}
-                        disabled={saving}
-                        className={`text-xs font-semibold py-1.5 rounded-md border transition-colors cursor-pointer ${
-                          newTier === t
-                            ? 'bg-slate-800 text-white border-slate-800'
-                            : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'
-                        }`}
-                      >
-                        {TIER_LABELS[t]}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                {subMode === 'change_tier' && (
+                  <>
+                    <p className="text-xs text-slate-500">
+                      현재 시점부터 새 플랜으로 변경됩니다. 변경 시점 기준으로 현 계약은
+                      종료되고 새 row 가 생성됩니다.
+                    </p>
+                    <TierPicker selected={formTier} onChange={setFormTier} disabled={subBusy} />
+                    <Button onClick={submitChangeTier} disabled={subBusy || !formTier} fullWidth>
+                      {subBusy ? '변경 중...' : '플랜 변경 적용'}
+                    </Button>
+                  </>
+                )}
 
-                <div>
-                  <label className="text-xs text-slate-500 mb-1 block">새 계약 기간</label>
-                  <ContractPeriodPicker
-                    startDate={newStartDate}
-                    endDate={newEndDate}
-                    onChange={handlePeriodChange}
-                    placeholder="시작일 ~ 종료일"
-                  />
-                </div>
+                {subMode === 'extend' && activeSub && (
+                  <>
+                    <p className="text-xs text-slate-500">
+                      현재 종료일{' '}
+                      <span className="font-semibold">
+                        {format(parseISO(activeSub.ended_at), 'yyyy-MM-dd')}
+                      </span>
+                      {' '}이후로만 연장 가능합니다.
+                    </p>
+                    <DateInput value={formEnd} onChange={setFormEnd} disabled={subBusy} label="새 종료일" />
+                    <Button onClick={submitExtend} disabled={subBusy || !formEnd} fullWidth>
+                      {subBusy ? '연장 중...' : '기간 연장'}
+                    </Button>
+                  </>
+                )}
+
+                {subMode === 'pause' && (
+                  <>
+                    <p className="text-xs text-slate-700">
+                      활성 구독을 즉시 정지합니다. 이후 보고서가 생성되지 않으며,
+                      재개하려면 새 구독을 시작해야 합니다.
+                    </p>
+                    <Button onClick={submitPause} disabled={subBusy} fullWidth>
+                      {subBusy ? '정지 중...' : '일시 정지 확인'}
+                    </Button>
+                  </>
+                )}
+
+                {subMode === 'cancel' && (
+                  <>
+                    <p className="text-xs text-red-700">
+                      구독을 즉시 해지합니다. 이후 보고서가 생성되지 않습니다.
+                    </p>
+                    <Button onClick={submitCancel} disabled={subBusy} fullWidth>
+                      {subBusy ? '해지 중...' : '해지 확인'}
+                    </Button>
+                  </>
+                )}
+
+                {subMode === 'new' && (
+                  <>
+                    <TierPicker selected={formTier} onChange={setFormTier} disabled={subBusy} />
+                    <div>
+                      <label className="text-xs text-slate-500 mb-1 block">계약 기간</label>
+                      <ContractPeriodPicker
+                        startDate={formStart}
+                        endDate={formEnd}
+                        onChange={({ start, end }) => {
+                          setFormStart(start);
+                          setFormEnd(end);
+                        }}
+                        placeholder="시작일 ~ 종료일"
+                      />
+                    </div>
+                    <Button
+                      onClick={submitNew}
+                      disabled={subBusy || !formTier || !formStart || !formEnd}
+                      fullWidth
+                    >
+                      {subBusy ? '등록 중...' : '구독 등록'}
+                    </Button>
+                  </>
+                )}
+
+                {subMode === 'correct' && (
+                  <>
+                    <p className="text-xs text-slate-500">
+                      활성 구독의 잘못된 정보를 그대로 수정합니다 (history 안 남음).
+                    </p>
+                    <TierPicker selected={formTier} onChange={setFormTier} disabled={subBusy} />
+                    <div>
+                      <label className="text-xs text-slate-500 mb-1 block">계약 기간</label>
+                      <ContractPeriodPicker
+                        startDate={formStart}
+                        endDate={formEnd}
+                        onChange={({ start, end }) => {
+                          setFormStart(start);
+                          setFormEnd(end);
+                        }}
+                        placeholder="시작일 ~ 종료일"
+                      />
+                    </div>
+                    <Button
+                      onClick={submitCorrect}
+                      disabled={subBusy || !formTier || !formStart || !formEnd}
+                      fullWidth
+                    >
+                      {subBusy ? '저장 중...' : '정정 저장'}
+                    </Button>
+                  </>
+                )}
               </div>
             )}
           </div>
@@ -347,7 +535,6 @@ export function UserDetailModal({
               className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-slate-400"
             />
 
-            {/* 담당 중 */}
             <div>
               <span className="text-[11px] font-semibold text-slate-500 mb-1.5 block">
                 담당 중 ({pendingWs.length}개)
@@ -383,7 +570,6 @@ export function UserDetailModal({
               )}
             </div>
 
-            {/* 미배정 */}
             {canEditWorkspace && (
               <div>
                 <span className="text-[11px] font-semibold text-slate-500 mb-1.5 block">
@@ -422,5 +608,67 @@ export function UserDetailModal({
         )}
       </div>
     </Modal>
+  );
+}
+
+function TierPicker({
+  selected,
+  onChange,
+  disabled,
+}: {
+  selected: Tier | undefined;
+  onChange: (t: Tier) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div>
+      <label className="text-xs text-slate-500 mb-1 block">티어</label>
+      <div className="grid grid-cols-4 gap-1">
+        {TIER_OPTIONS.map((t) => (
+          <button
+            key={t}
+            type="button"
+            onClick={() => onChange(t)}
+            disabled={disabled}
+            className={`text-xs font-semibold py-1.5 rounded-md border transition-colors cursor-pointer ${
+              selected === t
+                ? 'bg-slate-800 text-white border-slate-800'
+                : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'
+            }`}
+          >
+            {TIER_LABELS[t]}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function DateInput({
+  value,
+  onChange,
+  disabled,
+  label,
+}: {
+  value: Date | undefined;
+  onChange: (d: Date | undefined) => void;
+  disabled?: boolean;
+  label: string;
+}) {
+  const isoDate = value ? format(value, 'yyyy-MM-dd') : '';
+  return (
+    <div>
+      <label className="text-xs text-slate-500 mb-1 block">{label}</label>
+      <input
+        type="date"
+        value={isoDate}
+        disabled={disabled}
+        onChange={(e) => {
+          const v = e.target.value;
+          onChange(v ? new Date(`${v}T00:00:00+09:00`) : undefined);
+        }}
+        className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-slate-400"
+      />
+    </div>
   );
 }
