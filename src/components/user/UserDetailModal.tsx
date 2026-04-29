@@ -8,6 +8,7 @@ import { AdminButton } from '@/components/ui/AdminButton';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { ContractPeriodPicker } from '@/components/ui/ContractPeriodPicker';
+import { TierPicker } from '@/components/user/TierPicker';
 import { useUpdateUser } from '@/hooks/user/useUserMutation';
 import { useActiveSubscription } from '@/hooks/subscription/useSubscriptionQuery';
 import {
@@ -19,7 +20,7 @@ import {
   useCorrectSubscription,
 } from '@/hooks/subscription/useSubscriptionMutation';
 import { ROLE_LABEL } from '@/constants/role';
-import { TIER_LABELS, TIER_OPTIONS, type Tier } from '@/types/subscription';
+import { TIER_LABELS, type Tier } from '@/types/subscription';
 import type { UserProfile, WorkspaceMember } from '@/lib/api/userApi';
 import type { Subscription } from '@/lib/api/subscriptionApi';
 import type { ProfileRole } from '@/types/auth';
@@ -421,7 +422,10 @@ export function UserDetailModal({
                       현재 시점부터 새 플랜으로 변경됩니다. 변경 시점 기준으로 현 계약은
                       종료되고 새 row 가 생성됩니다.
                     </p>
-                    <TierPicker selected={formTier} onChange={setFormTier} disabled={subBusy} />
+                    <div>
+                      <label className="text-xs text-slate-500 mb-1 block">티어</label>
+                      <TierPicker value={formTier} onChange={setFormTier} disabled={subBusy} />
+                    </div>
                     <Button onClick={submitChangeTier} disabled={subBusy || !formTier} fullWidth>
                       {subBusy ? '변경 중...' : '플랜 변경 적용'}
                     </Button>
@@ -469,7 +473,10 @@ export function UserDetailModal({
 
                 {subMode === 'new' && (
                   <>
-                    <TierPicker selected={formTier} onChange={setFormTier} disabled={subBusy} />
+                    <div>
+                      <label className="text-xs text-slate-500 mb-1 block">티어</label>
+                      <TierPicker value={formTier} onChange={setFormTier} disabled={subBusy} />
+                    </div>
                     <div>
                       <label className="text-xs text-slate-500 mb-1 block">계약 기간</label>
                       <ContractPeriodPicker
@@ -497,7 +504,10 @@ export function UserDetailModal({
                     <p className="text-xs text-slate-500">
                       활성 구독의 잘못된 정보를 그대로 수정합니다 (history 안 남음).
                     </p>
-                    <TierPicker selected={formTier} onChange={setFormTier} disabled={subBusy} />
+                    <div>
+                      <label className="text-xs text-slate-500 mb-1 block">티어</label>
+                      <TierPicker value={formTier} onChange={setFormTier} disabled={subBusy} />
+                    </div>
                     <div>
                       <label className="text-xs text-slate-500 mb-1 block">계약 기간</label>
                       <ContractPeriodPicker
@@ -608,39 +618,6 @@ export function UserDetailModal({
         )}
       </div>
     </Modal>
-  );
-}
-
-function TierPicker({
-  selected,
-  onChange,
-  disabled,
-}: {
-  selected: Tier | undefined;
-  onChange: (t: Tier) => void;
-  disabled?: boolean;
-}) {
-  return (
-    <div>
-      <label className="text-xs text-slate-500 mb-1 block">티어</label>
-      <div className="grid grid-cols-4 gap-1">
-        {TIER_OPTIONS.map((t) => (
-          <button
-            key={t}
-            type="button"
-            onClick={() => onChange(t)}
-            disabled={disabled}
-            className={`text-xs font-semibold py-1.5 rounded-md border transition-colors cursor-pointer ${
-              selected === t
-                ? 'bg-slate-800 text-white border-slate-800'
-                : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'
-            }`}
-          >
-            {TIER_LABELS[t]}
-          </button>
-        ))}
-      </div>
-    </div>
   );
 }
 

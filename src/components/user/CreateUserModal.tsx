@@ -7,12 +7,9 @@ import { AdminButton } from '@/components/ui/AdminButton';
 import { Modal } from '@/components/ui/Modal';
 import { CompanySearch } from '@/components/ui/CompanySearch';
 import { ContractPeriodPicker } from '@/components/ui/ContractPeriodPicker';
+import { TierPicker } from '@/components/user/TierPicker';
 import { useCreateUser } from '@/hooks/user/useUserMutation';
-import {
-  TIER_LABELS,
-  TIER_OPTIONS,
-  type Tier,
-} from '@/types/subscription';
+import { type Tier } from '@/types/subscription';
 import type { ProfileRole } from '@/types/auth';
 import { getErrorMessage } from '@/lib/utils';
 
@@ -174,17 +171,10 @@ export function CreateUserModal({ open, onClose, myRole }: CreateUserModalProps)
               <label className="text-sm font-semibold text-slate-600 mb-1 block">
                 서비스 티어 <span className="text-red-500">*</span>
               </label>
-              <select
-                value={tier}
-                onChange={(e) => setTier(e.target.value as Tier)}
-                className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2.5 outline-none focus:border-slate-400 bg-white"
-              >
-                {TIER_OPTIONS.map((t) => (
-                  <option key={t} value={t}>
-                    {TIER_LABELS[t]}
-                  </option>
-                ))}
-              </select>
+              <TierPicker value={tier} onChange={setTier} />
+              <p className="mt-2 text-xs text-slate-500">
+                계정 생성 시 최초 보고서가 자동 생성됩니다. 관리자 검토 후 분석 시작 버튼으로 발행하세요.
+              </p>
             </div>
             <div>
               <label className="text-sm font-semibold text-slate-600 mb-1 block">
