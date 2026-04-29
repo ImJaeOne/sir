@@ -16,6 +16,23 @@ export interface Subscription {
   created_at: string;
 }
 
+/** 워크스페이스의 구독 상태 — 'active' | 'grace' | 'expired' (#S4)
+ * - active: 활성 segment 1건 이상 (started_at <= NOW < ended_at)
+ * - grace : 가장 최근 만료 ended_at + 3 months 안쪽 (보고서 read 만 가능)
+ * - expired: grace 도 만료 (보고서 read 차단)
+ * DB 의 subscription_status() 함수와 동일 source of truth. */
+export type SubscriptionStatus = 'active' | 'grace' | 'expired';
+
+export async function getSubscriptionStatus(workspaceId: string): Promise<SubscriptionStatus> {
+  // 마이그 044 의 RPC. database.types.ts 는 적용 후 supabase gen types 로 재생성 예정 — 그 전까진 캐스팅.
+  const { data, error } = await (supabase.rpc as unknown as (
+    fn: string,
+    args: Record<string, unknown>,
+  ) => Promise<{ data: string | null; error: unknown }>)('subscription_status', { ws_id: workspaceId });
+  if (error) throw error;
+  return (data as SubscriptionStatus) ?? 'expired';
+}
+
 /** 워크스페이스의 현재 활성 구독 조회 — started_at <= NOW < ended_at 인 단일 row */
 export async function getActiveSubscription(
   workspaceId: string,

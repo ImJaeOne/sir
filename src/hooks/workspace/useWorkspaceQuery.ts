@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { getWorkspaces, getWorkspace, getWorkspaceProfile, getReports, getReportProgress } from '@/lib/api/workspaceApi';
-import { getActiveSubscription } from '@/lib/api/subscriptionApi';
+import { getActiveSubscription, getSubscriptionStatus } from '@/lib/api/subscriptionApi';
 import { createClient } from '@/lib/supabase/client';
 import { workspaceKeys } from './workspaceKeys';
 
@@ -10,6 +10,15 @@ export function useWorkspaceSubscription(workspaceId: string) {
   return useQuery({
     queryKey: workspaceKeys.subscription(workspaceId),
     queryFn: () => getActiveSubscription(workspaceId),
+    enabled: !!workspaceId,
+  });
+}
+
+/** 구독 상태 — active / grace / expired (#S4) */
+export function useSubscriptionStatus(workspaceId: string) {
+  return useQuery({
+    queryKey: [...workspaceKeys.subscription(workspaceId), 'status'],
+    queryFn: () => getSubscriptionStatus(workspaceId),
     enabled: !!workspaceId,
   });
 }
