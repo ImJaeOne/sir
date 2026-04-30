@@ -1,10 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient as createServerClient } from '@/lib/supabase/server';
 import { createClient } from '@supabase/supabase-js';
 import { getErrorMessage } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
+  // 호출자 권한 검증 — super_admin/admin 만 허용 (audit C8)
+  const supabaseUser = await createServerClient();
+  const { data: { user } } = await supabaseUser.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ detail: '인증 필요' }, { status: 401 });
+  }
+  const { data: profile } = await supabaseUser
+    .from('user_profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+  if (profile?.role !== 'super_admin' && profile?.role !== 'admin') {
+    return NextResponse.json({ detail: '관리자 권한 필요' }, { status: 403 });
+  }
+
   const supabaseAdmin = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
