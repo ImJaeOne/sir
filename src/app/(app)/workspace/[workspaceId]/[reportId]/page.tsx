@@ -94,7 +94,7 @@ function ReportPageContent() {
   const { data: workspace } = useWorkspaceSuspense(workspaceId);
   const { data: report } = useReportInfoSuspense(reportId);
   const { data: progressList } = useReportProgressSuspense(workspaceId);
-  const publishMutation = usePublishReport(reportId);
+  const publishMutation = usePublishReport(reportId, workspaceId);
   const [showPublishConfirm, setShowPublishConfirm] = useState(false);
 
   const isPublished = report?.status === 'published';

@@ -9,6 +9,7 @@ import {
   publishReport,
 } from '@/lib/api/reportApi';
 import { reportKeys } from '@/hooks/report/useReportQuery';
+import { workspaceKeys } from '@/hooks/workspace/workspaceKeys';
 import { getErrorMessage } from '@/lib/utils';
 import type {
   SummarySection,
@@ -47,13 +48,21 @@ export function useUpdateSummary(workspaceId: string, reportId: string) {
 
 // ── 보고서 발행 (관리자) ──
 
-export function usePublishReport(reportId: string) {
+export function usePublishReport(reportId: string, workspaceId?: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: () => publishReport(reportId),
     onSuccess: () => {
+      // 보고서 자체 (status published)
       queryClient.refetchQueries({ queryKey: reportKeys.info(reportId) });
+      // workspace 단위 query — 보고서 목록 / progress / sir_score 갱신.
+      // 발행 시 update_workspace_sir 로 workspaces.sir_score 도 바뀌므로 detail 도 invalidate.
+      if (workspaceId) {
+        queryClient.invalidateQueries({ queryKey: workspaceKeys.reports(workspaceId) });
+        queryClient.invalidateQueries({ queryKey: workspaceKeys.progress(workspaceId) });
+        queryClient.invalidateQueries({ queryKey: workspaceKeys.detail(workspaceId) });
+      }
       toast.success('보고서가 발행되었습니다.');
     },
     onError: (err) => {
