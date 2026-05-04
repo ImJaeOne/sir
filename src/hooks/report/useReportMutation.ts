@@ -81,13 +81,14 @@ export function useClearCriticalType(workspaceId: string) {
 
 // ── 신고 대행 취소 ──
 
-export function useDeleteRiskReport(workspaceId: string, reportId: string) {
+export function useDeleteRiskReport(workspaceId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (riskReportId: string) => deleteRiskReport(riskReportId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: reportKeys.riskReports(workspaceId, reportId) });
+      // riskReports 는 caller 마다 reportId(undefined/''/특정id) 가 달라 prefix 로 일괄 invalidate.
+      queryClient.invalidateQueries({ queryKey: reportKeys.riskReportsAll(workspaceId) });
       toast.success('신고가 취소되었습니다.');
     },
     onError: (err) => {
@@ -105,7 +106,7 @@ export function useSubmitRiskReport(workspaceId: string, reportId: string) {
     mutationFn: (input: Omit<SubmitRiskReportInput, 'workspaceId' | 'reportId'>) =>
       submitRiskReport({ ...input, workspaceId, reportId }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: reportKeys.riskReports(workspaceId, reportId) });
+      queryClient.invalidateQueries({ queryKey: reportKeys.riskReportsAll(workspaceId) });
       toast.success('신고 대행 요청이 접수되었습니다.');
     },
     onError: (err) => {

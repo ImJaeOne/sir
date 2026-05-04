@@ -33,6 +33,8 @@ export const reportKeys = {
   prevReport: (id: string, reportId: string) => ['report', id, 'prevReport', reportId] as const,
   prevDailySnapshot: (id: string, periodEnd?: string) => ['report', id, 'prevDailySnapshot', periodEnd ?? ''] as const,
   riskReports: (id: string, reportId?: string) => ['report', id, 'riskReports', reportId] as const,
+  /** workspace 의 모든 reportId 변형(undefined/''/특정id) 을 한 번에 invalidate 하기 위한 prefix 키. */
+  riskReportsAll: (id: string) => ['report', id, 'riskReports'] as const,
   resolvedRiskReports: (id: string, from: string, to: string) => ['report', id, 'resolvedRiskReports', from, to] as const,
 };
 
