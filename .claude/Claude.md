@@ -11,6 +11,20 @@
 
 Use `@/` for all imports instead of relative paths (e.g. `@/components/Button`)
 
+# React Query 계층 분리
+
+페이지/컴포넌트에 `useQuery`/`useMutation`/`queryClient.invalidateQueries` 직접 사용 금지. 다음 3계층으로 분리:
+
+- `src/lib/api/<domain>Api.ts` — 순수 fetch/supabase 호출. React/react-query 의존성 없음
+- `src/hooks/<domain>/<domain>Keys.ts` — queryKey factory (예: `workspaceKeys`, `userKeys`)
+- `src/hooks/<domain>/use<Domain>Query.ts`, `use<Domain>Mutation.ts` — `useQuery`/`useMutation` 훅. mutation `onSuccess` 안에서 factory 키로 invalidate
+- 페이지/컴포넌트는 훅만 호출
+
+**신규 API 추가 시**: api 함수 → key factory → query/mutation 훅 → 페이지에서 호출 순으로 작성.
+**기존 페이지 수정 시**: 인라인된 `useQuery`/`useMutation`/직접 fetch/직접 supabase 호출이 있으면 같은 작업에서 훅 파일로 이관 (이월 금지).
+
+레퍼런스: `src/hooks/workspace/`, `src/hooks/user/`, `src/hooks/blacklist/`.
+
 # Commit Convention
 
 format: `type(scope): description (#issue-number)`
