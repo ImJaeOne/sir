@@ -98,18 +98,21 @@ export default function CrisisCenterPage() {
     for (const r of reportsList ?? []) m.set(r.id, r.type);
     return m;
   }, [reportsList]);
-  const deleteMutation = useDeleteRiskReport(workspaceId, reportFilter ?? '');
+  const deleteMutation = useDeleteRiskReport(workspaceId);
 
   const [showUpgrade, setShowUpgrade] = useState(false);
 
-  const { reportedSourceIds, riskReportBySourceId } = useMemo(() => {
+  // requested = 사용자가 요청만 한 상태(취소 가능). 그 외(pending/resolved/rejected) = admin 처리 시작 → 취소 불가.
+  const { reportedSourceIds, riskReportBySourceId, processedSourceIds } = useMemo(() => {
     const ids = new Set<string>();
     const map = new Map<string, string>();
+    const processed = new Set<string>();
     for (const rr of riskReports ?? []) {
       ids.add(rr.source_id);
       map.set(rr.source_id, rr.id);
+      if (rr.status !== 'requested') processed.add(rr.source_id);
     }
-    return { reportedSourceIds: ids, riskReportBySourceId: map };
+    return { reportedSourceIds: ids, riskReportBySourceId: map, processedSourceIds: processed };
   }, [riskReports]);
 
   // 리스크 콘텐츠 처리 결과: 신고 등록 이후 모든 단계
@@ -183,6 +186,7 @@ export default function CrisisCenterPage() {
               reportId={selectedReportId}
               reportedSourceIds={reportedSourceIds}
               riskReportBySourceId={riskReportBySourceId}
+              processedSourceIds={processedSourceIds}
               onCancelReport={deleteMutation.mutate}
               allowReport={hasArmor}
               sessionToReportMap={sessionToReportMap ?? undefined}

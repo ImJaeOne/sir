@@ -12,6 +12,7 @@ import { NewsIcon } from '@/components/icons/NewsIcon';
 import { BlogIcon } from '@/components/icons/BlogIcon';
 import { CommunityIcon } from '@/components/icons/CommunityIcon';
 import { useUpdateStrategies } from '@/hooks/report/useReportMutation';
+import { toDisplayPlatform } from '@/components/report/strategy/platformLabel';
 import type { StrategyGroup, StrategyData } from '@/lib/api/reportApi';
 
 const CHANNEL_TABS = [
@@ -205,9 +206,15 @@ export function EditableStrategy({ strategies, workspaceId, reportId, channelDes
                   <div key={aIdx} className="mt-3">
                     <EditableText
                       editing={editing}
-                      value={`[${action.platform}] ${action.topic}`}
+                      value={`[${toDisplayPlatform(action.platform)}] ${action.topic}`}
                       onChange={(v) => {
                         const match = v.match(/^\[(.+?)\]\s*(.*)$/);
+                        const editedDisplay = match?.[1];
+                        // 표시값(SNS 등 매핑 결과)을 안 건드렸다면 원본 platform 보존, 바꿨다면 새 값 사용.
+                        const newPlatform =
+                          editedDisplay === toDisplayPlatform(action.platform)
+                            ? action.platform
+                            : editedDisplay ?? action.platform;
                         update(activeKey, (s) => ({
                           ...s,
                           proposal: {
@@ -216,7 +223,7 @@ export function EditableStrategy({ strategies, workspaceId, reportId, channelDes
                               k === aIdx
                                 ? {
                                     ...a,
-                                    platform: match?.[1] ?? a.platform,
+                                    platform: newPlatform,
                                     topic: match?.[2] ?? v,
                                   }
                                 : a

@@ -19,7 +19,11 @@ import {
 import { useReportInfoSuspense } from '@/hooks/report/useReportQuery';
 import { usePublishReport } from '@/hooks/report/useReportMutation';
 import { getClientReportSections } from '@/components/client/sidebar/sections';
-import { ACTIVE_PLATFORMS, isAllPlatformsDone } from '@/lib/api/workspaceApi';
+import {
+  ACTIVE_PLATFORMS,
+  isAllPlatformsDone,
+  WEEKLY_REQUIRED_CATEGORIES,
+} from '@/lib/api/workspaceApi';
 
 const PLATFORM_LABELS: Record<string, string> = {
   naver_news: '뉴스',
@@ -90,7 +94,7 @@ function ReportPageContent() {
   const { data: workspace } = useWorkspaceSuspense(workspaceId);
   const { data: report } = useReportInfoSuspense(reportId);
   const { data: progressList } = useReportProgressSuspense(workspaceId);
-  const publishMutation = usePublishReport(reportId);
+  const publishMutation = usePublishReport(reportId, workspaceId);
   const [showPublishConfirm, setShowPublishConfirm] = useState(false);
 
   const isPublished = report?.status === 'published';
@@ -98,12 +102,18 @@ function ReportPageContent() {
   const isDaily = report?.type === 'daily';
 
   const progress = progressList?.find((p) => p.reportId === reportId);
-  const platformsOk = isAllPlatformsDone(progress);
+  const platformsOk = isAllPlatformsDone(progress, report?.type);
   const failedPlatforms = useMemo(() => {
     if (!progress) return [] as string[];
+    if (report?.type === 'weekly') {
+      // weekly 컴파일 보고서는 sessions 매핑 없음 → strategies 4종 미완료를 라벨로.
+      return WEEKLY_REQUIRED_CATEGORIES.filter(
+        (c) => !progress.strategies.some((s) => s.category === c && s.status === 'done'),
+      ) as unknown as string[];
+    }
     const map = new Map(progress.sessions.map((s) => [s.platform_id, s]));
     return ACTIVE_PLATFORMS.filter((p) => map.get(p)?.status !== 'done');
-  }, [progress]);
+  }, [progress, report?.type]);
 
   const sections = useMemo(() => getClientReportSections(report?.type), [report?.type]);
   const sectionParam = searchParams?.get('section');

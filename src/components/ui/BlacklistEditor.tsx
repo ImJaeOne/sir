@@ -1,7 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { Search } from 'lucide-react';
+import { useState } from 'react';
 
 interface BlacklistEditorProps {
   title: string;
@@ -12,12 +11,11 @@ interface BlacklistEditorProps {
   onRemove: (value: string) => void;
 }
 
-// 항목이 이 수치를 넘으면 칩 영역을 스크롤 컨테이너로 가두고 검색 필터를 노출.
-const SEARCH_THRESHOLD = 10;
+// 항목이 이 수치를 넘으면 칩 영역을 스크롤 컨테이너로 가둠.
+const SCROLL_THRESHOLD = 10;
 
 export function BlacklistEditor({ title, description, placeholder, items, onAdd, onRemove }: BlacklistEditorProps) {
   const [input, setInput] = useState('');
-  const [filter, setFilter] = useState('');
 
   const handleAdd = () => {
     const v = input.trim();
@@ -26,13 +24,7 @@ export function BlacklistEditor({ title, description, placeholder, items, onAdd,
     setInput('');
   };
 
-  const filteredItems = useMemo(() => {
-    const q = filter.trim();
-    if (!q) return items;
-    return items.filter((it) => it.includes(q));
-  }, [items, filter]);
-
-  const showSearch = items.length > SEARCH_THRESHOLD;
+  const isScrollable = items.length > SCROLL_THRESHOLD;
 
   return (
     <div className="flex flex-col gap-2">
@@ -74,47 +66,27 @@ export function BlacklistEditor({ title, description, placeholder, items, onAdd,
         </button>
       </div>
 
-      {showSearch && (
-        <div className="relative mt-1">
-          <Search
-            size={13}
-            className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
-          />
-          <input
-            type="text"
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            placeholder="목록에서 검색"
-            className="w-full text-xs border border-slate-200 rounded-lg pl-7 pr-2 py-1.5 outline-none focus:border-blue-400 transition-colors"
-          />
-        </div>
-      )}
-
       {items.length > 0 && (
         <div
           className={`flex flex-wrap gap-1.5 mt-1 ${
-            showSearch ? 'max-h-[180px] overflow-y-auto pr-1' : ''
+            isScrollable ? 'max-h-[180px] overflow-y-auto pr-1' : ''
           }`}
         >
-          {filteredItems.length === 0 ? (
-            <p className="text-[11px] text-slate-400 py-2">검색 결과 없음</p>
-          ) : (
-            filteredItems.map((item) => (
-              <span
-                key={item}
-                className="inline-flex items-center gap-1 bg-red-50 text-red-700 px-2.5 py-1 rounded-lg text-xs font-medium"
+          {items.map((item) => (
+            <span
+              key={item}
+              className="inline-flex items-center gap-1 bg-red-50 text-red-700 px-2.5 py-1 rounded-lg text-xs font-medium"
+            >
+              {item}
+              <button
+                type="button"
+                onClick={() => onRemove(item)}
+                className="hover:text-red-900 cursor-pointer ml-0.5"
               >
-                {item}
-                <button
-                  type="button"
-                  onClick={() => onRemove(item)}
-                  className="hover:text-red-900 cursor-pointer ml-0.5"
-                >
-                  &times;
-                </button>
-              </span>
-            ))
-          )}
+                &times;
+              </button>
+            </span>
+          ))}
         </div>
       )}
     </div>

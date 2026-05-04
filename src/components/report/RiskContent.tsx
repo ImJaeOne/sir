@@ -33,17 +33,19 @@ export function RiskContent({ workspaceId, reportId, editable = false, allowRepo
   const { data: riskItems } = useRiskItemsSuspense(workspaceId, reportId);
   const { data: riskReports } = useRiskReportsSuspense(workspaceId, reportId);
   const { data: subscription } = useWorkspaceSubscription(workspaceId);
-  const deleteMutation = useDeleteRiskReport(workspaceId, reportId);
+  const deleteMutation = useDeleteRiskReport(workspaceId);
   const [showUpgrade, setShowUpgrade] = useState(false);
 
-  const { reportedSourceIds, riskReportBySourceId } = useMemo(() => {
+  const { reportedSourceIds, riskReportBySourceId, processedSourceIds } = useMemo(() => {
     const ids = new Set<string>();
     const map = new Map<string, string>();
+    const processed = new Set<string>();
     for (const rr of riskReports) {
       ids.add(rr.source_id);
       map.set(rr.source_id, rr.id);
+      if (rr.status !== 'requested') processed.add(rr.source_id);
     }
-    return { reportedSourceIds: ids, riskReportBySourceId: map };
+    return { reportedSourceIds: ids, riskReportBySourceId: map, processedSourceIds: processed };
   }, [riskReports]);
 
   const isDaily = report?.type === 'daily';
@@ -62,6 +64,7 @@ export function RiskContent({ workspaceId, reportId, editable = false, allowRepo
             reportId={reportId}
             reportedSourceIds={reportedSourceIds}
             riskReportBySourceId={riskReportBySourceId}
+            processedSourceIds={processedSourceIds}
             onCancelReport={deleteMutation.mutate}
             editable={editable}
             allowReport={effectiveAllowReport}

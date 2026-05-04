@@ -33,6 +33,8 @@ export const reportKeys = {
   prevReport: (id: string, reportId: string) => ['report', id, 'prevReport', reportId] as const,
   prevDailySnapshot: (id: string, periodEnd?: string) => ['report', id, 'prevDailySnapshot', periodEnd ?? ''] as const,
   riskReports: (id: string, reportId?: string) => ['report', id, 'riskReports', reportId] as const,
+  /** workspace 의 모든 reportId 변형(undefined/''/특정id) 을 한 번에 invalidate 하기 위한 prefix 키. */
+  riskReportsAll: (id: string) => ['report', id, 'riskReports'] as const,
   resolvedRiskReports: (id: string, from: string, to: string) => ['report', id, 'resolvedRiskReports', from, to] as const,
 };
 
@@ -112,11 +114,19 @@ export function useNewsClusters(workspaceId: string, reportId?: string) {
   });
 }
 
-/** channelItems에서 파생 — channelItems 캐시 필요 */
-export function useChannelStats(workspaceId: string, channelItems?: ChannelItem[], reportId?: string) {
+/** channelItems(감정 집계) + period 기반 daily_platform_stats(채널별 SIR) 파생.
+ *  주간/월간 보고서도 정확한 채널별 SIR 표시되도록 period 필수.
+ */
+export function useChannelStats(
+  workspaceId: string,
+  channelItems?: ChannelItem[],
+  reportId?: string,
+  periodStart?: string,
+  periodEnd?: string,
+) {
   return useQuery({
-    queryKey: [...reportKeys.channelStats(workspaceId), reportId],
-    queryFn: () => getChannelStats(workspaceId, channelItems!, reportId),
+    queryKey: [...reportKeys.channelStats(workspaceId), reportId, periodStart, periodEnd],
+    queryFn: () => getChannelStats(workspaceId, channelItems!, reportId, periodStart, periodEnd),
     enabled: !!workspaceId && !!channelItems,
     ...REPORT_OPTS,
   });
@@ -252,10 +262,16 @@ export function useNewsClustersSuspense(workspaceId: string, reportId?: string) 
   });
 }
 
-export function useChannelStatsSuspense(workspaceId: string, channelItems: ChannelItem[], reportId?: string) {
+export function useChannelStatsSuspense(
+  workspaceId: string,
+  channelItems: ChannelItem[],
+  reportId?: string,
+  periodStart?: string,
+  periodEnd?: string,
+) {
   return useSuspenseQuery({
-    queryKey: [...reportKeys.channelStats(workspaceId), reportId],
-    queryFn: () => getChannelStats(workspaceId, channelItems, reportId),
+    queryKey: [...reportKeys.channelStats(workspaceId), reportId, periodStart, periodEnd],
+    queryFn: () => getChannelStats(workspaceId, channelItems, reportId, periodStart, periodEnd),
     ...REPORT_OPTS,
   });
 }

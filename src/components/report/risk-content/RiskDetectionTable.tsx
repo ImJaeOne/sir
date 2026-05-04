@@ -11,6 +11,7 @@ interface RiskDetectionTableProps {
   reportId: string;
   reportedSourceIds: Set<string>;
   riskReportBySourceId: Map<string, string>;
+  processedSourceIds?: Set<string>;
   onCancelReport: (riskReportId: string) => void;
   editable?: boolean;
   allowReport?: boolean;
@@ -24,6 +25,7 @@ export function RiskDetectionTable({
   reportId,
   reportedSourceIds,
   riskReportBySourceId,
+  processedSourceIds,
   onCancelReport,
   editable = false,
   allowReport = false,
@@ -43,6 +45,7 @@ export function RiskDetectionTable({
           reportId={reportId}
           reportedSourceIds={reportedSourceIds}
           riskReportBySourceId={riskReportBySourceId}
+          processedSourceIds={processedSourceIds}
           onCancelReport={onCancelReport}
           editable={editable}
           allowReport={allowReport}

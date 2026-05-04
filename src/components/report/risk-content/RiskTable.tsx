@@ -59,6 +59,8 @@ interface RiskTableProps {
   reportId: string;
   reportedSourceIds: Set<string>;
   riskReportBySourceId: Map<string, string>;
+  /** status !== 'requested' 인 항목 — admin 처리 시작됨, 사용자 취소 불가. */
+  processedSourceIds?: Set<string>;
   onCancelReport: (riskReportId: string) => void;
   editable?: boolean;
   allowReport?: boolean;
@@ -82,6 +84,7 @@ export function RiskTable({
   reportId,
   reportedSourceIds,
   riskReportBySourceId,
+  processedSourceIds,
   onCancelReport,
   editable = false,
   allowReport = false,
@@ -324,7 +327,11 @@ export function RiskTable({
                                 {clearingId === item.id ? '해제 중...' : '리스크 해제'}
                               </Badge>
                             </button>
-                          ) : !allowReport ? null : reportedSourceIds.has(item.id) ? (
+                          ) : !allowReport ? null : processedSourceIds?.has(item.id) ? (
+                            <Badge variant="amber" className="px-3 py-1.5">
+                              결과 대기 중
+                            </Badge>
+                          ) : reportedSourceIds.has(item.id) ? (
                             <button
                               type="button"
                               onClick={() => {
@@ -452,7 +459,11 @@ export function RiskTable({
                     >
                       {clearingId === item.id ? '해제 중...' : '리스크 해제'}
                     </button>
-                  ) : !allowReport ? null : reportedSourceIds.has(item.id) ? (
+                  ) : !allowReport ? null : processedSourceIds?.has(item.id) ? (
+                    <div className="w-full py-2.5 rounded-xl text-xs font-semibold bg-amber-50 text-amber-700 text-center">
+                      결과 대기 중
+                    </div>
+                  ) : reportedSourceIds.has(item.id) ? (
                     <button
                       type="button"
                       onClick={() => {

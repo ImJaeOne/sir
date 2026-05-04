@@ -395,15 +395,24 @@ const CHANNEL_CONFIG: { id: string; label: string; color: string }[] = [
   { id: 'community', label: '커뮤니티', color: '#22c55e' },
 ];
 
-/** channelItems + sessions 캐시에서 channelStats를 파생 (카테고리 기반) */
+/** channelItems(감정 집계) + daily_platform_stats(채널별 SIR 평균) 으로 채널 통계 산출.
+ *
+ * 이전: sessions.sir_score 평균 — 주간/월간 보고서엔 sessions.report_id 매칭이 0건이라
+ *       모든 채널이 500 default 로 폴백되는 버그.
+ * 이후: 보고서 기간(period_start~period_end) 안의 daily_platform_stats.sir_score 평균.
+ *       getPrevDailySnapshot 도 같은 source 라 "전일 대비" 비교가 일관됨.
+ */
 export async function getChannelStats(
   workspaceId: string,
   channelItems: ChannelItem[],
-  reportId?: string
+  reportId?: string,
+  periodStart?: string,
+  periodEnd?: string,
 ): Promise<ChannelStat[]> {
   // channelItems가 이미 report-scoped이므로 비어있으면 빈 stats 반환
   if (channelItems.length === 0 && reportId) return [];
-  // 채널별 감정 집계
+
+  // 채널별 감정 집계 (positive/negative/neutral count)
   const byChannel = new Map<string, { positive: number; negative: number; neutral: number }>();
   for (const item of channelItems) {
     const channel = PLATFORM_TO_CHANNEL[item.platform_id] ?? item.platform_id;
@@ -416,26 +425,29 @@ export async function getChannelStats(
     else counts.neutral++;
   }
 
-  // 세션별 SIR → 카테고리별 평균
-  let sessionsQuery = supabase
-    .from('sessions')
-    .select('platform_id, sir_score')
-    .eq('workspace_id', workspaceId)
-    .eq('status', 'done')
-    .order('created_at', { ascending: false });
-
-  if (reportId) {
-    sessionsQuery = sessionsQuery.eq('report_id', reportId);
-  }
-
-  const { data: sessions } = await sessionsQuery;
-
+  // 채널별 SIR 평균 — 보고서 기간 daily_platform_stats 사용
   const sirByChannel = new Map<string, number[]>();
-  for (const s of sessions ?? []) {
-    if (s.sir_score == null || !s.platform_id) continue;
-    const channel = PLATFORM_TO_CHANNEL[s.platform_id] ?? s.platform_id;
-    if (!sirByChannel.has(channel)) sirByChannel.set(channel, []);
-    sirByChannel.get(channel)!.push(s.sir_score);
+  if (periodStart && periodEnd) {
+    const { data: snaps } = await supabase
+      .from('daily_snapshots')
+      .select('id')
+      .eq('workspace_id', workspaceId)
+      .gte('date', periodStart)
+      .lte('date', periodEnd);
+    const snapIds = (snaps ?? []).map((s) => s.id);
+    if (snapIds.length > 0) {
+      const { data: dps } = await supabase
+        .from('daily_platform_stats')
+        .select('platform_id, sir_score')
+        .in('daily_snapshot_id', snapIds)
+        .not('sir_score', 'is', null);
+      for (const r of dps ?? []) {
+        if (r.sir_score == null || !r.platform_id) continue;
+        const channel = PLATFORM_TO_CHANNEL[r.platform_id] ?? r.platform_id;
+        if (!sirByChannel.has(channel)) sirByChannel.set(channel, []);
+        sirByChannel.get(channel)!.push(r.sir_score);
+      }
+    }
   }
 
   return CHANNEL_CONFIG.map((c) => {
