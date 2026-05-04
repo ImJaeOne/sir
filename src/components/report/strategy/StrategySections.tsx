@@ -2,6 +2,7 @@
 
 import { CheckListIcon } from '@/components/icons/CheckListIcon';
 import type { StrategyData } from '@/lib/api/reportApi';
+import { toDisplayPlatform } from '@/components/report/strategy/platformLabel';
 
 interface StrategySectionsProps {
   strategy: StrategyData;
@@ -60,7 +61,7 @@ export function StrategySections({ strategy }: StrategySectionsProps) {
           {proposal.actions.map((action, i) => (
             <div key={i}>
               <p className="font-bold text-text-accent mb-1 text-[14px] lg:text-sm">
-                [{action.platform}] {action.topic}
+                [{toDisplayPlatform(action.platform)}] {action.topic}
               </p>
               <ul className="flex flex-col gap-1">
                 {action.contents.map((content, j) => (
@@ -74,7 +75,6 @@ export function StrategySections({ strategy }: StrategySectionsProps) {
           ))}
         </div>
       </SectionBlock>
-
     </div>
   );
 }
