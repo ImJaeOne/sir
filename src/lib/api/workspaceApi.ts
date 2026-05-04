@@ -275,12 +275,25 @@ export async function getReportProgress(workspaceId: string): Promise<ReportProg
 // 활성 플랫폼 목록 — 백엔드 config.ACTIVE_PLATFORMS 와 동기화 유지
 export const ACTIVE_PLATFORMS = ['naver_news', 'naver_blog', 'youtube', 'naver_stock'] as const;
 
-/** 활성 플랫폼 중 done 이 아닌 세션이 하나라도 있으면 false */
-export function isAllPlatformsDone(progress: ReportProgress | undefined): boolean {
+/** 활성 플랫폼 중 done 이 아닌 세션이 하나라도 있으면 false.
+ *
+ * weekly 보고서는 sessions 가 자기 report_id 로 매핑되지 않음(daily report 들의 컴파일물) →
+ * strategies 4종(news/sns/community/summary) 이 모두 done 이면 발행 가능 상태로 판단.
+ */
+const WEEKLY_REQUIRED_CATEGORIES = ['news', 'sns', 'community', 'summary'] as const;
+
+export function isAllPlatformsDone(progress: ReportProgress | undefined, reportType?: string): boolean {
   if (!progress) return false;
+  if (reportType === 'weekly') {
+    return WEEKLY_REQUIRED_CATEGORIES.every((c) =>
+      progress.strategies.some((s) => s.category === c && s.status === 'done'),
+    );
+  }
   const map = new Map(progress.sessions.map(s => [s.platform_id, s]));
   return ACTIVE_PLATFORMS.every(p => map.get(p)?.status === 'done');
 }
+
+export { WEEKLY_REQUIRED_CATEGORIES };
 
 export async function updateWorkspaceProfile(
   workspaceId: string,

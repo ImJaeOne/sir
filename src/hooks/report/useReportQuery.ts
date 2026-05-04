@@ -114,11 +114,19 @@ export function useNewsClusters(workspaceId: string, reportId?: string) {
   });
 }
 
-/** channelItems에서 파생 — channelItems 캐시 필요 */
-export function useChannelStats(workspaceId: string, channelItems?: ChannelItem[], reportId?: string) {
+/** channelItems(감정 집계) + period 기반 daily_platform_stats(채널별 SIR) 파생.
+ *  주간/월간 보고서도 정확한 채널별 SIR 표시되도록 period 필수.
+ */
+export function useChannelStats(
+  workspaceId: string,
+  channelItems?: ChannelItem[],
+  reportId?: string,
+  periodStart?: string,
+  periodEnd?: string,
+) {
   return useQuery({
-    queryKey: [...reportKeys.channelStats(workspaceId), reportId],
-    queryFn: () => getChannelStats(workspaceId, channelItems!, reportId),
+    queryKey: [...reportKeys.channelStats(workspaceId), reportId, periodStart, periodEnd],
+    queryFn: () => getChannelStats(workspaceId, channelItems!, reportId, periodStart, periodEnd),
     enabled: !!workspaceId && !!channelItems,
     ...REPORT_OPTS,
   });
@@ -254,10 +262,16 @@ export function useNewsClustersSuspense(workspaceId: string, reportId?: string) 
   });
 }
 
-export function useChannelStatsSuspense(workspaceId: string, channelItems: ChannelItem[], reportId?: string) {
+export function useChannelStatsSuspense(
+  workspaceId: string,
+  channelItems: ChannelItem[],
+  reportId?: string,
+  periodStart?: string,
+  periodEnd?: string,
+) {
   return useSuspenseQuery({
-    queryKey: [...reportKeys.channelStats(workspaceId), reportId],
-    queryFn: () => getChannelStats(workspaceId, channelItems, reportId),
+    queryKey: [...reportKeys.channelStats(workspaceId), reportId, periodStart, periodEnd],
+    queryFn: () => getChannelStats(workspaceId, channelItems, reportId, periodStart, periodEnd),
     ...REPORT_OPTS,
   });
 }

@@ -28,7 +28,13 @@ export function OnlineReputation({ workspaceId, reportId, pdfMode = false }: Onl
   const { data: report } = useReportInfoSuspense(reportId);
   const { data: searchTrend } = useSearchTrendSuspense(workspaceId, reportId);
   const { data: channelItems } = useChannelItemsSuspense(workspaceId, reportId);
-  const { data: channelStats } = useChannelStatsSuspense(workspaceId, channelItems, reportId);
+  const { data: channelStats } = useChannelStatsSuspense(
+    workspaceId,
+    channelItems,
+    reportId,
+    report?.period_start,
+    report?.period_end,
+  );
   const { data: newsClusters } = useNewsClustersSuspense(workspaceId, reportId);
   const { data: prevReport } = usePrevReportSuspense(workspaceId, reportId);
 
