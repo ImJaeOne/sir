@@ -202,6 +202,34 @@ export async function getReportInfo(reportId: string) {
   return data;
 }
 
+// ── 리포트 생성 (관리자 전용) ──
+
+export interface CreatedReport {
+  period_start: string;
+  period_end: string;
+}
+
+export async function createReport(workspaceId: string): Promise<CreatedReport> {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (!session) throw new Error('로그인이 필요합니다.');
+
+  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/report`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${session.access_token}`,
+    },
+    body: JSON.stringify({ workspace_id: workspaceId }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail ?? '보고서 생성 실패');
+  }
+  return res.json();
+}
+
 // ── 리포트 발행 (관리자 전용) ──
 
 export async function publishReport(reportId: string): Promise<void> {
@@ -300,7 +328,7 @@ export async function getSirStockData(
 ): Promise<SirStockPoint[]> {
   let snapshotQuery = supabase
     .from('daily_snapshots')
-    .select('date, sir_score')
+    .select('date, sir_score, is_carried')
     .eq('workspace_id', workspaceId)
     .order('date');
   let stockQuery = supabase
@@ -325,8 +353,10 @@ export async function getSirStockData(
   const [snapshotsRes, stockRes] = await Promise.all([snapshotQuery, stockQuery]);
 
   const sirMap = new Map<string, number>();
+  const carriedSet = new Set<string>();
   for (const s of snapshotsRes.data ?? []) {
     if (s.sir_score != null) sirMap.set(s.date, s.sir_score);
+    if (s.is_carried) carriedSet.add(s.date);
   }
 
   const stockMap = new Map<
@@ -346,18 +376,12 @@ export async function getSirStockData(
   const sorted = Array.from(allDates).sort();
   const sirValues = sorted.map((date) => sirMap.get(date) ?? null);
 
-  // 3일 이동평균
-  const sirMA = sirValues.map((_, i) => {
-    const window = sirValues.slice(Math.max(0, i - 2), i + 1).filter((v): v is number => v != null);
-    return window.length
-      ? Math.round((window.reduce((a, b) => a + b, 0) / window.length) * 10) / 10
-      : null;
-  });
-
+  // [임시 검증] 3일 이동평균 비활성화 — raw sir_score 그대로 차트 표시
   return sorted.map((date, i) => ({
     date: date.slice(5),
     fullDate: date,
-    sir: sirMA[i],
+    sir: sirValues[i],
+    isCarried: carriedSet.has(date),
     open_price: stockMap.get(date)?.open_price ?? null,
     high_price: stockMap.get(date)?.high_price ?? null,
     low_price: stockMap.get(date)?.low_price ?? null,
@@ -1153,6 +1177,32 @@ export async function submitRiskReport(input: SubmitRiskReportInput): Promise<vo
     status: 'requested',
   });
   if (error) throw error;
+}
+
+// ── 검색 트렌드 업로드 (관리자 전용) ──
+
+export interface UploadSearchTrendInput {
+  workspaceId: string;
+  reportId: string;
+  provider: 'google' | 'naver';
+  trendData: { date: string; ratio: number }[];
+}
+
+export async function uploadSearchTrend(input: UploadSearchTrendInput): Promise<void> {
+  const res = await fetch('/api/admin/upload-search-trend', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      report_id: input.reportId,
+      workspace_id: input.workspaceId,
+      provider: input.provider,
+      trend_data: input.trendData,
+    }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail ?? '업로드 실패');
+  }
 }
 
 export async function updateRiskReport(

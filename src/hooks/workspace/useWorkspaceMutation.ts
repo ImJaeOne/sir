@@ -1,18 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { deleteWorkspace, updateWorkspaceProfile } from '@/lib/api/workspaceApi';
+import { updateWorkspaceProfile } from '@/lib/api/workspaceApi';
 import { retryFailedReport } from '@/lib/api/reportApi';
 import { workspaceKeys } from '@/hooks/workspace/workspaceKeys';
-
-export function useDeleteWorkspace() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (id: string) => deleteWorkspace(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: workspaceKeys.all });
-    },
-  });
-}
 
 export function useUpdateWorkspaceProfile(workspaceId: string) {
   const queryClient = useQueryClient();

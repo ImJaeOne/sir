@@ -7,6 +7,9 @@ import {
   deleteRiskReport,
   submitRiskReport,
   publishReport,
+  createReport,
+  updateRiskReport,
+  uploadSearchTrend,
 } from '@/lib/api/reportApi';
 import { reportKeys } from '@/hooks/report/useReportQuery';
 import { workspaceKeys } from '@/hooks/workspace/workspaceKeys';
@@ -16,6 +19,7 @@ import type {
   StrategyGroup,
   RiskItem,
   SubmitRiskReportInput,
+  CreatedReport,
 } from '@/lib/api/reportApi';
 
 // ── 주간 총평 수정 ──
@@ -46,9 +50,22 @@ export function useUpdateSummary(workspaceId: string, reportId: string) {
   });
 }
 
+// ── 보고서 생성 (관리자) ──
+
+export function useCreateReport(workspaceId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation<CreatedReport, Error, void>({
+    mutationFn: () => createReport(workspaceId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: workspaceKeys.reports(workspaceId) });
+    },
+  });
+}
+
 // ── 보고서 발행 (관리자) ──
 
-export function usePublishReport(reportId: string, workspaceId?: string) {
+export function usePublishReport(reportId: string, workspaceId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -58,11 +75,9 @@ export function usePublishReport(reportId: string, workspaceId?: string) {
       queryClient.refetchQueries({ queryKey: reportKeys.info(reportId) });
       // workspace 단위 query — 보고서 목록 / progress / sir_score 갱신.
       // 발행 시 update_workspace_sir 로 workspaces.sir_score 도 바뀌므로 detail 도 invalidate.
-      if (workspaceId) {
-        queryClient.invalidateQueries({ queryKey: workspaceKeys.reports(workspaceId) });
-        queryClient.invalidateQueries({ queryKey: workspaceKeys.progress(workspaceId) });
-        queryClient.invalidateQueries({ queryKey: workspaceKeys.detail(workspaceId) });
-      }
+      queryClient.invalidateQueries({ queryKey: workspaceKeys.reports(workspaceId) });
+      queryClient.invalidateQueries({ queryKey: workspaceKeys.progress(workspaceId) });
+      queryClient.invalidateQueries({ queryKey: workspaceKeys.detail(workspaceId) });
       toast.success('보고서가 발행되었습니다.');
     },
     onError: (err) => {
@@ -102,6 +117,47 @@ export function useDeleteRiskReport(workspaceId: string) {
     },
     onError: (err) => {
       toast.error(getErrorMessage(err, '신고 대행 취소에 실패했습니다.'));
+    },
+  });
+}
+
+// ── 검색 트렌드 업로드 (관리자) ──
+
+interface UploadSearchTrendVars {
+  provider: 'google' | 'naver';
+  trendData: { date: string; ratio: number }[];
+}
+
+export function useUploadSearchTrend(workspaceId: string, reportId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (vars: UploadSearchTrendVars) =>
+      uploadSearchTrend({ workspaceId, reportId, ...vars }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: reportKeys.searchTrend(workspaceId, reportId) });
+    },
+  });
+}
+
+// ── 신고 처리 상태 변경 (관리자) ──
+
+interface UpdateRiskReportInput {
+  id: string;
+  body: { status?: string; admin_note?: string };
+}
+
+/** admin 의 status/메모 변경. workspace 단위 riskReports 캐시 + admin '_all' 모드 캐시 +
+ *  보고서 결과 섹션의 resolved 캐시까지 일괄 invalidate. */
+export function useUpdateRiskReport(workspaceId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, body }: UpdateRiskReportInput) => updateRiskReport(id, body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: reportKeys.riskReportsAll(workspaceId) });
+      queryClient.invalidateQueries({ queryKey: reportKeys.riskReportsAll('_all') });
+      queryClient.invalidateQueries({ queryKey: reportKeys.resolvedRiskReportsAll(workspaceId) });
     },
   });
 }

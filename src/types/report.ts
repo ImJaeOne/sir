@@ -75,6 +75,8 @@ export const sirStockPointSchema = z.object({
   date: z.string(),
   fullDate: z.string(),
   sir: z.number().nullable(),
+  /** 직전 일자에서 carry-forward 된 일자 (raw 0건). 차트에서 ○ 마커로 표시. */
+  isCarried: z.boolean(),
   open_price: z.number().nullable(),
   high_price: z.number().nullable(),
   low_price: z.number().nullable(),
