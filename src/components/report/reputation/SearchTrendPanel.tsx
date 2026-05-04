@@ -1,16 +1,15 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useRef } from 'react';
 import { toast } from 'sonner';
 import { Upload } from 'lucide-react';
-import { useQueryClient } from '@tanstack/react-query';
 import { ReportCard } from '@/components/report/ReportCard';
 import { ReportSubSection } from '@/components/report/ReportSection';
 import { ChartLegend } from '@/components/ui/ChartLegend';
 import { SearchTrendChart } from '@/components/chart/SearchTrendChart';
 import { MobileSearchTrendChart } from '@/components/chart/MobileSearchTrendChart';
 import { useMyRole } from '@/hooks/user/useUserQuery';
-import { reportKeys } from '@/hooks/report/useReportQuery';
+import { useUploadSearchTrend } from '@/hooks/report/useReportMutation';
 import { getErrorMessage } from '@/lib/utils';
 
 const DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토'];
@@ -72,8 +71,7 @@ export function SearchTrendPanel({
   const { data: myRole = 'user' } = useMyRole();
   const canUpload = myRole === 'super_admin' || myRole === 'admin';
   const fileRef = useRef<HTMLInputElement>(null);
-  const [uploading, setUploading] = useState(false);
-  const queryClient = useQueryClient();
+  const upload = useUploadSearchTrend(workspaceId, reportId);
 
   const googleMap = new Map(googleTrend.map((t) => [t.date, t.ratio]));
   const chartData = naverTrend.map((t) => ({
@@ -88,7 +86,6 @@ export function SearchTrendPanel({
     e.target.value = ''; // 같은 파일 재업로드 허용
     if (!file) return;
 
-    setUploading(true);
     try {
       const text = await file.text();
       const trendData = parseGoogleTrendCsv(text);
@@ -97,29 +94,10 @@ export function SearchTrendPanel({
         return;
       }
 
-      const res = await fetch('/api/admin/upload-search-trend', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          report_id: reportId,
-          workspace_id: workspaceId,
-          provider: 'google',
-          trend_data: trendData,
-        }),
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.detail ?? '업로드 실패');
-      }
-
+      await upload.mutateAsync({ provider: 'google', trendData });
       toast.success(`구글 트렌드 ${trendData.length}건 업로드 완료`);
-      queryClient.invalidateQueries({
-        queryKey: reportKeys.searchTrend(workspaceId, reportId),
-      });
     } catch (err) {
       toast.error(getErrorMessage(err, '업로드 실패'));
-    } finally {
-      setUploading(false);
     }
   };
 
@@ -143,12 +121,12 @@ export function SearchTrendPanel({
             <button
               type="button"
               onClick={() => fileRef.current?.click()}
-              disabled={uploading}
+              disabled={upload.isPending}
               className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 bg-white border border-slate-200 hover:border-slate-400 hover:bg-slate-50 px-3 py-1.5 rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-default"
               title="Google Trends 에서 다운로드한 CSV 업로드"
             >
               <Upload size={13} strokeWidth={1.8} />
-              {uploading ? '업로드 중...' : '구글 트렌드 CSV 업로드'}
+              {upload.isPending ? '업로드 중...' : '구글 트렌드 CSV 업로드'}
             </button>
           </>
         ) : undefined

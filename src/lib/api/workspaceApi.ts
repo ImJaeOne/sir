@@ -112,15 +112,6 @@ export async function getWorkspace(id: string): Promise<Workspace | null> {
   return data ? workspaceSchema.parse(data) : null;
 }
 
-export async function deleteWorkspace(id: string): Promise<void> {
-  const { error } = await supabase
-    .from('workspaces')
-    .delete()
-    .eq('id', id);
-
-  if (error) throw error;
-}
-
 export async function getWorkspaceProfile(workspaceId: string): Promise<WorkspaceProfile | null> {
   const { data, error } = await supabase
     .from('workspace_profiles')

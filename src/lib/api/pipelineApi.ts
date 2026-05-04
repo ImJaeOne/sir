@@ -8,7 +8,13 @@ interface PipelineResponse {
   type: 'initial_30d' | 'weekly';
 }
 
-export async function triggerPipeline(workspaceId: string): Promise<PipelineResponse> {
+export interface TriggerPipelineInput {
+  workspaceId: string;
+  reportId: string;
+  triggeredBy: 'manual' | 'cron';
+}
+
+export async function triggerPipeline(input: TriggerPipelineInput): Promise<PipelineResponse> {
   const supabase = createClient();
   const { data: { session } } = await supabase.auth.getSession();
 
@@ -20,7 +26,11 @@ export async function triggerPipeline(workspaceId: string): Promise<PipelineResp
       'Content-Type': 'application/json',
       Authorization: `Bearer ${session.access_token}`,
     },
-    body: JSON.stringify({ workspace_id: workspaceId }),
+    body: JSON.stringify({
+      workspace_id: input.workspaceId,
+      report_id: input.reportId,
+      triggered_by: input.triggeredBy,
+    }),
   });
 
   if (!res.ok) {

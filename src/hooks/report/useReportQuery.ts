@@ -36,6 +36,8 @@ export const reportKeys = {
   /** workspace 의 모든 reportId 변형(undefined/''/특정id) 을 한 번에 invalidate 하기 위한 prefix 키. */
   riskReportsAll: (id: string) => ['report', id, 'riskReports'] as const,
   resolvedRiskReports: (id: string, from: string, to: string) => ['report', id, 'resolvedRiskReports', from, to] as const,
+  /** 모든 period 변형을 prefix 로 잡는 키 — status 변경 후 일괄 invalidate 용. */
+  resolvedRiskReportsAll: (id: string) => ['report', id, 'resolvedRiskReports'] as const,
 };
 
 // 리포트 데이터는 주간 보고서 — 페이지 내 refetch 불필요, 캐시 공유 극대화

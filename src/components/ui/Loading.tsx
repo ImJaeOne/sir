@@ -55,13 +55,14 @@ export function Loading({ title = DEFAULT_TITLE, subtitle = DEFAULT_SUBTITLE }: 
   );
 }
 
-/** 오버레이 로딩 (다운로드 등 블로킹 작업) */
+/** 오버레이 로딩 (다운로드 등 블로킹 작업).
+ *  fixed: 스크롤 컨테이너 안에 absolute 로 박으면 viewport 만 덮고 스크롤 아래는 노출 — 화면 전체 기준으로 박는다. */
 export function LoadingOverlay({
   title = DEFAULT_TITLE,
   subtitle = DEFAULT_SUBTITLE,
 }: LoadingProps) {
   return (
-    <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-white/60 backdrop-blur-[2px]">
+    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white/60 backdrop-blur-[2px]">
       <LoadingContent title={title} subtitle={subtitle} />
     </div>
   );

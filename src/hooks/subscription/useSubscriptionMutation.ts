@@ -4,17 +4,17 @@ import {
   extendSubscription,
   renewSubscription,
   pauseSubscription,
-  resumeSubscription,
   cancelSubscription,
   correctSubscription,
 } from '@/lib/api/subscriptionApi';
 import { subscriptionKeys } from '@/hooks/subscription/useSubscriptionQuery';
+import { userKeys } from '@/hooks/user/useUserQuery';
 
 function useInvalidateOnSuccess() {
   const queryClient = useQueryClient();
   return (workspaceId: string) => {
     queryClient.invalidateQueries({ queryKey: subscriptionKeys.active(workspaceId) });
-    queryClient.invalidateQueries({ queryKey: ['admin', 'users', 'detailed'] });
+    queryClient.invalidateQueries({ queryKey: userKeys.usersDetailed() });
   };
 }
 
@@ -46,14 +46,6 @@ export function usePauseSubscription() {
   const invalidate = useInvalidateOnSuccess();
   return useMutation({
     mutationFn: pauseSubscription,
-    onSuccess: (_, vars) => invalidate(vars.workspaceId),
-  });
-}
-
-export function useResumeSubscription() {
-  const invalidate = useInvalidateOnSuccess();
-  return useMutation({
-    mutationFn: resumeSubscription,
     onSuccess: (_, vars) => invalidate(vars.workspaceId),
   });
 }

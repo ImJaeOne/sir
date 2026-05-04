@@ -60,6 +60,7 @@ function aggregateWeekly(data: SirStockPoint[]) {
         sir: sirItems.length
           ? Math.round(sirItems.reduce((s, i) => s + (i.sir ?? 0), 0) / sirItems.length)
           : null,
+        isCarried: false,
         open_price: priceItems[0]?.open_price ?? null,
         close_price: priceItems[priceItems.length - 1]?.close_price ?? null,
         high_price: priceItems.length ? Math.max(...priceItems.map((i) => i.high_price!)) : null,
@@ -117,6 +118,9 @@ function ChartTooltip({ active, payload, label }: any) {
         {d.fullDate ? d.fullDate.replace(/-/g, '.') : label}
       </p>
       <p className="text-white font-bold text-base">SIR {d.sir}점</p>
+      {d.isCarried && (
+        <p className="text-amber-300 text-[10px] mt-0.5">직전 일자 자동 보정</p>
+      )}
       {d.open_price && (
         <div className="text-text-disabled mt-1.5 grid grid-cols-[auto_1fr_auto_1fr] gap-x-2 gap-y-0.5 text-[10px]">
           <span>시</span>
@@ -172,8 +176,9 @@ export function MobileSirStockChart({
     .slice(-30)
     .flatMap((d) => [d.low_price, d.high_price])
     .filter((v): v is number => v != null);
-  const rawMin = allPrices.length ? Math.floor(Math.min(...allPrices) * 0.95) : 0;
-  const rawMax = allPrices.length ? Math.ceil(Math.max(...allPrices) * 1.05) : 100;
+  // [임시 검증] margin 5% → 2% — y축이 데이터 범위에 더 fit
+  const rawMin = allPrices.length ? Math.floor(Math.min(...allPrices) * 0.98) : 0;
+  const rawMax = allPrices.length ? Math.ceil(Math.max(...allPrices) * 1.02) : 100;
   const bodyW = Math.max(displayData.length * ITEM_W, 300);
 
   // 좌(SIR) / 중(격자) / 우(주가) 3개 독립 차트 간 틱 Y 위치 정렬 + nice tick 라벨
@@ -268,7 +273,28 @@ export function MobileSirStockChart({
               dataKey="sir"
               stroke="#17d82d"
               strokeWidth={2}
-              dot={false}
+              dot={(props) => {
+                const { cx, cy, payload, index } = props as {
+                  cx?: number;
+                  cy?: number;
+                  payload?: { isCarried?: boolean };
+                  index?: number;
+                };
+                if (cx == null || cy == null || !payload?.isCarried) {
+                  return <g key={`dot-${index}`} />;
+                }
+                return (
+                  <circle
+                    key={`dot-${index}`}
+                    cx={cx}
+                    cy={cy}
+                    r={3.5}
+                    fill="#fff"
+                    stroke="#17d82d"
+                    strokeWidth={1.5}
+                  />
+                );
+              }}
               activeDot={{ r: 4, fill: '#17d82d', stroke: '#fff', strokeWidth: 2 }}
               connectNulls
               isAnimationActive={false}

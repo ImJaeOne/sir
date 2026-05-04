@@ -77,10 +77,10 @@ export function PdfDownloadButton() {
 
   return (
     <>
-      {downloading && typeof document !== 'undefined' && document.getElementById('client-main') &&
+      {downloading && typeof document !== 'undefined' &&
         createPortal(
           <LoadingOverlay title="보고서를 다운로드 하고 있어요" />,
-          document.getElementById('client-main')!,
+          document.body,
         )}
       <div className="px-3 w-full">
         <button

@@ -3,13 +3,12 @@
 import { useState, useMemo } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
-import { useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import { Combobox, ComboboxButton, ComboboxInput, ComboboxOption, ComboboxOptions, Listbox, ListboxButton, ListboxOption, ListboxOptions } from '@headlessui/react';
 import { ChevronDown, ChevronLeft, ChevronRight, Check, Paperclip, Download, ShieldAlert } from 'lucide-react';
 import { useWorkspaces, useWorkspaceSubscription } from '@/hooks/workspace/useWorkspaceQuery';
-import { useRiskReports, reportKeys } from '@/hooks/report/useReportQuery';
-import { updateRiskReport } from '@/lib/api/reportApi';
+import { useRiskReports } from '@/hooks/report/useReportQuery';
+import { useUpdateRiskReport } from '@/hooks/report/useReportMutation';
 import { getErrorMessage } from '@/lib/utils';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
@@ -123,11 +122,13 @@ function WorkspaceCombobox({
 
 // ── 상세 모달 ──
 
-function DetailModal({ report, onClose, onUpdate }: { report: RiskReport; onClose: () => void; onUpdate: () => void }) {
+function DetailModal({ report, onClose }: { report: RiskReport; onClose: () => void }) {
   const [status, setStatus] = useState(report.status);
   const [adminNote, setAdminNote] = useState(report.admin_note ?? '');
-  const [saving, setSaving] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+
+  const update = useUpdateRiskReport(report.workspace_id);
+  const saving = update.isPending;
 
   const statusChanged = status !== report.status;
   const noteChanged = adminNote !== (report.admin_note ?? '');
@@ -137,16 +138,13 @@ function DetailModal({ report, onClose, onUpdate }: { report: RiskReport; onClos
   const newStatusLabel = STATUS_OPTIONS.find((s) => s.value === status)?.label ?? status;
 
   const doSave = async () => {
-    setSaving(true);
     try {
-      await updateRiskReport(report.id, { status, admin_note: adminNote });
+      await update.mutateAsync({ id: report.id, body: { status, admin_note: adminNote } });
       toast.success('업데이트 완료');
-      onUpdate();
       onClose();
     } catch (e) {
       toast.error(getErrorMessage(e, '업데이트 실패'));
     } finally {
-      setSaving(false);
       setShowConfirm(false);
     }
   };
@@ -317,7 +315,6 @@ export function RiskReportsClient({ assignedIds }: RiskReportsClientProps) {
   const [statusFilter, setStatusFilter] = useState('all');
   const [sort, setSort] = useState<SortKey>('requested_desc');
   const [page, setPage] = useState(1);
-  const queryClient = useQueryClient();
 
   // 모달 오픈 상태는 URL 의 ?riskReportId= 에서 derive — 관리자 홈에서 deep-link 로 들어오면 자동 오픈
   const router = useRouter();
@@ -413,10 +410,6 @@ export function RiskReportsClient({ assignedIds }: RiskReportsClientProps) {
     if (!targetId) return null;
     return riskReports?.find((r) => r.id === targetId) ?? null;
   }, [targetId, riskReports]);
-
-  const handleUpdate = () => {
-    queryClient.invalidateQueries({ queryKey: reportKeys.riskReports(selectedWsId || '_all', selectedReportId || undefined) });
-  };
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 h-full bg-slate-50">
@@ -666,7 +659,6 @@ export function RiskReportsClient({ assignedIds }: RiskReportsClientProps) {
         <DetailModal
           report={selected}
           onClose={() => setSelectedId(null)}
-          onUpdate={handleUpdate}
         />
       )}
     </div>

@@ -275,18 +275,21 @@ export type Database = {
         Row: {
           date: string
           id: string
+          is_carried: boolean
           sir_score: number | null
           workspace_id: string
         }
         Insert: {
           date: string
           id?: string
+          is_carried?: boolean
           sir_score?: number | null
           workspace_id: string
         }
         Update: {
           date?: string
           id?: string
+          is_carried?: boolean
           sir_score?: number | null
           workspace_id?: string
         }
