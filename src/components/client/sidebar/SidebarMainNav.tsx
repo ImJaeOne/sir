@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { useParams, usePathname, useRouter } from 'next/navigation';
-import { FileText, ShieldAlert } from 'lucide-react';
+import { FileText, ShieldAlert, LineChart } from 'lucide-react';
 import { useReports } from '@/hooks/workspace/useWorkspaceQuery';
 
 interface SidebarMainNavProps {
@@ -27,12 +27,15 @@ export function SidebarMainNav({ isOpen }: SidebarMainNavProps) {
   }, [workspaceId, params?.reportId, reports]);
 
   const crisisHref = workspaceId ? `/crisis/${workspaceId}` : '';
+  const monitoringHref = workspaceId ? `/monitoring/${workspaceId}` : '';
 
   const isReport = pathname.startsWith('/report/');
   const isCrisis = pathname.startsWith('/crisis/');
+  const isMonitoring = pathname.startsWith('/monitoring/');
 
   const items: { label: string; Icon: typeof FileText; href: string; active: boolean }[] = [
     { label: '보고서', Icon: FileText, href: reportHref, active: isReport },
+    { label: '모니터링', Icon: LineChart, href: monitoringHref, active: isMonitoring },
     { label: '위기 대응 센터', Icon: ShieldAlert, href: crisisHref, active: isCrisis },
   ];
 
