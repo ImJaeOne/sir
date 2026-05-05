@@ -106,8 +106,21 @@ export function Highlight({ workspaceId, reportId, pdfMode = false, editable = f
     [sirScore, avgScore, workspace?.company_name, sirRanking, pdfMode, isDaily, isInitial],
   );
 
+  const isNoData = totalItems === 0;
+
   return (
     <ReportSection icon={<WeeklyHighlightIcon size={36} />} title={isDaily ? '일간 하이라이트' : isInitial ? '월간 하이라이트' : '주간 하이라이트'}>
+      {isNoData && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 flex items-start gap-3">
+          <span className="text-amber-700 text-base shrink-0 leading-none mt-0.5">⚠</span>
+          <div className="flex flex-col gap-0.5">
+            <span className="text-sm font-semibold text-amber-800">이번 기간 수집된 데이터가 없습니다.</span>
+            <span className="text-xs text-amber-700 leading-relaxed">
+              SIR 점수와 채널별 지표는 직전 일자 기준으로 표시되며, 변화량은 산출되지 않습니다.
+            </span>
+          </div>
+        </div>
+      )}
       <div className="print-keep"><Snapshot {...snapshotProps} /></div>
       {!isDaily && (
         <>

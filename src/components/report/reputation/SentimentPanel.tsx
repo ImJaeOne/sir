@@ -32,6 +32,7 @@ export function SentimentPanel({ channelStats, pdfMode }: SentimentPanelProps) {
   const totalPositive = channelStats.reduce((s, c) => s + c.positive, 0);
   const totalNeutral = channelStats.reduce((s, c) => s + c.neutral, 0);
   const totalNegative = channelStats.reduce((s, c) => s + c.negative, 0);
+  const totalAll = totalPositive + totalNeutral + totalNegative;
 
   const CARD_ITEMS = [
     {
@@ -69,12 +70,21 @@ export function SentimentPanel({ channelStats, pdfMode }: SentimentPanelProps) {
           ))}
         </div>
         <ReportCard className="flex-1" px={20} py={20}>
-          <div className="hidden lg:block">
-            <SentimentStackedBar data={sentimentData} pdfMode={pdfMode} />
-          </div>
-          <div className="lg:hidden">
-            <MobileSentimentStackedBar data={sentimentData} />
-          </div>
+          {totalAll === 0 ? (
+            <div className="h-48 lg:h-80 flex flex-col items-center justify-center gap-2 text-center">
+              <span className="text-sm font-semibold text-text-muted">이번 기간 수집된 데이터가 없습니다.</span>
+              <span className="text-xs text-text-muted">긍정·중립·부정을 나눌 콘텐츠가 없습니다.</span>
+            </div>
+          ) : (
+            <>
+              <div className="hidden lg:block">
+                <SentimentStackedBar data={sentimentData} pdfMode={pdfMode} />
+              </div>
+              <div className="lg:hidden">
+                <MobileSentimentStackedBar data={sentimentData} />
+              </div>
+            </>
+          )}
         </ReportCard>
       </div>
     </ReportSubSection>

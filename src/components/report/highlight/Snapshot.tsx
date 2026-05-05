@@ -37,14 +37,20 @@ export function Snapshot({
 
   const period = isDaily ? '일간' : isInitial ? '월간' : '주간';
 
+  // 이번 기간 수집된 데이터가 0건이면 SIR 점수가 직전 일자 carry. 변화량 0 으로
+  // "전일 대비 유지" 가 표시되지만, 사용자에겐 "원래 데이터가 없어 점수가 멈춤" 이 더 정확.
+  const isNoData = totalItems === 0;
+
   const sirCard = {
     title: `${period} SIR 지수`,
     mobileTitle: `${period} SIR 지수`,
     description: '1,000점 만점 기준',
     value: `${Math.round(score)}점`,
-    change: snapshotDiff
-      ? formatChange(snapshotDiff.scoreDiff, '점', '상승', '하락', prefix)
-      : undefined,
+    change: isNoData
+      ? { label: '변동 없음', type: 'neutral' as const }
+      : snapshotDiff
+        ? formatChange(snapshotDiff.scoreDiff, '점', '상승', '하락', prefix)
+        : undefined,
   };
 
   const itemsCard = {
@@ -52,9 +58,11 @@ export function Snapshot({
     mobileTitle: `${period} 수집된\n평판 데이터 수`,
     description: '뉴스, 영상, 게시글 수집',
     value: `${totalItems.toLocaleString()}개`,
-    change: snapshotDiff
-      ? formatChange(snapshotDiff.itemsDiff, '개', '증가', '감소', prefix)
-      : undefined,
+    change: isNoData
+      ? { label: '수집된 데이터 없음', type: 'neutral' as const }
+      : snapshotDiff
+        ? formatChange(snapshotDiff.itemsDiff, '개', '증가', '감소', prefix)
+        : undefined,
   };
 
   const riskCard = {
@@ -62,9 +70,11 @@ export function Snapshot({
     mobileTitle: `${period} 수집된\n리스크 콘텐츠 수`,
     description: '즉시 검토 권장',
     value: `${riskCount.toLocaleString()}개`,
-    change: snapshotDiff
-      ? formatChange(snapshotDiff.riskDiff, '개', '증가', '감소', prefix, true)
-      : undefined,
+    change: isNoData
+      ? { label: '분석할 데이터 없음', type: 'neutral' as const }
+      : snapshotDiff
+        ? formatChange(snapshotDiff.riskDiff, '개', '증가', '감소', prefix, true)
+        : undefined,
   };
 
   // SIR 순위는 전체 기업 풀 비교 — daily 는 구독사가 제한적이라 모집단이 불완전해서 제외

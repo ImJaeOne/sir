@@ -70,6 +70,9 @@ export function SirCard({
   isDaily?: boolean;
   prevSir?: number;
 }) {
+  // 그 기간 그 채널 수집 0건 = 직전 일자 점수 그대로 표시.
+  // 사용자에게 명시적으로 알리지 않으면 실측처럼 보여 오해 위험.
+  const isNoData = stat.value === 0;
   const hasPrev = prevSir != null;
   const prevScore = prevSir ?? 500;
   const change = stat.sir - prevScore;
@@ -89,8 +92,15 @@ export function SirCard({
 
   return (
     <ReportCard px={20} py={20}>
-      <div className="flex flex-col gap-5">
-        <span className="text-sm font-semibold text-text-muted">{stat.label}</span>
+      <div className={`flex flex-col gap-5 ${isNoData ? 'opacity-60' : ''}`}>
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-sm font-semibold text-text-muted">{stat.label}</span>
+          {isNoData && (
+            <span className="text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
+              데이터 없음
+            </span>
+          )}
+        </div>
         <div className="flex flex-col items-center gap-2 lg:gap-4 lg:mb-4">
           <div
             className={`w-9 h-9 lg:w-12 lg:h-12 rounded-full flex items-center justify-center ${config.bgClass}`}
@@ -105,30 +115,44 @@ export function SirCard({
           </div>
           <div className="flex flex-col justify-center items-center gap-2">
             <span className={`text-2xl font-bold ${config.textClass}`}>{stat.sir}점</span>
-            <span className="text-xs text-text-muted font-base whitespace-pre-line text-center lg:hidden">
-              {mobileLabel}
-            </span>
-            <span className="text-xs text-text-muted font-base hidden lg:block">{label}</span>
+            {isNoData ? (
+              <span className="text-[11px] text-text-muted font-normal text-center">
+                이번 기간 수집 0건
+              </span>
+            ) : (
+              <>
+                <span className="text-xs text-text-muted font-base whitespace-pre-line text-center lg:hidden">
+                  {mobileLabel}
+                </span>
+                <span className="text-xs text-text-muted font-base hidden lg:block">{label}</span>
+              </>
+            )}
           </div>
         </div>
-        <div
-          className={`flex flex-wrap items-center justify-center gap-x-1 text-[10px] lg:text-xs font-semibold w-full rounded-md py-2 ${
-            change === 0
-              ? 'bg-bg-light text-text-muted'
-              : isUp
-                ? 'bg-bg-blue text-text-accent'
-                : 'bg-bg-danger text-text-danger'
-          }`}
-        >
-          {change === 0 ? (
-            <span>{changeLabel} — 유지</span>
-          ) : (
-            <>
-              <span>{changeLabel}</span>
-              <span>{isUp ? '▲' : '▼'} {Math.abs(change)}점 {isUp ? '상승' : '하락'}</span>
-            </>
-          )}
-        </div>
+        {isNoData ? (
+          <div className="flex items-center justify-center gap-x-1 text-[10px] lg:text-xs font-semibold w-full rounded-md py-2 bg-bg-light text-text-muted">
+            변동 없음
+          </div>
+        ) : (
+          <div
+            className={`flex flex-wrap items-center justify-center gap-x-1 text-[10px] lg:text-xs font-semibold w-full rounded-md py-2 ${
+              change === 0
+                ? 'bg-bg-light text-text-muted'
+                : isUp
+                  ? 'bg-bg-blue text-text-accent'
+                  : 'bg-bg-danger text-text-danger'
+            }`}
+          >
+            {change === 0 ? (
+              <span>{changeLabel} — 유지</span>
+            ) : (
+              <>
+                <span>{changeLabel}</span>
+                <span>{isUp ? '▲' : '▼'} {Math.abs(change)}점 {isUp ? '상승' : '하락'}</span>
+              </>
+            )}
+          </div>
+        )}
       </div>
     </ReportCard>
   );

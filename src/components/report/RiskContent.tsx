@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { ShieldAlert } from 'lucide-react';
-import { useRiskItemsSuspense, useRiskReportsSuspense, useReportInfoSuspense } from '@/hooks/report/useReportQuery';
+import { useRiskItemsSuspense, useRiskReportsSuspense, useReportInfoSuspense, useChannelItemsSuspense } from '@/hooks/report/useReportQuery';
 import { useDeleteRiskReport } from '@/hooks/report/useReportMutation';
 import { useWorkspaceSubscription } from '@/hooks/workspace/useWorkspaceQuery';
 import { ReportSection } from '@/components/report/ReportSection';
@@ -32,9 +32,14 @@ export function RiskContent({ workspaceId, reportId, editable = false, allowRepo
   const { data: report } = useReportInfoSuspense(reportId);
   const { data: riskItems } = useRiskItemsSuspense(workspaceId, reportId);
   const { data: riskReports } = useRiskReportsSuspense(workspaceId, reportId);
+  const { data: channelItems } = useChannelItemsSuspense(workspaceId, reportId);
   const { data: subscription } = useWorkspaceSubscription(workspaceId);
   const deleteMutation = useDeleteRiskReport(workspaceId);
   const [showUpgrade, setShowUpgrade] = useState(false);
+
+  // 그 기간 수집된 콘텐츠가 0건이면 "리스크 0건" vs "데이터 부족" 의미 혼동.
+  // 0건이면 분석 불가 안내, 그 외엔 RiskDetectionTable 의 기존 empty state ("리스크 없음") 유지.
+  const isNoData = channelItems.length === 0;
 
   const { reportedSourceIds, riskReportBySourceId, processedSourceIds } = useMemo(() => {
     const ids = new Set<string>();
@@ -58,18 +63,27 @@ export function RiskContent({ workspaceId, reportId, editable = false, allowRepo
     <div className="print-break">
       <ReportSection id="section-risk" icon={<LiskContentIcon size={36} />} title="리스크 콘텐츠 관리">
         <div className="print-keep">
-          <RiskDetectionTable
-            riskItems={riskItems}
-            workspaceId={workspaceId}
-            reportId={reportId}
-            reportedSourceIds={reportedSourceIds}
-            riskReportBySourceId={riskReportBySourceId}
-            processedSourceIds={processedSourceIds}
-            onCancelReport={deleteMutation.mutate}
-            editable={editable}
-            allowReport={effectiveAllowReport}
-            pdfMode={pdfMode}
-          />
+          {isNoData ? (
+            <ReportCard px={20} py={32}>
+              <div className="flex flex-col items-center justify-center gap-2 py-8 text-center">
+                <span className="text-sm font-semibold text-text-muted">이번 기간 수집된 데이터가 없습니다.</span>
+                <span className="text-xs text-text-muted">분석할 콘텐츠가 없어 리스크 탐지가 보류됩니다.</span>
+              </div>
+            </ReportCard>
+          ) : (
+            <RiskDetectionTable
+              riskItems={riskItems}
+              workspaceId={workspaceId}
+              reportId={reportId}
+              reportedSourceIds={reportedSourceIds}
+              riskReportBySourceId={riskReportBySourceId}
+              processedSourceIds={processedSourceIds}
+              onCancelReport={deleteMutation.mutate}
+              editable={editable}
+              allowReport={effectiveAllowReport}
+              pdfMode={pdfMode}
+            />
+          )}
         </div>
         {!hasArmor ? (
           <div className="print-keep flex flex-col gap-3">
