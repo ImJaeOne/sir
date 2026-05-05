@@ -22,12 +22,21 @@ export function ChannelVolumePanel({ channelStats, pdfMode }: ChannelVolumePanel
     >
       <div className="flex flex-col lg:flex-row gap-4">
         <ReportCard className="lg:flex-1" px={20} py={20}>
-          <div className="hidden lg:block">
-            <ChannelDonutChart channelStats={channelStats} total={total} pdfMode={pdfMode} />
-          </div>
-          <div className="lg:hidden">
-            <MobileChannelDonutChart channelStats={channelStats} total={total} />
-          </div>
+          {total === 0 ? (
+            <div className="h-48 lg:h-60 flex flex-col items-center justify-center gap-2 text-center">
+              <span className="text-sm font-semibold text-text-muted">이번 기간 수집된 데이터가 없습니다.</span>
+              <span className="text-xs text-text-muted">채널별 비중을 계산할 데이터가 없습니다.</span>
+            </div>
+          ) : (
+            <>
+              <div className="hidden lg:block">
+                <ChannelDonutChart channelStats={channelStats} total={total} pdfMode={pdfMode} />
+              </div>
+              <div className="lg:hidden">
+                <MobileChannelDonutChart channelStats={channelStats} total={total} />
+              </div>
+            </>
+          )}
         </ReportCard>
 
         <div className="grid grid-cols-2 gap-3 lg:flex-1">

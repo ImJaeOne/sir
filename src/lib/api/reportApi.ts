@@ -433,8 +433,9 @@ export async function getChannelStats(
   periodStart?: string,
   periodEnd?: string,
 ): Promise<ChannelStat[]> {
-  // channelItems가 이미 report-scoped이므로 비어있으면 빈 stats 반환
-  if (channelItems.length === 0 && reportId) return [];
+  // channelItems 가 비어 있어도 4채널 placeholder stat 을 반환해야 SirCard 가 렌더됨
+  // (이전: return [] 로 차트/카드 통째로 사라짐 — 5/4 SB성보 같은 전체 0건 케이스에서 빈 화면)
+  // SirCard 의 stat.value === 0 분기가 amber 배지 + "직전 일자 기준" 표시로 빈 상태 명시.
 
   // 채널별 감정 집계 (positive/negative/neutral count)
   const byChannel = new Map<string, { positive: number; negative: number; neutral: number }>();

@@ -71,7 +71,7 @@ export function ReportSubSection({
           <p className="text-xs lg:text-sm font-normal text-text-muted">{description}</p>
         )}
       </div>
-      <div className={`${className}`}>{children}</div>
+      <div className={className ?? ''}>{children}</div>
     </div>
   );
 }

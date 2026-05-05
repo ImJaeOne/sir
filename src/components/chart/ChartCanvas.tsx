@@ -59,7 +59,7 @@ export function ChartCanvas({
   return (
     <div
       ref={ref}
-      className={className}
+      className={className ?? ''}
       style={{ width: wrapperWidth, height: wrapperHeight, ...style }}
     >
       {size && finalWidth > 0 && finalHeight > 0 && (
