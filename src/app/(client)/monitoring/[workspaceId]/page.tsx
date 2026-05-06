@@ -28,6 +28,7 @@ import {
   useMonitoringDaily,
   useMonitoringStock,
   useMonitoringRisks,
+  useMonitoringSearch,
 } from '@/hooks/monitoring/useMonitoringQuery';
 import {
   MONITORING_CHANNELS,
@@ -54,6 +55,17 @@ const CRITICAL_COLOR: Record<CriticalType, string> = {
 const SENTIMENT_COLOR = { pos: '#10b981', neu: '#94a3b8', neg: '#ef4444' };
 const PRIMARY = '#2563eb';
 const PRIMARY_SOFT = 'rgba(37, 99, 235, 0.08)';
+const PRICE_LINE = '#0f172a';
+// 한국 관습: 양봉(상승) red, 음봉(하락) blue
+const CANDLE_UP = '#ef4444';
+const CANDLE_DOWN = '#3b82f6';
+const SEARCH_NAVER = '#03c75a';
+const SEARCH_GOOGLE = '#4285f4';
+
+function priceTickFormatter(v: number): string {
+  if (v >= 10000) return `${Math.round(v / 1000)}k`;
+  return v.toLocaleString();
+}
 
 // ── date utils (KST 기준) ──────────────────────────────────────────────
 
@@ -98,6 +110,18 @@ export default function MonitoringPage() {
   const today = useMemo(() => kstTodayStr(), []);
   const [start, setStart] = useState(() => shiftDays(today, -89));
   const [end, setEnd] = useState(today);
+  // 채널별 수집량+주가 콤보(D4)에서 켜고 끌 수 있는 채널 집합. 기본 전체 ON.
+  const [visibleChannels, setVisibleChannels] = useState<Set<Channel>>(
+    () => new Set(['news', 'blog', 'youtube', 'community'])
+  );
+  const toggleChannel = (id: Channel) => {
+    setVisibleChannels((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   // 직전 동기간 — KPI 비교용
   const range = diffDays(start, end);
@@ -107,13 +131,14 @@ export default function MonitoringPage() {
   const { data: daily = [], isPending: dailyLoading } = useMonitoringDaily(workspaceId, start, end);
   const { data: stock = [], isPending: stockLoading } = useMonitoringStock(workspaceId, start, end);
   const { data: risks = [], isPending: risksLoading } = useMonitoringRisks(workspaceId, start, end);
+  const { data: search = [], isPending: searchLoading } = useMonitoringSearch(workspaceId, start, end);
 
   const { data: prevDaily = [] } = useMonitoringDaily(workspaceId, prevStart, prevEnd);
   const { data: prevRisks = [] } = useMonitoringRisks(workspaceId, prevStart, prevEnd);
 
-  const isLoading = dailyLoading || stockLoading || risksLoading;
+  const isLoading = dailyLoading || stockLoading || risksLoading || searchLoading;
 
-  // ── 머지: 전체 일자 축 (수집/주가/리스크 모두 한 series 안에 두면 차트 정렬 안정) ──
+  // ── 머지: 전체 일자 축 (수집/주가/리스크/검색 모두 한 series 안에 두면 차트 정렬 안정) ──
   type MergedPoint = MonitoringDayPoint & {
     open: number | null;
     high: number | null;
@@ -121,16 +146,20 @@ export default function MonitoringPage() {
     close: number | null;
     risks: Record<CriticalType, number>;
     riskTotal: number;
+    searchNaver: number | null;
+    searchGoogle: number | null;
   };
 
   const merged: MergedPoint[] = useMemo(() => {
     const dailyMap = new Map(daily.map((d) => [d.date, d]));
     const stockMap = new Map(stock.map((d) => [d.date, d]));
     const riskMap = new Map(risks.map((d) => [d.date, d]));
+    const searchMap = new Map(search.map((d) => [d.date, d]));
     const allDates = new Set<string>([
       ...daily.map((d) => d.date),
       ...stock.map((d) => d.date),
       ...risks.map((d) => d.date),
+      ...search.map((d) => d.date),
     ]);
     return Array.from(allDates)
       .sort()
@@ -138,6 +167,7 @@ export default function MonitoringPage() {
         const d = dailyMap.get(date);
         const s = stockMap.get(date);
         const r = riskMap.get(date);
+        const sr = searchMap.get(date);
         return {
           date,
           isCarried: d?.isCarried ?? false,
@@ -152,9 +182,11 @@ export default function MonitoringPage() {
           close: s?.close ?? null,
           risks: r?.byType ?? { defamation: 0, insult: 0, rumor: 0, spam: 0 },
           riskTotal: r?.total ?? 0,
+          searchNaver: sr?.naver ?? null,
+          searchGoogle: sr?.google ?? null,
         };
       });
-  }, [daily, stock, risks]);
+  }, [daily, stock, risks, search]);
 
   // ── KPI ─────────────────────────────────────────────────────────────
   const kpi = useMemo(() => {
@@ -320,240 +352,512 @@ export default function MonitoringPage() {
           />
         </div>
 
-        {/* 차트 그리드 ────────────────────────────────── */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {/* 주가 + 수집량 — full width hero */}
-          <div className="lg:col-span-2">
-            <ChartCard
-              title="주가와 수집량"
-              subtitle="시장 가격 신호와 여론 양의 동조·괴리"
-              loading={isLoading}
-              empty={merged.length === 0}
-            >
-              <div className="h-[300px]">
-                <ChartCanvas>
-                  <ComposedChart data={merged} margin={{ top: 12, right: 18, bottom: 0, left: 0 }}>
-                    <defs>
-                      <linearGradient id="volBar" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor={PRIMARY} stopOpacity={0.5} />
-                        <stop offset="100%" stopColor={PRIMARY} stopOpacity={0.1} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                    <XAxis
-                      dataKey="date"
-                      tickFormatter={shortDate}
-                      tick={{ fontSize: 10, fill: '#94a3b8' }}
-                      axisLine={{ stroke: '#e2e8f0' }}
-                      tickLine={false}
-                      interval="preserveStartEnd"
-                      minTickGap={32}
-                    />
-                    <YAxis
-                      yAxisId="vol"
-                      orientation="left"
-                      tick={{ fontSize: 10, fill: '#94a3b8' }}
-                      axisLine={false}
-                      tickLine={false}
-                      width={36}
-                    />
-                    <YAxis
-                      yAxisId="price"
-                      orientation="right"
-                      tickFormatter={(v) => (v >= 10000 ? `${Math.round(v / 1000)}k` : v.toLocaleString())}
-                      tick={{ fontSize: 10, fill: '#94a3b8' }}
-                      axisLine={false}
-                      tickLine={false}
-                      width={48}
-                      domain={['auto', 'auto']}
-                    />
-                    <Tooltip cursor={{ fill: PRIMARY_SOFT }} content={<PriceVolumeTooltip />} />
-                    <Bar
-                      yAxisId="vol"
-                      dataKey="totalVolume"
-                      name="수집량"
-                      fill="url(#volBar)"
-                      isAnimationActive={false}
-                      barSize={range >= 180 ? 2 : range >= 90 ? 4 : 8}
-                    />
-                    <Line
-                      yAxisId="price"
-                      type="monotone"
-                      dataKey="close"
-                      name="종가"
-                      stroke="#0f172a"
-                      strokeWidth={2}
-                      dot={false}
-                      isAnimationActive={false}
-                      connectNulls
-                    />
-                  </ComposedChart>
-                </ChartCanvas>
-              </div>
-              <ChartLegend
-                items={[
-                  { color: PRIMARY, label: '수집량 (좌, 건)', soft: true },
-                  { color: '#0f172a', label: '주가 종가 (우, 원)' },
-                ]}
-              />
-            </ChartCard>
-          </div>
-
-          {/* 감정 분포 */}
-          <ChartCard
-            title="감정 분포 추이"
-            subtitle="긍정 · 중립 · 부정 비중"
-            loading={isLoading}
-            empty={sentimentSeries.every((d) => d.totalVolume === 0)}
-          >
-            <div className="h-[260px]">
-              <ChartCanvas>
-                <AreaChart data={sentimentSeries} margin={{ top: 12, right: 16, bottom: 0, left: 0 }}>
-                  <defs>
-                    <linearGradient id="gPos" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor={SENTIMENT_COLOR.pos} stopOpacity={0.45} />
-                      <stop offset="100%" stopColor={SENTIMENT_COLOR.pos} stopOpacity={0.1} />
-                    </linearGradient>
-                    <linearGradient id="gNeu" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor={SENTIMENT_COLOR.neu} stopOpacity={0.4} />
-                      <stop offset="100%" stopColor={SENTIMENT_COLOR.neu} stopOpacity={0.08} />
-                    </linearGradient>
-                    <linearGradient id="gNeg" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor={SENTIMENT_COLOR.neg} stopOpacity={0.45} />
-                      <stop offset="100%" stopColor={SENTIMENT_COLOR.neg} stopOpacity={0.1} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                  <XAxis
-                    dataKey="date"
-                    tickFormatter={shortDate}
-                    tick={{ fontSize: 10, fill: '#94a3b8' }}
-                    axisLine={{ stroke: '#e2e8f0' }}
-                    tickLine={false}
-                    interval="preserveStartEnd"
-                    minTickGap={32}
-                  />
-                  <YAxis
-                    domain={[0, 100]}
-                    ticks={[0, 25, 50, 75, 100]}
-                    allowDataOverflow
-                    tickFormatter={(v) => `${v}%`}
-                    tick={{ fontSize: 10, fill: '#94a3b8' }}
-                    axisLine={false}
-                    tickLine={false}
-                    width={36}
-                  />
-                  <Tooltip cursor={{ fill: PRIMARY_SOFT }} content={<PercentTooltip />} />
-                  <Area type="monotone" dataKey="positive" name="긍정" stackId="s" stroke={SENTIMENT_COLOR.pos} strokeWidth={1.4} fill="url(#gPos)" isAnimationActive={false} />
-                  <Area type="monotone" dataKey="neutral" name="중립" stackId="s" stroke={SENTIMENT_COLOR.neu} strokeWidth={1.4} fill="url(#gNeu)" isAnimationActive={false} />
-                  <Area type="monotone" dataKey="negative" name="부정" stackId="s" stroke={SENTIMENT_COLOR.neg} strokeWidth={1.4} fill="url(#gNeg)" isAnimationActive={false} />
-                </AreaChart>
-              </ChartCanvas>
-            </div>
-            <ChartLegend
-              items={[
-                { color: SENTIMENT_COLOR.pos, label: '긍정' },
-                { color: SENTIMENT_COLOR.neu, label: '중립' },
-                { color: SENTIMENT_COLOR.neg, label: '부정' },
-              ]}
+        {/* 차트 — 모두 full-width 로 쌓아서 시계열 흐름 비교를 쉽게 */}
+        {(() => {
+          const barSize = range >= 180 ? 2 : range >= 90 ? 4 : 8;
+          const sharedXAxis = (
+            <XAxis
+              dataKey="date"
+              tickFormatter={shortDate}
+              tick={{ fontSize: 10, fill: '#94a3b8' }}
+              axisLine={{ stroke: '#e2e8f0' }}
+              tickLine={false}
+              interval="preserveStartEnd"
+              minTickGap={32}
             />
-          </ChartCard>
+          );
+          const priceMin = Math.min(...merged.filter((d) => d.low != null).map((d) => d.low as number), Infinity);
+          const priceMax = Math.max(...merged.filter((d) => d.high != null).map((d) => d.high as number), -Infinity);
+          const priceDomain: [number | string, number | string] =
+            isFinite(priceMin) && isFinite(priceMax)
+              ? [Math.floor(priceMin * 0.98), Math.ceil(priceMax * 1.02)]
+              : ['auto', 'auto'];
+          const hasPrice = merged.some((d) => d.close != null);
+          const hasSearch = merged.some((d) => d.searchNaver != null || d.searchGoogle != null);
 
-          {/* 리스크 발생 */}
-          <ChartCard
-            title="리스크 발생"
-            subtitle="critical_type 별 일자 건수"
-            loading={isLoading}
-            empty={merged.every((d) => d.riskTotal === 0)}
-          >
-            <div className="h-[260px]">
-              <ChartCanvas>
-                <BarChart data={merged} margin={{ top: 12, right: 16, bottom: 0, left: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                  <XAxis
-                    dataKey="date"
-                    tickFormatter={shortDate}
-                    tick={{ fontSize: 10, fill: '#94a3b8' }}
-                    axisLine={{ stroke: '#e2e8f0' }}
-                    tickLine={false}
-                    interval="preserveStartEnd"
-                    minTickGap={32}
-                  />
-                  <YAxis
-                    tick={{ fontSize: 10, fill: '#94a3b8' }}
-                    axisLine={false}
-                    tickLine={false}
-                    width={28}
-                    allowDecimals={false}
-                  />
-                  <Tooltip cursor={{ fill: 'rgba(239, 68, 68, 0.06)' }} content={<RiskTooltip />} />
-                  {CRITICAL_TYPES.map((c) => (
-                    <Bar
-                      key={c.id}
-                      dataKey={(d: MergedPoint) => d.risks[c.id] ?? 0}
-                      name={c.label}
-                      stackId="risk"
-                      fill={CRITICAL_COLOR[c.id]}
-                      isAnimationActive={false}
-                      barSize={range >= 180 ? 2 : range >= 90 ? 4 : 8}
-                    />
-                  ))}
-                </BarChart>
-              </ChartCanvas>
-            </div>
-            <ChartLegend
-              items={CRITICAL_TYPES.map((c) => ({ color: CRITICAL_COLOR[c.id], label: c.label }))}
-            />
-          </ChartCard>
+          return (
+            <div className="flex flex-col gap-4">
 
-          {/* 채널별 수집량 — full width */}
-          <div className="lg:col-span-2">
-            <ChartCard
-              title="채널별 수집량"
-              subtitle="뉴스 · 블로그 · 유튜브 · 커뮤니티 일자 누적"
-              loading={isLoading}
-              empty={merged.every((d) => d.totalVolume === 0)}
-            >
-              <div className="h-[260px]">
-                <ChartCanvas>
-                  <BarChart data={merged} margin={{ top: 12, right: 16, bottom: 0, left: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                    <XAxis
-                      dataKey="date"
-                      tickFormatter={shortDate}
-                      tick={{ fontSize: 10, fill: '#94a3b8' }}
-                      axisLine={{ stroke: '#e2e8f0' }}
-                      tickLine={false}
-                      interval="preserveStartEnd"
-                      minTickGap={32}
-                    />
-                    <YAxis
-                      tick={{ fontSize: 10, fill: '#94a3b8' }}
-                      axisLine={false}
-                      tickLine={false}
-                      width={28}
-                    />
-                    <Tooltip cursor={{ fill: PRIMARY_SOFT }} content={<VolumeTooltip />} />
-                    {MONITORING_CHANNELS.map((c) => (
+              {/* ── A. 주가 동조성 ─────────────────────────────────────── */}
+              <SectionLabel>A · 주가와 수집량</SectionLabel>
+
+              {/* A1. 주가-라인 + 수집량-막대 (현재) */}
+              <ChartCard
+                title="주가 + 수집량 (라인 · 막대)"
+                subtitle="좌축 막대 = 일자별 수집량, 우축 라인 = 주가 종가"
+                loading={isLoading}
+                empty={merged.length === 0}
+              >
+                <div className="h-[300px]">
+                  <ChartCanvas>
+                    <ComposedChart data={merged} margin={{ top: 12, right: 18, bottom: 0, left: 0 }}>
+                      <defs>
+                        <linearGradient id="volBar" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor={PRIMARY} stopOpacity={0.5} />
+                          <stop offset="100%" stopColor={PRIMARY} stopOpacity={0.1} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                      {sharedXAxis}
+                      <YAxis yAxisId="vol" orientation="left" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={36} />
+                      <YAxis yAxisId="price" orientation="right" tickFormatter={priceTickFormatter} tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={48} domain={priceDomain} />
+                      <Tooltip cursor={{ fill: PRIMARY_SOFT }} content={<PriceVolumeTooltip />} />
+                      <Bar yAxisId="vol" dataKey="totalVolume" name="수집량" fill="url(#volBar)" isAnimationActive={false} barSize={barSize} />
+                      <Line yAxisId="price" type="monotone" dataKey="close" name="종가" stroke={PRICE_LINE} strokeWidth={2} dot={false} isAnimationActive={false} connectNulls />
+                    </ComposedChart>
+                  </ChartCanvas>
+                </div>
+                <ChartLegend
+                  items={[
+                    { color: PRIMARY, label: '수집량 (좌, 건)', soft: true },
+                    { color: PRICE_LINE, label: '주가 종가 (우, 원)' },
+                  ]}
+                />
+              </ChartCard>
+
+              {/* A2. 주가-라인 + 수집량-라인 */}
+              <ChartCard
+                title="주가 + 수집량 (라인 · 라인)"
+                subtitle="둘 다 라인으로 표시 — 등락 흐름 비교"
+                loading={isLoading}
+                empty={merged.length === 0}
+              >
+                <div className="h-[300px]">
+                  <ChartCanvas>
+                    <ComposedChart data={merged} margin={{ top: 12, right: 18, bottom: 0, left: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                      {sharedXAxis}
+                      <YAxis yAxisId="vol" orientation="left" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={36} />
+                      <YAxis yAxisId="price" orientation="right" tickFormatter={priceTickFormatter} tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={48} domain={priceDomain} />
+                      <Tooltip cursor={{ fill: PRIMARY_SOFT }} content={<PriceVolumeTooltip />} />
+                      <Line yAxisId="vol" type="monotone" dataKey="totalVolume" name="수집량" stroke={PRIMARY} strokeWidth={1.8} dot={false} isAnimationActive={false} />
+                      <Line yAxisId="price" type="monotone" dataKey="close" name="종가" stroke={PRICE_LINE} strokeWidth={2} dot={false} isAnimationActive={false} connectNulls />
+                    </ComposedChart>
+                  </ChartCanvas>
+                </div>
+                <ChartLegend
+                  items={[
+                    { color: PRIMARY, label: '수집량 (좌, 건)' },
+                    { color: PRICE_LINE, label: '주가 종가 (우, 원)' },
+                  ]}
+                />
+              </ChartCard>
+
+              {/* A3. 주가-캔들 + 수집량-라인 */}
+              <ChartCard
+                title="주가 + 수집량 (캔들 · 라인)"
+                subtitle="OHLC 캔들 + 수집량 라인. 빨강=상승 / 파랑=하락"
+                loading={isLoading}
+                empty={!hasPrice}
+              >
+                <div className="h-[300px]">
+                  <ChartCanvas width="105%">
+                    <ComposedChart data={merged} margin={{ top: 12, right: 24, bottom: 0, left: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} yAxisId="price" />
+                      {sharedXAxis}
+                      <YAxis yAxisId="vol" orientation="left" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={36} />
+                      <YAxis yAxisId="price" orientation="right" tickFormatter={priceTickFormatter} tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={48} domain={priceDomain} />
+                      <Tooltip cursor={{ fill: PRIMARY_SOFT }} content={<PriceVolumeTooltip />} />
+                      <Line yAxisId="vol" type="monotone" dataKey="totalVolume" name="수집량" stroke={PRIMARY} strokeWidth={1.8} dot={false} isAnimationActive={false} />
                       <Bar
-                        key={c.id}
-                        dataKey={(d: MergedPoint) => d.channelVolume[c.id]}
-                        name={c.label}
-                        stackId="vol"
-                        fill={CHANNEL_COLOR[c.id]}
+                        yAxisId="price"
+                        dataKey="high"
+                        name="주가"
+                        fill="transparent"
+                        barSize={Math.max(barSize * 1.5, 4)}
                         isAnimationActive={false}
-                        barSize={range >= 180 ? 2 : range >= 90 ? 4 : 8}
+                        shape={(props) => <CandleBar {...props} priceMin={priceDomain[0] as number} priceMax={priceDomain[1] as number} />}
                       />
-                    ))}
-                  </BarChart>
-                </ChartCanvas>
-              </div>
-              <ChartLegend
-                items={MONITORING_CHANNELS.map((c) => ({ color: CHANNEL_COLOR[c.id], label: c.label }))}
-              />
-            </ChartCard>
-          </div>
-        </div>
+                    </ComposedChart>
+                  </ChartCanvas>
+                </div>
+                <ChartLegend
+                  items={[
+                    { color: PRIMARY, label: '수집량 (좌, 건)' },
+                    { color: CANDLE_UP, label: '주가 상승 (우)' },
+                    { color: CANDLE_DOWN, label: '주가 하락 (우)' },
+                  ]}
+                />
+              </ChartCard>
+
+              {/* ── B. 감정 추세 ─────────────────────────────────────── */}
+              <SectionLabel>B · 감정 추세</SectionLabel>
+
+              {/* B1. 감정 분포 stacked area */}
+              <ChartCard
+                title="감정 분포 추이"
+                subtitle="긍정 · 중립 · 부정 비중 (%)"
+                loading={isLoading}
+                empty={sentimentSeries.every((d) => d.totalVolume === 0)}
+              >
+                <div className="h-[280px]">
+                  <ChartCanvas>
+                    <AreaChart data={sentimentSeries} margin={{ top: 12, right: 16, bottom: 0, left: 0 }}>
+                      <defs>
+                        <linearGradient id="gPos" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor={SENTIMENT_COLOR.pos} stopOpacity={0.45} />
+                          <stop offset="100%" stopColor={SENTIMENT_COLOR.pos} stopOpacity={0.1} />
+                        </linearGradient>
+                        <linearGradient id="gNeu" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor={SENTIMENT_COLOR.neu} stopOpacity={0.4} />
+                          <stop offset="100%" stopColor={SENTIMENT_COLOR.neu} stopOpacity={0.08} />
+                        </linearGradient>
+                        <linearGradient id="gNeg" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor={SENTIMENT_COLOR.neg} stopOpacity={0.45} />
+                          <stop offset="100%" stopColor={SENTIMENT_COLOR.neg} stopOpacity={0.1} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                      {sharedXAxis}
+                      <YAxis domain={[0, 100]} ticks={[0, 25, 50, 75, 100]} allowDataOverflow tickFormatter={(v) => `${v}%`} tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={36} />
+                      <Tooltip cursor={{ fill: PRIMARY_SOFT }} content={<PercentTooltip />} />
+                      <Area type="monotone" dataKey="positive" name="긍정" stackId="s" stroke={SENTIMENT_COLOR.pos} strokeWidth={1.4} fill="url(#gPos)" isAnimationActive={false} />
+                      <Area type="monotone" dataKey="neutral" name="중립" stackId="s" stroke={SENTIMENT_COLOR.neu} strokeWidth={1.4} fill="url(#gNeu)" isAnimationActive={false} />
+                      <Area type="monotone" dataKey="negative" name="부정" stackId="s" stroke={SENTIMENT_COLOR.neg} strokeWidth={1.4} fill="url(#gNeg)" isAnimationActive={false} />
+                    </AreaChart>
+                  </ChartCanvas>
+                </div>
+                <ChartLegend
+                  items={[
+                    { color: SENTIMENT_COLOR.pos, label: '긍정' },
+                    { color: SENTIMENT_COLOR.neu, label: '중립' },
+                    { color: SENTIMENT_COLOR.neg, label: '부정' },
+                  ]}
+                />
+              </ChartCard>
+
+              {/* B2. 감정 분포(면) + 주가-라인 — tooltip 종가 */}
+              <ChartCard
+                title="감정 분포 + 주가"
+                subtitle="여론 비중 변화와 주가 추세를 겹쳐 본다"
+                loading={isLoading}
+                empty={sentimentSeries.every((d) => d.totalVolume === 0)}
+              >
+                <div className="h-[300px]">
+                  <ChartCanvas>
+                    <ComposedChart data={merged.map((d, i) => ({ ...d, ...sentimentSeries[i] }))} margin={{ top: 12, right: 18, bottom: 0, left: 0 }}>
+                      <defs>
+                        <linearGradient id="gPos2" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor={SENTIMENT_COLOR.pos} stopOpacity={0.4} />
+                          <stop offset="100%" stopColor={SENTIMENT_COLOR.pos} stopOpacity={0.08} />
+                        </linearGradient>
+                        <linearGradient id="gNeu2" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor={SENTIMENT_COLOR.neu} stopOpacity={0.35} />
+                          <stop offset="100%" stopColor={SENTIMENT_COLOR.neu} stopOpacity={0.06} />
+                        </linearGradient>
+                        <linearGradient id="gNeg2" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor={SENTIMENT_COLOR.neg} stopOpacity={0.4} />
+                          <stop offset="100%" stopColor={SENTIMENT_COLOR.neg} stopOpacity={0.08} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                      {sharedXAxis}
+                      <YAxis yAxisId="sent" orientation="left" domain={[0, 100]} ticks={[0, 25, 50, 75, 100]} allowDataOverflow tickFormatter={(v) => `${v}%`} tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={36} />
+                      <YAxis yAxisId="price" orientation="right" tickFormatter={priceTickFormatter} tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={48} domain={priceDomain} />
+                      <Tooltip cursor={{ fill: PRIMARY_SOFT }} content={<SentimentPriceTooltip />} />
+                      <Area yAxisId="sent" type="monotone" dataKey="positive" name="긍정" stackId="s" stroke={SENTIMENT_COLOR.pos} strokeWidth={1.2} fill="url(#gPos2)" isAnimationActive={false} />
+                      <Area yAxisId="sent" type="monotone" dataKey="neutral" name="중립" stackId="s" stroke={SENTIMENT_COLOR.neu} strokeWidth={1.2} fill="url(#gNeu2)" isAnimationActive={false} />
+                      <Area yAxisId="sent" type="monotone" dataKey="negative" name="부정" stackId="s" stroke={SENTIMENT_COLOR.neg} strokeWidth={1.2} fill="url(#gNeg2)" isAnimationActive={false} />
+                      <Line yAxisId="price" type="monotone" dataKey="close" name="종가" stroke={PRICE_LINE} strokeWidth={2} dot={false} isAnimationActive={false} connectNulls />
+                    </ComposedChart>
+                  </ChartCanvas>
+                </div>
+                <ChartLegend
+                  items={[
+                    { color: SENTIMENT_COLOR.pos, label: '긍정' },
+                    { color: SENTIMENT_COLOR.neu, label: '중립' },
+                    { color: SENTIMENT_COLOR.neg, label: '부정' },
+                    { color: PRICE_LINE, label: '주가 종가 (우)' },
+                  ]}
+                />
+              </ChartCard>
+
+              {/* ── C. 검색 관심도 ─────────────────────────────────────── */}
+              <SectionLabel>C · 검색 관심도</SectionLabel>
+
+              {/* C1. 주가-라인 + 검색 관심도-라인 */}
+              <ChartCard
+                title="주가 + 검색 관심도 (라인 · 라인)"
+                subtitle="네이버 / 구글 검색 트렌드(0–100 상대지수)와 주가 추세 비교"
+                loading={isLoading}
+                empty={!hasSearch}
+              >
+                <div className="h-[300px]">
+                  <ChartCanvas>
+                    <ComposedChart data={merged} margin={{ top: 12, right: 18, bottom: 0, left: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                      {sharedXAxis}
+                      <YAxis yAxisId="srch" orientation="left" domain={[0, 100]} tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={32} />
+                      <YAxis yAxisId="price" orientation="right" tickFormatter={priceTickFormatter} tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={48} domain={priceDomain} />
+                      <Tooltip cursor={{ fill: PRIMARY_SOFT }} content={<SearchPriceTooltip />} />
+                      <Line yAxisId="srch" type="monotone" dataKey="searchNaver" name="네이버" stroke={SEARCH_NAVER} strokeWidth={1.8} dot={false} isAnimationActive={false} connectNulls />
+                      <Line yAxisId="srch" type="monotone" dataKey="searchGoogle" name="구글" stroke={SEARCH_GOOGLE} strokeWidth={1.8} dot={false} isAnimationActive={false} connectNulls />
+                      <Line yAxisId="price" type="monotone" dataKey="close" name="종가" stroke={PRICE_LINE} strokeWidth={2} dot={false} isAnimationActive={false} connectNulls />
+                    </ComposedChart>
+                  </ChartCanvas>
+                </div>
+                <ChartLegend
+                  items={[
+                    { color: SEARCH_NAVER, label: '네이버 (좌)' },
+                    { color: SEARCH_GOOGLE, label: '구글 (좌)' },
+                    { color: PRICE_LINE, label: '주가 종가 (우)' },
+                  ]}
+                />
+              </ChartCard>
+
+              {/* C2. 주가-캔들 + 검색 관심도-라인 */}
+              <ChartCard
+                title="주가 + 검색 관심도 (캔들 · 라인)"
+                subtitle="OHLC 캔들 + 검색 관심도 라인"
+                loading={isLoading}
+                empty={!hasPrice && !hasSearch}
+              >
+                <div className="h-[300px]">
+                  <ChartCanvas width="105%">
+                    <ComposedChart data={merged} margin={{ top: 12, right: 24, bottom: 0, left: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} yAxisId="price" />
+                      {sharedXAxis}
+                      <YAxis yAxisId="srch" orientation="left" domain={[0, 100]} tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={32} />
+                      <YAxis yAxisId="price" orientation="right" tickFormatter={priceTickFormatter} tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={48} domain={priceDomain} />
+                      <Tooltip cursor={{ fill: PRIMARY_SOFT }} content={<SearchPriceTooltip />} />
+                      <Line yAxisId="srch" type="monotone" dataKey="searchNaver" name="네이버" stroke={SEARCH_NAVER} strokeWidth={1.8} dot={false} isAnimationActive={false} connectNulls />
+                      <Line yAxisId="srch" type="monotone" dataKey="searchGoogle" name="구글" stroke={SEARCH_GOOGLE} strokeWidth={1.8} dot={false} isAnimationActive={false} connectNulls />
+                      <Bar
+                        yAxisId="price"
+                        dataKey="high"
+                        name="주가"
+                        fill="transparent"
+                        barSize={Math.max(barSize * 1.5, 4)}
+                        isAnimationActive={false}
+                        shape={(props) => <CandleBar {...props} priceMin={priceDomain[0] as number} priceMax={priceDomain[1] as number} />}
+                      />
+                    </ComposedChart>
+                  </ChartCanvas>
+                </div>
+                <ChartLegend
+                  items={[
+                    { color: SEARCH_NAVER, label: '네이버 (좌)' },
+                    { color: SEARCH_GOOGLE, label: '구글 (좌)' },
+                    { color: CANDLE_UP, label: '주가 상승 (우)' },
+                    { color: CANDLE_DOWN, label: '주가 하락 (우)' },
+                  ]}
+                />
+              </ChartCard>
+
+              {/* ── D. 리스크 & 채널 ─────────────────────────────────────── */}
+              <SectionLabel>D · 리스크 & 채널</SectionLabel>
+
+              {/* D1. 리스크 + 주가-라인 (NEW 추가 제안) */}
+              <ChartCard
+                title="리스크 발생 + 주가"
+                subtitle="critical_type 별 리스크가 주가를 흔드는지 동조성 확인"
+                loading={isLoading}
+                empty={merged.every((d) => d.riskTotal === 0)}
+              >
+                <div className="h-[300px]">
+                  <ChartCanvas>
+                    <ComposedChart data={merged} margin={{ top: 12, right: 18, bottom: 0, left: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                      {sharedXAxis}
+                      <YAxis yAxisId="risk" orientation="left" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={28} allowDecimals={false} />
+                      <YAxis yAxisId="price" orientation="right" tickFormatter={priceTickFormatter} tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={48} domain={priceDomain} />
+                      <Tooltip cursor={{ fill: 'rgba(239, 68, 68, 0.06)' }} content={<RiskPriceTooltip />} />
+                      {CRITICAL_TYPES.map((c) => (
+                        <Bar
+                          key={c.id}
+                          yAxisId="risk"
+                          dataKey={(d: MergedPoint) => d.risks[c.id] ?? 0}
+                          name={c.label}
+                          stackId="risk"
+                          fill={CRITICAL_COLOR[c.id]}
+                          isAnimationActive={false}
+                          barSize={barSize}
+                        />
+                      ))}
+                      <Line yAxisId="price" type="monotone" dataKey="close" name="종가" stroke={PRICE_LINE} strokeWidth={2} dot={false} isAnimationActive={false} connectNulls />
+                    </ComposedChart>
+                  </ChartCanvas>
+                </div>
+                <ChartLegend
+                  items={[
+                    ...CRITICAL_TYPES.map((c) => ({ color: CRITICAL_COLOR[c.id], label: c.label })),
+                    { color: PRICE_LINE, label: '주가 종가 (우)' },
+                  ]}
+                />
+              </ChartCard>
+
+              {/* D2. 리스크 발생 단독 (현재 유지) */}
+              <ChartCard
+                title="리스크 발생 (단독)"
+                subtitle="critical_type 별 일자 건수"
+                loading={isLoading}
+                empty={merged.every((d) => d.riskTotal === 0)}
+              >
+                <div className="h-[260px]">
+                  <ChartCanvas>
+                    <BarChart data={merged} margin={{ top: 12, right: 16, bottom: 0, left: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                      {sharedXAxis}
+                      <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={28} allowDecimals={false} />
+                      <Tooltip cursor={{ fill: 'rgba(239, 68, 68, 0.06)' }} content={<RiskTooltip />} />
+                      {CRITICAL_TYPES.map((c) => (
+                        <Bar
+                          key={c.id}
+                          dataKey={(d: MergedPoint) => d.risks[c.id] ?? 0}
+                          name={c.label}
+                          stackId="risk"
+                          fill={CRITICAL_COLOR[c.id]}
+                          isAnimationActive={false}
+                          barSize={barSize}
+                        />
+                      ))}
+                    </BarChart>
+                  </ChartCanvas>
+                </div>
+                <ChartLegend items={CRITICAL_TYPES.map((c) => ({ color: CRITICAL_COLOR[c.id], label: c.label }))} />
+              </ChartCard>
+
+              {/* D3. 채널별 수집량 단독 */}
+              <ChartCard
+                title="채널별 수집량 (단독)"
+                subtitle="뉴스 · 블로그 · 유튜브 · 커뮤니티 일자 누적"
+                loading={isLoading}
+                empty={merged.every((d) => d.totalVolume === 0)}
+              >
+                <div className="h-[260px]">
+                  <ChartCanvas>
+                    <BarChart data={merged} margin={{ top: 12, right: 16, bottom: 0, left: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                      {sharedXAxis}
+                      <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={28} />
+                      <Tooltip cursor={{ fill: PRIMARY_SOFT }} content={<VolumeTooltip />} />
+                      {MONITORING_CHANNELS.map((c) => (
+                        <Bar
+                          key={c.id}
+                          dataKey={(d: MergedPoint) => d.channelVolume[c.id]}
+                          name={c.label}
+                          stackId="vol"
+                          fill={CHANNEL_COLOR[c.id]}
+                          isAnimationActive={false}
+                          barSize={barSize}
+                        />
+                      ))}
+                    </BarChart>
+                  </ChartCanvas>
+                </div>
+                <ChartLegend items={MONITORING_CHANNELS.map((c) => ({ color: CHANNEL_COLOR[c.id], label: c.label }))} />
+              </ChartCard>
+
+              {/* D3.5 채널별 수집량 + 주가 (채널 토글) */}
+              <ChartCard
+                title="채널별 수집량 + 주가"
+                subtitle="채널을 켜고 끄며 어느 채널이 주가와 동조하는지 본다"
+                loading={isLoading}
+                empty={merged.every((d) => d.totalVolume === 0)}
+              >
+                {/* 채널 토글 칩 */}
+                <div className="flex items-center gap-1.5 flex-wrap -mt-1">
+                  {MONITORING_CHANNELS.map((c) => {
+                    const on = visibleChannels.has(c.id);
+                    return (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => toggleChannel(c.id)}
+                        aria-pressed={on}
+                        className={`text-[11px] font-bold px-2.5 py-1 rounded-full border transition-all cursor-pointer inline-flex items-center gap-1.5 ${
+                          on
+                            ? 'border-transparent text-white'
+                            : 'border-slate-200 bg-white text-slate-400 hover:border-slate-300 hover:text-slate-600'
+                        }`}
+                        style={on ? { backgroundColor: CHANNEL_COLOR[c.id] } : undefined}
+                      >
+                        <span
+                          className="inline-block w-2 h-2 rounded-full"
+                          style={{ background: on ? '#fff' : CHANNEL_COLOR[c.id], opacity: on ? 0.9 : 0.7 }}
+                        />
+                        {c.label}
+                      </button>
+                    );
+                  })}
+                  {visibleChannels.size === 0 && (
+                    <span className="text-[11px] text-slate-400 ml-1">표시할 채널을 선택하세요</span>
+                  )}
+                </div>
+                <div className="h-[300px]">
+                  <ChartCanvas>
+                    <ComposedChart data={merged} margin={{ top: 12, right: 18, bottom: 0, left: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                      {sharedXAxis}
+                      <YAxis yAxisId="vol" orientation="left" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={36} />
+                      <YAxis yAxisId="price" orientation="right" tickFormatter={priceTickFormatter} tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={48} domain={priceDomain} />
+                      <Tooltip cursor={{ fill: PRIMARY_SOFT }} content={<ChannelPriceTooltip visibleChannels={visibleChannels} />} />
+                      {MONITORING_CHANNELS.filter((c) => visibleChannels.has(c.id)).map((c) => (
+                        <Bar
+                          key={c.id}
+                          yAxisId="vol"
+                          dataKey={(d: MergedPoint) => d.channelVolume[c.id]}
+                          name={c.label}
+                          stackId="vol"
+                          fill={CHANNEL_COLOR[c.id]}
+                          isAnimationActive={false}
+                          barSize={barSize}
+                        />
+                      ))}
+                      <Line yAxisId="price" type="monotone" dataKey="close" name="종가" stroke={PRICE_LINE} strokeWidth={2} dot={false} isAnimationActive={false} connectNulls />
+                    </ComposedChart>
+                  </ChartCanvas>
+                </div>
+                <ChartLegend
+                  items={[
+                    ...MONITORING_CHANNELS.filter((c) => visibleChannels.has(c.id)).map((c) => ({
+                      color: CHANNEL_COLOR[c.id],
+                      label: c.label,
+                    })),
+                    { color: PRICE_LINE, label: '주가 종가 (우)' },
+                  ]}
+                />
+              </ChartCard>
+
+              {/* D4. 수집량 + 검색 관심도 (NEW 추가 제안) */}
+              <ChartCard
+                title="수집량 + 검색 관심도"
+                subtitle="외부 신호(검색)와 내부 신호(수집)의 동조·괴리"
+                loading={isLoading}
+                empty={!hasSearch && merged.every((d) => d.totalVolume === 0)}
+              >
+                <div className="h-[280px]">
+                  <ChartCanvas>
+                    <ComposedChart data={merged} margin={{ top: 12, right: 18, bottom: 0, left: 0 }}>
+                      <defs>
+                        <linearGradient id="volBar2" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor={PRIMARY} stopOpacity={0.5} />
+                          <stop offset="100%" stopColor={PRIMARY} stopOpacity={0.1} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                      {sharedXAxis}
+                      <YAxis yAxisId="vol" orientation="left" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={36} />
+                      <YAxis yAxisId="srch" orientation="right" domain={[0, 100]} tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={36} />
+                      <Tooltip cursor={{ fill: PRIMARY_SOFT }} content={<VolumeSearchTooltip />} />
+                      <Bar yAxisId="vol" dataKey="totalVolume" name="수집량" fill="url(#volBar2)" isAnimationActive={false} barSize={barSize} />
+                      <Line yAxisId="srch" type="monotone" dataKey="searchNaver" name="네이버" stroke={SEARCH_NAVER} strokeWidth={1.8} dot={false} isAnimationActive={false} connectNulls />
+                      <Line yAxisId="srch" type="monotone" dataKey="searchGoogle" name="구글" stroke={SEARCH_GOOGLE} strokeWidth={1.8} dot={false} isAnimationActive={false} connectNulls />
+                    </ComposedChart>
+                  </ChartCanvas>
+                </div>
+                <ChartLegend
+                  items={[
+                    { color: PRIMARY, label: '수집량 (좌, 건)', soft: true },
+                    { color: SEARCH_NAVER, label: '네이버 (우)' },
+                    { color: SEARCH_GOOGLE, label: '구글 (우)' },
+                  ]}
+                />
+              </ChartCard>
+
+            </div>
+          );
+        })()}
 
       </div>
     </div>
@@ -713,6 +1017,65 @@ function ChartCard({
         children
       )}
     </div>
+  );
+}
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-2 mt-2 first:mt-0">
+      <span className="text-[11px] font-bold tracking-[0.18em] uppercase text-slate-500">
+        {children}
+      </span>
+      <div className="flex-1 h-px bg-slate-200/70" />
+    </div>
+  );
+}
+
+interface CandleBarProps {
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  payload?: { open?: number | null; close?: number | null; high?: number | null; low?: number | null };
+  priceMin: number;
+  priceMax: number;
+}
+
+/** 캔들 shape — recharts Bar 의 shape prop. recharts 가 high(=dataKey) 를 기준으로
+ *  바 좌표를 계산해 주므로, 그 좌표 + 바 높이에서 priceMin/priceMax 로 OHLC 위치 역산. */
+function CandleBar(props: CandleBarProps) {
+  const { x, y, width, height, payload, priceMin, priceMax } = props;
+  if (
+    x == null || y == null || width == null || height == null ||
+    !payload?.open || !payload.close || !payload.high || !payload.low
+  ) return null;
+
+  const { open, close, high, low } = payload;
+  const isUp = close >= open;
+  const color = isUp ? CANDLE_UP : CANDLE_DOWN;
+
+  const barTop = y;
+  const barBottom = y + height;
+  const fullRange = priceMax - priceMin;
+  const priceRange = high - priceMin;
+  const priceToY = (val: number) => {
+    if (fullRange <= 0 || priceRange <= 0) return barBottom;
+    const ratio = (val - priceMin) / fullRange;
+    return barBottom - ratio * (barBottom - barTop) * (fullRange / priceRange);
+  };
+
+  const bodyTop = priceToY(Math.max(open, close));
+  const bodyBottom = priceToY(Math.min(open, close));
+  const bodyH = Math.max(bodyBottom - bodyTop, 1.5);
+  const wickTop = priceToY(high);
+  const wickBottom = priceToY(low);
+  const cx = x + width / 2;
+
+  return (
+    <g>
+      <line x1={cx} y1={wickTop} x2={cx} y2={wickBottom} stroke={color} strokeWidth={1} />
+      <rect x={x + width * 0.15} y={bodyTop} width={width * 0.7} height={bodyH} fill={color} rx={1} />
+    </g>
   );
 }
 
@@ -908,6 +1271,196 @@ function RiskTooltip({
       ))}
       <div className="border-t border-slate-100 mt-1.5 pt-1.5">
         <TooltipRow label="합계" value={`${total}건`} bold />
+      </div>
+    </TooltipShell>
+  );
+}
+
+function SentimentPriceTooltip({
+  active,
+  payload,
+  label,
+}: {
+  active?: boolean;
+  payload?: TipPayload[];
+  label?: string;
+}) {
+  if (!active || !payload?.length) return null;
+  const d = payload[0]?.payload as (TipPayload['payload'] & { positive?: number; neutral?: number; negative?: number; close?: number | null });
+  if (!d) return null;
+  const sentParts = [
+    { color: SENTIMENT_COLOR.pos, label: '긍정', value: d.positive ?? 0 },
+    { color: SENTIMENT_COLOR.neu, label: '중립', value: d.neutral ?? 0 },
+    { color: SENTIMENT_COLOR.neg, label: '부정', value: d.negative ?? 0 },
+  ];
+  return (
+    <TooltipShell label={label}>
+      {sentParts.map((p, i) => (
+        <TooltipRow key={i} color={p.color} label={p.label} value={`${p.value}%`} />
+      ))}
+      <div className="border-t border-slate-100 mt-1.5 pt-1.5">
+        {d.close != null ? (
+          <TooltipRow color={PRICE_LINE} label="주가 종가" value={`${d.close.toLocaleString()}원`} bold />
+        ) : (
+          <TooltipRow label="주가" value="—" />
+        )}
+      </div>
+    </TooltipShell>
+  );
+}
+
+function SearchPriceTooltip({
+  active,
+  payload,
+  label,
+}: {
+  active?: boolean;
+  payload?: TipPayload[];
+  label?: string;
+}) {
+  if (!active || !payload?.length) return null;
+  const d = payload[0]?.payload as (TipPayload['payload'] & {
+    searchNaver?: number | null;
+    searchGoogle?: number | null;
+    open?: number | null;
+    close?: number | null;
+    high?: number | null;
+    low?: number | null;
+  });
+  if (!d) return null;
+  const hasOhlc = d.open != null && d.close != null && d.high != null && d.low != null;
+  const upDay = hasOhlc && (d.close ?? 0) >= (d.open ?? 0);
+  return (
+    <TooltipShell label={label}>
+      <TooltipRow color={SEARCH_NAVER} label="네이버" value={d.searchNaver != null ? d.searchNaver.toString() : '—'} />
+      <TooltipRow color={SEARCH_GOOGLE} label="구글" value={d.searchGoogle != null ? d.searchGoogle.toString() : '—'} />
+      <div className="border-t border-slate-100 mt-1.5 pt-1.5">
+        {hasOhlc ? (
+          <>
+            <TooltipRow color={PRICE_LINE} label="주가 종가" value={`${d.close!.toLocaleString()}원`} bold />
+            <div className="grid grid-cols-2 gap-x-3 mt-1 text-[11px] text-slate-400">
+              <span>시 <span className="text-slate-700 font-semibold tabular-nums ml-1">{d.open!.toLocaleString()}</span></span>
+              <span>고 <span className="text-slate-700 font-semibold tabular-nums ml-1">{d.high!.toLocaleString()}</span></span>
+              <span>저 <span className="text-slate-700 font-semibold tabular-nums ml-1">{d.low!.toLocaleString()}</span></span>
+              <span className={upDay ? 'text-red-500' : 'text-blue-500'}>
+                {upDay ? '▲' : '▼'} {Math.abs((((d.close ?? 0) - (d.open ?? 0)) / (d.open ?? 1)) * 100).toFixed(2)}%
+              </span>
+            </div>
+          </>
+        ) : d.close != null ? (
+          <TooltipRow color={PRICE_LINE} label="주가 종가" value={`${d.close.toLocaleString()}원`} bold />
+        ) : (
+          <TooltipRow label="주가" value="—" />
+        )}
+      </div>
+    </TooltipShell>
+  );
+}
+
+function RiskPriceTooltip({
+  active,
+  payload,
+  label,
+}: {
+  active?: boolean;
+  payload?: TipPayload[];
+  label?: string;
+}) {
+  if (!active || !payload?.length) return null;
+  const d = payload[0]?.payload as (TipPayload['payload'] & { close?: number | null });
+  // payload 는 Bar 들 + Line 1개. 리스크 막대만 필터.
+  const riskParts = payload.filter((p) => (p.value ?? 0) > 0 && p.name !== '종가');
+  return (
+    <TooltipShell label={label}>
+      {riskParts.length === 0 ? (
+        <div className="text-[12px] text-slate-400 mb-2">리스크 발생 없음</div>
+      ) : (
+        riskParts.map((p, i) => (
+          <TooltipRow key={i} color={p.color} label={p.name ?? ''} value={`${p.value}건`} />
+        ))
+      )}
+      <div className="border-t border-slate-100 mt-1.5 pt-1.5">
+        {d?.close != null ? (
+          <TooltipRow color={PRICE_LINE} label="주가 종가" value={`${d.close.toLocaleString()}원`} bold />
+        ) : (
+          <TooltipRow label="주가" value="—" />
+        )}
+      </div>
+    </TooltipShell>
+  );
+}
+
+function ChannelPriceTooltip({
+  active,
+  payload,
+  label,
+  visibleChannels,
+}: {
+  active?: boolean;
+  payload?: TipPayload[];
+  label?: string;
+  visibleChannels: Set<Channel>;
+}) {
+  if (!active || !payload?.length) return null;
+  const d = payload[0]?.payload as (TipPayload['payload'] & {
+    channelVolume?: Record<Channel, number>;
+    close?: number | null;
+  });
+  if (!d) return null;
+  const visible = MONITORING_CHANNELS.filter((c) => visibleChannels.has(c.id));
+  const total = visible.reduce((s, c) => s + (d.channelVolume?.[c.id] ?? 0), 0);
+  return (
+    <TooltipShell label={label}>
+      {visible.length === 0 ? (
+        <div className="text-[12px] text-slate-400 mb-2">선택된 채널 없음</div>
+      ) : (
+        <>
+          {visible.map((c) => (
+            <TooltipRow
+              key={c.id}
+              color={CHANNEL_COLOR[c.id]}
+              label={c.label}
+              value={`${(d.channelVolume?.[c.id] ?? 0).toLocaleString()}건`}
+            />
+          ))}
+          <div className="border-t border-slate-100 mt-1.5 pt-1.5">
+            <TooltipRow label="합계" value={`${total.toLocaleString()}건`} bold />
+          </div>
+        </>
+      )}
+      <div className="border-t border-slate-100 mt-1.5 pt-1.5">
+        {d.close != null ? (
+          <TooltipRow color={PRICE_LINE} label="주가 종가" value={`${d.close.toLocaleString()}원`} bold />
+        ) : (
+          <TooltipRow label="주가" value="—" />
+        )}
+      </div>
+    </TooltipShell>
+  );
+}
+
+function VolumeSearchTooltip({
+  active,
+  payload,
+  label,
+}: {
+  active?: boolean;
+  payload?: TipPayload[];
+  label?: string;
+}) {
+  if (!active || !payload?.length) return null;
+  const d = payload[0]?.payload as (TipPayload['payload'] & {
+    totalVolume?: number;
+    searchNaver?: number | null;
+    searchGoogle?: number | null;
+  });
+  if (!d) return null;
+  return (
+    <TooltipShell label={label}>
+      <TooltipRow color={PRIMARY} label="수집량" value={`${(d.totalVolume ?? 0).toLocaleString()}건`} bold />
+      <div className="border-t border-slate-100 mt-1.5 pt-1.5">
+        <TooltipRow color={SEARCH_NAVER} label="네이버" value={d.searchNaver != null ? d.searchNaver.toString() : '—'} />
+        <TooltipRow color={SEARCH_GOOGLE} label="구글" value={d.searchGoogle != null ? d.searchGoogle.toString() : '—'} />
       </div>
     </TooltipShell>
   );

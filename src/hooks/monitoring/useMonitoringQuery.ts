@@ -3,6 +3,7 @@ import {
   getMonitoringDaily,
   getMonitoringStock,
   getMonitoringRisks,
+  getMonitoringSearchTrend,
 } from '@/lib/api/monitoringApi';
 import { monitoringKeys } from './monitoringKeys';
 
@@ -33,6 +34,16 @@ export function useMonitoringRisks(workspaceId: string, start: string, end: stri
   return useQuery({
     queryKey: monitoringKeys.risks(workspaceId, start, end),
     queryFn: () => getMonitoringRisks(workspaceId, start, end),
+    enabled: !!workspaceId && !!start && !!end,
+    staleTime: FIVE_MIN,
+  });
+}
+
+/** workspace 의 [start, end] 범위 검색 관심도(naver/google) 일자 시계열. */
+export function useMonitoringSearch(workspaceId: string, start: string, end: string) {
+  return useQuery({
+    queryKey: monitoringKeys.search(workspaceId, start, end),
+    queryFn: () => getMonitoringSearchTrend(workspaceId, start, end),
     enabled: !!workspaceId && !!start && !!end,
     staleTime: FIVE_MIN,
   });

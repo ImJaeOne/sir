@@ -58,6 +58,12 @@ export interface MonitoringRiskPoint {
   total: number;
 }
 
+export interface MonitoringSearchPoint {
+  date: string;
+  naver: number | null;
+  google: number | null;
+}
+
 // ── 페이지네이션 헬퍼 (reportApi.ts 와 동일 패턴) ────────────────────
 const _PAGE = 1000;
 async function fetchAllPaged<T>(
@@ -239,5 +245,59 @@ export async function getMonitoringRisks(
       date,
       byType,
       total: byType.defamation + byType.insult + byType.rumor + byType.spam,
+    }));
+}
+
+/** workspace 의 모든 search_trends.trend_data 를 일자 단위로 머지.
+ *  search_trends 는 보고서 발행 시점 기준 30일치 [{date, ratio}] 라 같은 날짜가 여러
+ *  보고서에 중복 저장될 수 있다. 보고서별 정규화 baseline 이 다르므로 같은 날짜는
+ *  보고서 created_at 이 가장 최신인 값 1개만 채택해 시각적 점프를 줄인다. */
+export async function getMonitoringSearchTrend(
+  workspaceId: string,
+  startDate: string,
+  endDate: string,
+): Promise<MonitoringSearchPoint[]> {
+  type Row = {
+    provider: 'naver' | 'google';
+    trend_data: { date: string; ratio: number }[] | null;
+    reports: { created_at: string | null } | null;
+  };
+
+  // search_trends 만 단독으로 가져오면 created_at(보고서) 우선순위를 알 수 없어 nested select.
+  // 같은 ws 안에서만 머지되므로 RLS 통과. row 수가 워크스페이스 보고서 수 * 2(provider) 라 fetchAllPaged 까지는 불필요(50개 미만 예상).
+  const { data } = await supabase
+    .from('search_trends')
+    .select('provider, trend_data, reports!inner(created_at)')
+    .eq('workspace_id', workspaceId)
+    .returns<Row[]>();
+
+  // 같은 (date, provider) 의 가장 최신 보고서 ratio 만 남김
+  type Slot = { ratio: number; reportTs: number };
+  const naverByDate = new Map<string, Slot>();
+  const googleByDate = new Map<string, Slot>();
+
+  for (const r of data ?? []) {
+    const target = r.provider === 'naver' ? naverByDate : r.provider === 'google' ? googleByDate : null;
+    if (!target) continue;
+    const reportTs = r.reports?.created_at ? new Date(r.reports.created_at).getTime() : 0;
+    for (const p of r.trend_data ?? []) {
+      if (!p?.date || typeof p.ratio !== 'number') continue;
+      const cur = target.get(p.date);
+      if (!cur || cur.reportTs < reportTs) target.set(p.date, { ratio: p.ratio, reportTs });
+    }
+  }
+
+  // 범위 필터 + 일자 join
+  const allDates = new Set<string>([
+    ...Array.from(naverByDate.keys()).filter((d) => d >= startDate && d <= endDate),
+    ...Array.from(googleByDate.keys()).filter((d) => d >= startDate && d <= endDate),
+  ]);
+
+  return Array.from(allDates)
+    .sort()
+    .map((date) => ({
+      date,
+      naver: naverByDate.get(date)?.ratio ?? null,
+      google: googleByDate.get(date)?.ratio ?? null,
     }));
 }
