@@ -66,7 +66,7 @@ export function ChannelAccordion({ name, total, trend, children }: ChannelAccord
                 <div className="flex items-center gap-1.5 lg:hidden">
                   <CountBadge count={total} label="수집" />
                   {!isEmpty && (
-                    <Badge variant={trend.includes('긍정') ? 'blue' : 'red'}>{trend}</Badge>
+                    <Badge variant={trend.includes('긍정') ? 'blue' : trend.includes('부정') ? 'red' : 'slate'}>{trend}</Badge>
                   )}
                 </div>
               </div>
@@ -77,7 +77,7 @@ export function ChannelAccordion({ name, total, trend, children }: ChannelAccord
           </div>
           <div className="hidden lg:flex items-center gap-2 mr-4">
             <CountBadge count={total} label="수집" />
-            {!isEmpty && <Badge variant={trend.includes('긍정') ? 'blue' : 'red'}>{trend}</Badge>}
+            {!isEmpty && <Badge variant={trend.includes('긍정') ? 'blue' : trend.includes('부정') ? 'red' : 'slate'}>{trend}</Badge>}
           </div>
         </div>
         {isEmpty ? (
