@@ -19,6 +19,14 @@ interface ChannelDetailListProps {
   newsClusters: NewsCluster[];
 }
 
+// 3분기 — neutral 이 최다면 중립 우세. positive==negative==0(중립만 있는) 케이스가
+// 이전 `>= ` 비교에선 '긍정 우세' 로 잘못 떨어졌었다.
+function getTrendLabel(positive: number, neutral: number, negative: number): string {
+  if (neutral >= positive && neutral >= negative) return '중립 우세';
+  if (positive > negative) return '긍정 우세';
+  return '부정 우세';
+}
+
 export function ChannelDetailList({ channelStats, channelItems, newsClusters }: ChannelDetailListProps) {
   const itemsByChannel = new Map<string, ChannelItem[]>();
   for (const item of channelItems) {
@@ -30,7 +38,7 @@ export function ChannelDetailList({ channelStats, channelItems, newsClusters }: 
   return (
     <div className="flex flex-col gap-2">
       {channelStats.map((ch) => {
-        const trend = ch.positive >= ch.negative ? '긍정 우세' : '부정 우세';
+        const trend = getTrendLabel(ch.positive, ch.neutral, ch.negative);
 
         if (ch.id === 'news') {
           const unclustered = (itemsByChannel.get('news') ?? []).filter((i) => !i.cluster_id);
