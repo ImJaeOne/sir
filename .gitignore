@@ -26,3 +26,10 @@ next-env.d.ts
 *.njsproj
 *.sln
 *.sw?
+
+# 일회성 점검·테스트 스크립트
+scripts/check-*.mjs
+scripts/test-*.mjs
+
+# 백엔드 마이그 (sir-backend/supabase 가 정본)
+supabase/
