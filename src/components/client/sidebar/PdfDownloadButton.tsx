@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import { useParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { useQuery } from '@tanstack/react-query';
+import { Download } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { LoadingOverlay } from '@/components/ui/Loading';
 
@@ -32,7 +33,12 @@ function useReportMeta(workspaceId?: string, reportId?: string) {
   });
 }
 
-export function PdfDownloadButton() {
+interface PdfDownloadButtonProps {
+  /** 'sidebar' (기본) — 사이드바 가로 버튼 / 'icon' — 모바일 헤더용 아이콘 버튼 */
+  variant?: 'sidebar' | 'icon';
+}
+
+export function PdfDownloadButton({ variant = 'sidebar' }: PdfDownloadButtonProps = {}) {
   const [downloading, setDownloading] = useState(false);
   const params = useParams();
   const workspaceId = params?.workspaceId as string | undefined;
@@ -82,17 +88,28 @@ export function PdfDownloadButton() {
           <LoadingOverlay title="보고서를 다운로드 하고 있어요" />,
           document.body,
         )}
-      <div className="px-3 w-full">
+      {variant === 'icon' ? (
         <button
           onClick={handleDownload}
           disabled={downloading}
-          className="w-full flex items-center gap-2.5 rounded-lg text-sm transition-colors cursor-pointer justify-center border border-bg-dark px-3 py-2.5 hover:bg-bg-light disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-9 h-9 flex items-center justify-center rounded-lg text-text-muted hover:bg-bg-light transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          aria-label="보고서 PDF 다운로드"
         >
-          <span className="text-text-dark font-semibold text-center">
-            {downloading ? 'PDF 생성 중...' : '보고서 다운로드(PDF)'}
-          </span>
+          <Download size={18} />
         </button>
-      </div>
+      ) : (
+        <div className="px-3 w-full">
+          <button
+            onClick={handleDownload}
+            disabled={downloading}
+            className="w-full flex items-center gap-2.5 rounded-lg text-sm transition-colors cursor-pointer justify-center border border-bg-dark px-3 py-2.5 hover:bg-bg-light disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <span className="text-text-dark font-semibold text-center">
+              {downloading ? 'PDF 생성 중...' : '보고서 다운로드(PDF)'}
+            </span>
+          </button>
+        </div>
+      )}
     </>
   );
 }
