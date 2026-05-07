@@ -4,6 +4,7 @@ import {
   getMonitoringStock,
   getMonitoringRisks,
   getMonitoringSearchTrend,
+  getMonitoringChannelMatrix,
 } from '@/lib/api/monitoringApi';
 import { monitoringKeys } from './monitoringKeys';
 
@@ -44,6 +45,16 @@ export function useMonitoringSearch(workspaceId: string, start: string, end: str
   return useQuery({
     queryKey: monitoringKeys.search(workspaceId, start, end),
     queryFn: () => getMonitoringSearchTrend(workspaceId, start, end),
+    enabled: !!workspaceId && !!start && !!end,
+    staleTime: FIVE_MIN,
+  });
+}
+
+/** workspace 의 [start, end] 범위 일자×채널×is_relevant×sentiment 매트릭스. E 탭 토글용. */
+export function useMonitoringChannelMatrix(workspaceId: string, start: string, end: string) {
+  return useQuery({
+    queryKey: monitoringKeys.channelMatrix(workspaceId, start, end),
+    queryFn: () => getMonitoringChannelMatrix(workspaceId, start, end),
     enabled: !!workspaceId && !!start && !!end,
     staleTime: FIVE_MIN,
   });

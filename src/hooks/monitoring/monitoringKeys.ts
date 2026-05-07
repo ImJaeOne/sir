@@ -8,4 +8,6 @@ export const monitoringKeys = {
     ['monitoring', workspaceId, 'risks', start, end] as const,
   search: (workspaceId: string, start: string, end: string) =>
     ['monitoring', workspaceId, 'search', start, end] as const,
+  channelMatrix: (workspaceId: string, start: string, end: string) =>
+    ['monitoring', workspaceId, 'channelMatrix', start, end] as const,
 };

@@ -64,6 +64,25 @@ export interface MonitoringSearchPoint {
   google: number | null;
 }
 
+// ── 채널 매트릭스 (E 탭 sentiment 토글용) ─────────────────────────
+// 일자×채널×sentiment 카운트. is_relevant=true 인 항목만 집계해 동명 노이즈
+// (예: "대교" 검색 시 "광안대교") 를 제외한다.
+
+export type Sentiment = 'positive' | 'neutral' | 'negative';
+export type SentimentFilter = 'all' | Sentiment;
+
+export interface ChannelMatrixCell {
+  positive: number;
+  neutral: number;
+  negative: number;
+  unknown: number; // sentiment === null (분석 실패/대기)
+}
+
+export interface MonitoringChannelMatrixPoint {
+  date: string;
+  byChannel: Record<Channel, ChannelMatrixCell>;
+}
+
 // ── 페이지네이션 헬퍼 (reportApi.ts 와 동일 패턴) ────────────────────
 const _PAGE = 1000;
 async function fetchAllPaged<T>(
@@ -87,6 +106,25 @@ function emptyChannelVolume(): Record<Channel, number> {
 
 function emptyByType(): Record<CriticalType, number> {
   return { defamation: 0, insult: 0, rumor: 0, spam: 0 };
+}
+
+function emptyMatrixCell(): ChannelMatrixCell {
+  return { positive: 0, neutral: 0, negative: 0, unknown: 0 };
+}
+
+function emptyByChannelMatrix(): Record<Channel, ChannelMatrixCell> {
+  return {
+    news: emptyMatrixCell(),
+    blog: emptyMatrixCell(),
+    youtube: emptyMatrixCell(),
+    community: emptyMatrixCell(),
+  };
+}
+
+/** sentiment 토글로 한 셀의 카운트를 슬라이스. 'all' 은 unknown(분석 미완) 도 포함. */
+export function pickMatrixCount(cell: ChannelMatrixCell, sentiment: SentimentFilter): number {
+  if (sentiment === 'all') return cell.positive + cell.neutral + cell.negative + cell.unknown;
+  return cell[sentiment];
 }
 
 // ── API ───────────────────────────────────────────────────────────────
@@ -300,4 +338,68 @@ export async function getMonitoringSearchTrend(
       naver: naverByDate.get(date)?.ratio ?? null,
       google: googleByDate.get(date)?.ratio ?? null,
     }));
+}
+
+/** news_items + community_items + sns_items 의 raw row 를 일자×채널×sentiment 카운트로 집계.
+ *  is_relevant=true 인 항목만 포함해 동명 노이즈를 제외한다. published_at 기준 KST 일자. */
+export async function getMonitoringChannelMatrix(
+  workspaceId: string,
+  startDate: string,
+  endDate: string,
+): Promise<MonitoringChannelMatrixPoint[]> {
+  const startISO = `${startDate}T00:00:00+09:00`;
+  const endNext = new Date(`${endDate}T00:00:00+09:00`);
+  endNext.setDate(endNext.getDate() + 1);
+  const endISO = endNext.toISOString();
+
+  type Row = {
+    published_at: string | null;
+    platform_id: string;
+    sentiment: string | null;
+  };
+
+  const buildItemQuery = (table: 'news_items' | 'community_items' | 'sns_items') => (
+    from: number,
+    to: number,
+  ) =>
+    supabase
+      .from(table)
+      .select('published_at, platform_id, sentiment')
+      .eq('workspace_id', workspaceId)
+      .eq('is_relevant', true)
+      .gte('published_at', startISO)
+      .lt('published_at', endISO)
+      .range(from, to);
+
+  const [news, community, sns] = await Promise.all([
+    fetchAllPaged<Row>(buildItemQuery('news_items')),
+    fetchAllPaged<Row>(buildItemQuery('community_items')),
+    fetchAllPaged<Row>(buildItemQuery('sns_items')),
+  ]);
+
+  const byDate = new Map<string, Record<Channel, ChannelMatrixCell>>();
+
+  for (const r of [...news, ...community, ...sns]) {
+    if (!r.published_at) continue;
+    const channel = PLATFORM_TO_CHANNEL[r.platform_id];
+    if (!channel) continue;
+
+    const kst = new Date(new Date(r.published_at).getTime() + 9 * 60 * 60 * 1000);
+    const date = kst.toISOString().slice(0, 10);
+
+    const dayMap = byDate.get(date) ?? emptyByChannelMatrix();
+    const cell = dayMap[channel];
+
+    const s = r.sentiment;
+    if (s === 'positive') cell.positive += 1;
+    else if (s === 'neutral') cell.neutral += 1;
+    else if (s === 'negative') cell.negative += 1;
+    else cell.unknown += 1;
+
+    byDate.set(date, dayMap);
+  }
+
+  return Array.from(byDate.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, byChannel]) => ({ date, byChannel }));
 }
