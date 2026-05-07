@@ -128,7 +128,7 @@ export default function MonitoringPage() {
   const { data: workspace } = useWorkspace(workspaceId);
 
   const today = useMemo(() => kstTodayStr(), []);
-  const [start, setStart] = useState(() => shiftDays(today, -89));
+  const [start, setStart] = useState(() => shiftDays(today, -29));
   const [end, setEnd] = useState(today);
   const [activeTab, setActiveTab] = useState<TabId>('A');
   // E 탭(채널별 수집량 + 주가) 감정 토글. 4채널 라인에 동시 적용.
@@ -822,17 +822,15 @@ export default function MonitoringPage() {
               {activeTab === 'E' && (
                 <>
                   {/* 공통 토글 패널 — 두 차트(E1/E2)에 동시 적용 */}
-                  <div className="rounded-2xl bg-white border border-slate-200/80 p-4 lg:p-5 flex flex-col gap-3 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-                    <div className="flex flex-col lg:flex-row gap-3 lg:gap-6 lg:items-center">
-                      <FilterGroup
-                        label="감정"
-                        options={SENTIMENT_OPTIONS}
-                        value={sentimentFilter}
-                        onChange={setSentimentFilter}
-                      />
-                    </div>
+                  <div className="rounded-2xl bg-white border border-slate-200/80 p-4 lg:p-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-8 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+                    <FilterGroup
+                      label="감정"
+                      options={SENTIMENT_OPTIONS}
+                      value={sentimentFilter}
+                      onChange={setSentimentFilter}
+                    />
                     {/* 채널 가시성 칩 */}
-                    <div className="flex items-center gap-1.5 flex-wrap pt-2 border-t border-slate-100">
+                    <div className="flex items-center gap-1.5 flex-wrap pt-2 border-t border-slate-100 lg:pt-0 lg:border-t-0 lg:border-l lg:border-slate-100 lg:pl-6">
                       <span className="text-[10px] font-bold tracking-[0.06em] uppercase text-slate-400 mr-1">채널</span>
                       {MONITORING_CHANNELS.map((c) => {
                         const on = visibleChannels.has(c.id);
