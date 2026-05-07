@@ -15,7 +15,6 @@ import {
   Tooltip,
 } from 'recharts';
 import {
-  AlertTriangle,
   TrendingUp,
   TrendingDown,
   Minus,
@@ -28,9 +27,9 @@ import {
   useMonitoringDaily,
   useMonitoringStock,
   useMonitoringRisks,
-  useMonitoringSearch,
   useMonitoringChannelMatrix,
 } from '@/hooks/monitoring/useMonitoringQuery';
+import { useMonitoringSearchLive } from '@/hooks/monitoring/useMonitoringSearchLive';
 import {
   MONITORING_CHANNELS,
   CRITICAL_TYPES,
@@ -41,6 +40,7 @@ import {
   type SentimentFilter,
 } from '@/lib/api/monitoringApi';
 import { ChartCanvas } from '@/components/chart/ChartCanvas';
+import { AiAnalysisCard } from '@/components/client/monitoring/AiAnalysisCard';
 
 // ── color tokens ────────────────────────────────────────────────────────
 const CHANNEL_COLOR: Record<Channel, string> = {
@@ -84,12 +84,6 @@ function shiftDays(dateStr: string, days: number): string {
   return kst.toISOString().slice(0, 10);
 }
 
-function diffDays(start: string, end: string): number {
-  const s = new Date(`${start}T00:00:00+09:00`).getTime();
-  const e = new Date(`${end}T00:00:00+09:00`).getTime();
-  return Math.round((e - s) / (24 * 60 * 60 * 1000)) + 1;
-}
-
 function shortDate(s: string): string {
   if (!s || s.length < 10) return s;
   return `${parseInt(s.slice(5, 7), 10)}/${parseInt(s.slice(8, 10), 10)}`;
@@ -128,8 +122,9 @@ export default function MonitoringPage() {
   const { data: workspace } = useWorkspace(workspaceId);
 
   const today = useMemo(() => kstTodayStr(), []);
-  const [start, setStart] = useState(() => shiftDays(today, -29));
-  const [end, setEnd] = useState(today);
+  const [presetDays, setPresetDays] = useState<number>(30);
+  const end = today;
+  const start = useMemo(() => shiftDays(today, -(presetDays - 1)), [today, presetDays]);
   const [activeTab, setActiveTab] = useState<TabId>('A');
   // E 탭(채널별 수집량 + 주가) 감정 토글. 4채널 라인에 동시 적용.
   // is_relevant=true 인 항목만 매트릭스에 들어오므로 관련성 토글은 두지 않는다 (동명 노이즈 자동 차단).
@@ -147,15 +142,20 @@ export default function MonitoringPage() {
     });
   };
 
-  // 직전 동기간 — KPI 비교용
-  const range = diffDays(start, end);
+  // 직전 동기간 — '총 수집량' KPI 의 delta 비교용
+  const range = presetDays;
   const prevEnd = shiftDays(start, -1);
   const prevStart = shiftDays(prevEnd, -(range - 1));
 
   const { data: daily = [], isPending: dailyLoading } = useMonitoringDaily(workspaceId, start, end);
   const { data: stock = [], isPending: stockLoading } = useMonitoringStock(workspaceId, start, end);
   const { data: risks = [], isPending: risksLoading } = useMonitoringRisks(workspaceId, start, end);
-  const { data: search = [], isPending: searchLoading } = useMonitoringSearch(workspaceId, start, end);
+  // 검색 관심도 — 네이버 데이터랩 365일치 1회 호출 후 클라가 슬라이스/재정규화 (탭 전환·기간 변경 시 추가 호출 X)
+  const { data: search = [], isPending: searchLoading } = useMonitoringSearchLive(
+    workspaceId,
+    start,
+    end,
+  );
   // E 탭(필터 토글) 전용 raw 매트릭스. E 탭 활성화 시에만 가져온다.
   const { data: matrix = [], isPending: matrixLoading } = useMonitoringChannelMatrix(
     activeTab === 'E' ? workspaceId : '',
@@ -164,7 +164,6 @@ export default function MonitoringPage() {
   );
 
   const { data: prevDaily = [] } = useMonitoringDaily(workspaceId, prevStart, prevEnd);
-  const { data: prevRisks = [] } = useMonitoringRisks(workspaceId, prevStart, prevEnd);
 
   const isLoading = dailyLoading || stockLoading || risksLoading || searchLoading;
 
@@ -218,23 +217,11 @@ export default function MonitoringPage() {
       });
   }, [daily, stock, risks, search]);
 
-  // ── KPI ─────────────────────────────────────────────────────────────
+  // ── KPI (총 수집량 + 현재 주가) ─────────────────────────────────
   const kpi = useMemo(() => {
     const totalVol = daily.reduce((s, d) => s + d.totalVolume, 0);
     const prevVol = prevDaily.reduce((s, d) => s + d.totalVolume, 0);
     const volDelta = totalVol - prevVol;
-
-    const totalNeg = daily.reduce((s, d) => s + d.negative, 0);
-    const totalAll = daily.reduce((s, d) => s + d.positive + d.neutral + d.negative, 0);
-    const negPct = totalAll > 0 ? Math.round((totalNeg / totalAll) * 100) : 0;
-    const prevNeg = prevDaily.reduce((s, d) => s + d.negative, 0);
-    const prevAll = prevDaily.reduce((s, d) => s + d.positive + d.neutral + d.negative, 0);
-    const prevNegPct = prevAll > 0 ? Math.round((prevNeg / prevAll) * 100) : 0;
-    const negDelta = negPct - prevNegPct;
-
-    const totalRisks = risks.reduce((s, d) => s + d.total, 0);
-    const prevTotalRisks = prevRisks.reduce((s, d) => s + d.total, 0);
-    const riskDelta = totalRisks - prevTotalRisks;
 
     const stockSorted = stock.filter((s) => s.close != null);
     const lastClose = stockSorted[stockSorted.length - 1]?.close ?? null;
@@ -242,17 +229,8 @@ export default function MonitoringPage() {
     const priceDeltaPct =
       firstClose && lastClose ? ((lastClose - firstClose) / firstClose) * 100 : null;
 
-    return {
-      totalVol,
-      volDelta,
-      negPct,
-      negDelta,
-      totalRisks,
-      riskDelta,
-      lastClose,
-      priceDeltaPct,
-    };
-  }, [daily, prevDaily, risks, prevRisks, stock]);
+    return { totalVol, volDelta, lastClose, priceDeltaPct };
+  }, [daily, prevDaily, stock]);
 
   // ── 감정 비율 시계열 (스택 area 용) ────────────────────────────────
   // pos/neg 를 독립 반올림하면 합이 99~101 이 될 수 있어 Y축이 101% 까지 늘어나므로,
@@ -305,11 +283,6 @@ export default function MonitoringPage() {
     });
   }, [merged, matrix, sentimentFilter]);
 
-  const handlePreset = (days: number) => {
-    setEnd(today);
-    setStart(shiftDays(today, -(days - 1)));
-  };
-
   return (
     <div className="h-full bg-white overflow-y-auto">
       <div className="mx-auto w-full max-w-[1240px] px-4 lg:px-10 py-7 lg:py-10 flex flex-col gap-7">
@@ -324,32 +297,26 @@ export default function MonitoringPage() {
             {workspace?.company_name ?? '워크스페이스'} 모니터링
           </h1>
           <p className="text-[13px] text-slate-500 leading-[1.6] max-w-[860px]">
-            일자별 누적 데이터 기반 시계열 추이입니다. 좌측 날짜를 직접 선택하거나 우측 프리셋을 눌러 기간을 바꿀 수 있고,
-            모든 KPI 는 같은 길이의 직전 기간과 비교해 보여줍니다.
+            일자별 누적 데이터 기반 시계열 추이입니다. 아래 프리셋으로 기간을 선택할 수 있으며,
+            <span className="whitespace-nowrap">총 수집량</span> 은 같은 길이의 직전 기간과 비교해 보여줍니다.
           </p>
         </header>
 
-        {/* 날짜 선택 + 프리셋 ───────────────────────────── */}
-        <div className="rounded-2xl bg-slate-50/70 border border-slate-200/80 px-4 lg:px-5 py-4 flex flex-col lg:flex-row lg:items-center gap-4 lg:gap-6">
+        {/* 기간 프리셋 ───────────────────────────────── */}
+        <div className="rounded-2xl bg-slate-50/70 border border-slate-200/80 px-4 lg:px-5 py-3.5 flex items-center gap-3 lg:gap-5 flex-wrap">
           <div className="flex items-center gap-2 text-slate-400">
             <Calendar size={15} />
             <span className="text-[11px] font-bold tracking-[0.08em] uppercase">기간</span>
           </div>
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <DateInput value={start} max={end} onChange={setStart} aria-label="시작일" />
-            <span className="text-slate-300">—</span>
-            <DateInput value={end} min={start} max={today} onChange={setEnd} aria-label="종료일" />
-            <span className="text-[11px] text-slate-400 tabular-nums ml-1">{range}일</span>
-          </div>
-          <div className="flex items-center gap-1 lg:ml-auto flex-wrap">
+          <div className="flex items-center gap-1 flex-wrap">
             {PRESETS.map((p) => {
-              const active = range === p.id && end === today;
+              const active = presetDays === p.id;
               return (
                 <button
                   key={p.id}
                   type="button"
-                  onClick={() => handlePreset(p.id)}
-                  className={`text-[11px] font-bold px-3 py-1.5 rounded-full border transition-colors cursor-pointer tracking-[-0.005em] ${
+                  onClick={() => setPresetDays(p.id)}
+                  className={`text-[11.5px] font-bold px-3.5 py-1.5 rounded-full border transition-colors cursor-pointer tracking-[-0.005em] ${
                     active
                       ? 'bg-slate-900 text-white border-slate-900'
                       : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300 hover:text-slate-700'
@@ -360,10 +327,13 @@ export default function MonitoringPage() {
               );
             })}
           </div>
+          <span className="text-[11px] text-slate-400 tabular-nums ml-auto">
+            {start} ~ {end}
+          </span>
         </div>
 
         {/* KPI ───────────────────────────────────────────── */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+        <div className="grid grid-cols-2 gap-3.5">
           <KpiCard
             icon={<MessageSquare size={14} />}
             label="총 수집량"
@@ -388,30 +358,10 @@ export default function MonitoringPage() {
             sub={`기간 시작 대비`}
             loading={isLoading}
           />
-          <KpiCard
-            icon={<TrendingDown size={14} />}
-            label="부정 여론"
-            value={kpi.negPct.toString()}
-            unit="%"
-            delta={kpi.negDelta}
-            deltaSuffix="%p"
-            invertDeltaTone
-            tone={kpi.negPct >= 30 ? 'danger' : 'default'}
-            sub={`직전 ${range}일 대비`}
-            loading={isLoading}
-          />
-          <KpiCard
-            icon={<AlertTriangle size={14} />}
-            label="리스크 콘텐츠"
-            value={kpi.totalRisks.toString()}
-            unit="건"
-            delta={kpi.riskDelta}
-            invertDeltaTone
-            tone={kpi.totalRisks > 0 ? 'warn' : 'default'}
-            sub={`직전 ${range}일 대비`}
-            loading={isLoading}
-          />
         </div>
+
+        {/* AI 분석 ─────────────────────────────────────── */}
+        <AiAnalysisCard workspaceId={workspaceId} start={start} end={end} />
 
         {/* 탭 ───────────────────────────────────────────── */}
         <TabBar activeTab={activeTab} onChange={setActiveTab} />
@@ -1000,34 +950,6 @@ export default function MonitoringPage() {
 
 // ── shared subcomponents ────────────────────────────────────────────────
 
-function DateInput({
-  value,
-  onChange,
-  min,
-  max,
-  ...rest
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  min?: string;
-  max?: string;
-} & Omit<React.InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange' | 'min' | 'max' | 'type'>) {
-  return (
-    <input
-      type="date"
-      value={value}
-      min={min}
-      max={max}
-      onChange={(e) => {
-        if (!e.target.value) return;
-        onChange(e.target.value);
-      }}
-      className="text-[12px] font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100 transition-all tabular-nums cursor-pointer"
-      {...rest}
-    />
-  );
-}
-
 function KpiCard({
   icon,
   label,
@@ -1097,10 +1019,10 @@ function KpiCard({
         <div className="h-10 w-24 bg-slate-100 rounded animate-pulse" />
       ) : (
         <div className="flex items-baseline gap-1">
-          <span className="text-[34px] font-bold tracking-[-0.025em] leading-[1] tabular-nums text-slate-900">
+          <span className="text-[26px] sm:text-[30px] lg:text-[34px] font-bold tracking-[-0.025em] leading-[1] tabular-nums text-slate-900">
             {value}
           </span>
-          {unit && <span className="text-sm font-semibold text-slate-400">{unit}</span>}
+          {unit && <span className="text-xs sm:text-sm font-semibold text-slate-400">{unit}</span>}
         </div>
       )}
       <div className="mt-auto flex flex-col gap-0.5">
