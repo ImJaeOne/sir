@@ -8,6 +8,8 @@ import { SirSymbol } from '@/components/icons/SirSymbol';
 import { getClientReportSections } from '@/components/client/sidebar/sections';
 
 const FAB_SIZE = 56;
+// 하단 탭 bar (≈58px) + safe-area 여유분. dragPos 가 없을 때만 적용되는 기본 위치 보정.
+const TAB_BAR_OFFSET = 80;
 
 function subscribeResize(cb: () => void) {
   window.addEventListener('resize', cb);
@@ -17,10 +19,16 @@ function subscribeResize(cb: () => void) {
 export function MobileFab() {
   const params = useParams();
   const router = useRouter();
-  const pathname = usePathname();
+  const pathname = usePathname() ?? '';
   const searchParams = useSearchParams();
   const reportId = (params?.reportId as string | undefined) ?? '';
+  // /report/* 외 경로(모니터링/위기 대응 센터 등)에서는 FAB 자체가 의미 없으므로 비활성.
+  // 훅 순서 보존을 위해 실제 렌더만 막고 useReportInfo 는 그대로 호출 (reportId 빈 문자열이면 enabled=false 로 noop).
+  const onReportPath = pathname.startsWith('/report/');
   const { data: report } = useReportInfo(reportId);
+  // 일간 보고서는 섹션 수가 적어 sticky 탭으로 충분 → fab 표시 안 함.
+  // weekly / initial(월간) 만 노출. data 로드 전에는 보수적으로 숨김.
+  const isFabEligibleType = report?.type === 'weekly' || report?.type === 'initial';
 
   const sections = useMemo(() => getClientReportSections(report?.type), [report?.type]);
   const activeId = searchParams?.get('section') ?? sections[0]?.id;
@@ -35,7 +43,7 @@ export function MobileFab() {
   const [vw, vh] = viewport.split('x').map(Number);
   const mounted = vw > 0;
   const [dragPos, setDragPos] = useState<{ x: number; y: number } | null>(null);
-  const pos = dragPos ?? { x: vw - FAB_SIZE - 20, y: vh - FAB_SIZE - 24 };
+  const pos = dragPos ?? { x: vw - FAB_SIZE - 20, y: vh - FAB_SIZE - TAB_BAR_OFFSET };
   const dragRef = useRef<{ startX: number; startY: number; startPosX: number; startPosY: number; moved: boolean } | null>(null);
   const fabRef = useRef<HTMLButtonElement>(null);
 
@@ -74,6 +82,9 @@ export function MobileFab() {
   };
 
   const activeIdx = sections.findIndex((s) => s.id === activeId);
+
+  if (!onReportPath) return null;
+  if (!isFabEligibleType) return null;
 
   return (
     <>

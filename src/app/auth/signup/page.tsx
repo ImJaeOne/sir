@@ -4,16 +4,20 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Check, ChevronDown, X } from 'lucide-react';
 import { signup } from '@/app/auth/actions';
+import {
+  checkPassword,
+  PASSWORD_PLACEHOLDER,
+  STRENGTH_LABEL,
+  type PasswordStrength,
+} from '@/lib/auth/passwordPolicy';
 
 const DEPARTMENTS = ['개발', '디자인', '기획'] as const;
 
-const PASSWORD_RULES = [
-  { key: 'length', label: '8자 이상', test: (v: string) => v.length >= 8 },
-  { key: 'uppercase', label: '영문 대문자 포함', test: (v: string) => /[A-Z]/.test(v) },
-  { key: 'lowercase', label: '영문 소문자 포함', test: (v: string) => /[a-z]/.test(v) },
-  { key: 'number', label: '숫자 포함', test: (v: string) => /[0-9]/.test(v) },
-  { key: 'special', label: '특수문자 포함 (!@#$%^&*)', test: (v: string) => /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(v) },
-] as const;
+const STRENGTH_BAR_STYLE: Record<PasswordStrength, { fill: string; bars: number; text: string }> = {
+  weak: { fill: 'bg-red-400', bars: 1, text: 'text-red-500' },
+  medium: { fill: 'bg-amber-400', bars: 2, text: 'text-amber-600' },
+  strong: { fill: 'bg-green-500', bars: 3, text: 'text-green-600' },
+};
 
 export default function SignupPage() {
   const [error, setError] = useState<string | null>(null);
@@ -35,12 +39,10 @@ export default function SignupPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const ruleResults = PASSWORD_RULES.map((rule) => ({
-    ...rule,
-    passed: rule.test(password),
-  }));
-  const allPassed = ruleResults.every((r) => r.passed);
+  const pwCheck = checkPassword(password);
+  const allPassed = pwCheck.ok;
   const passwordsMatch = password === confirmPassword;
+  const strengthStyle = STRENGTH_BAR_STYLE[pwCheck.strength];
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -173,24 +175,43 @@ export default function SignupPage() {
               onChange={(e) => setPassword(e.target.value)}
               onFocus={() => setPasswordTouched(true)}
               className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="비밀번호 입력"
+              placeholder={PASSWORD_PLACEHOLDER}
             />
-            {/* 비밀번호 규칙 체크리스트 */}
+            {/* 강도 막대 + 규칙 체크리스트 */}
             {passwordTouched && (
-              <ul className="mt-2 space-y-1">
-                {ruleResults.map((rule) => (
-                  <li key={rule.key} className="flex items-center gap-1.5 text-xs">
-                    {rule.passed ? (
-                      <Check size={12} className="text-green-500 shrink-0" />
-                    ) : (
-                      <X size={12} className="text-slate-300 shrink-0" />
-                    )}
-                    <span className={rule.passed ? 'text-green-600' : 'text-slate-400'}>
-                      {rule.label}
+              <>
+                {password.length > 0 && (
+                  <div className="mt-2 flex items-center gap-2">
+                    <div className="flex gap-1 flex-1">
+                      {[1, 2, 3].map((i) => (
+                        <div
+                          key={i}
+                          className={`h-1 flex-1 rounded-full transition-colors ${
+                            i <= strengthStyle.bars ? strengthStyle.fill : 'bg-slate-200'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    <span className={`text-xs font-medium ${strengthStyle.text}`}>
+                      {STRENGTH_LABEL[pwCheck.strength]}
                     </span>
-                  </li>
-                ))}
-              </ul>
+                  </div>
+                )}
+                <ul className="mt-2 space-y-1">
+                  {pwCheck.rules.map((rule) => (
+                    <li key={rule.key} className="flex items-center gap-1.5 text-xs">
+                      {rule.passed ? (
+                        <Check size={12} className="text-green-500 shrink-0" />
+                      ) : (
+                        <X size={12} className="text-slate-300 shrink-0" />
+                      )}
+                      <span className={rule.passed ? 'text-green-600' : 'text-slate-400'}>
+                        {rule.label}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </>
             )}
           </div>
 

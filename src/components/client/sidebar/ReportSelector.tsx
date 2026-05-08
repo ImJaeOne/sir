@@ -4,6 +4,7 @@ import { useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
+import { CalendarDays } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 
 const ReportCalendarModal = dynamic(
@@ -30,7 +31,12 @@ function useReportList(workspaceId?: string, enabled = false) {
   });
 }
 
-export function ReportSelector() {
+interface ReportSelectorProps {
+  /** 'sidebar' (기본) — 사이드바용 가로 버튼 / 'icon' — 모바일 헤더용 아이콘 버튼 */
+  variant?: 'sidebar' | 'icon';
+}
+
+export function ReportSelector({ variant = 'sidebar' }: ReportSelectorProps = {}) {
   const [showModal, setShowModal] = useState(false);
   const params = useParams();
   const router = useRouter();
@@ -48,14 +54,24 @@ export function ReportSelector() {
 
   return (
     <>
-      <div className="px-3 w-full">
+      {variant === 'icon' ? (
         <button
           onClick={() => setShowModal(true)}
-          className="w-full flex items-center gap-2.5 rounded-lg text-sm transition-colors cursor-pointer justify-center border border-bg-dark px-3 py-2.5 hover:bg-bg-light"
+          className="w-9 h-9 flex items-center justify-center rounded-lg text-text-muted hover:bg-bg-light transition-colors cursor-pointer"
+          aria-label="지난 보고서 보기"
         >
-          <span className="text-text-dark font-semibold text-center">지난 보고서 보기</span>
+          <CalendarDays size={18} />
         </button>
-      </div>
+      ) : (
+        <div className="px-3 w-full">
+          <button
+            onClick={() => setShowModal(true)}
+            className="w-full flex items-center gap-2.5 rounded-lg text-sm transition-colors cursor-pointer justify-center border border-bg-dark px-3 py-2.5 hover:bg-bg-light"
+          >
+            <span className="text-text-dark font-semibold text-center">지난 보고서 보기</span>
+          </button>
+        </div>
+      )}
 
       {showModal && reports && (
         <ReportCalendarModal

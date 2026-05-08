@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { addMonths } from 'date-fns';
+import { Check, X } from 'lucide-react';
 import { AdminButton } from '@/components/ui/AdminButton';
 import { Modal } from '@/components/ui/Modal';
 import { CompanySearch } from '@/components/ui/CompanySearch';
@@ -12,6 +13,18 @@ import { useCreateUser } from '@/hooks/user/useUserMutation';
 import { type Tier } from '@/types/subscription';
 import type { ProfileRole } from '@/types/auth';
 import { getErrorMessage } from '@/lib/utils';
+import {
+  checkPassword,
+  PASSWORD_PLACEHOLDER,
+  STRENGTH_LABEL,
+  type PasswordStrength,
+} from '@/lib/auth/passwordPolicy';
+
+const STRENGTH_BAR_STYLE: Record<PasswordStrength, { fill: string; bars: number; text: string }> = {
+  weak: { fill: 'bg-red-400', bars: 1, text: 'text-red-500' },
+  medium: { fill: 'bg-amber-400', bars: 2, text: 'text-amber-600' },
+  strong: { fill: 'bg-green-500', bars: 3, text: 'text-green-600' },
+};
 
 interface CreateUserModalProps {
   open: boolean;
@@ -40,9 +53,12 @@ export function CreateUserModal({ open, onClose, myRole }: CreateUserModalProps)
   const createUserMutation = useCreateUser();
   const isSuperAdmin = myRole === 'super_admin';
 
+  const pwCheck = checkPassword(password);
+  const strengthStyle = STRENGTH_BAR_STYLE[pwCheck.strength];
+
   const canSubmit =
     email.length > 0 &&
-    password.length > 0 &&
+    pwCheck.ok &&
     (role === 'user'
       ? selectedCompany !== null && startDate !== undefined && endDate !== undefined && endDate > startDate
       : companyNameAdmin.trim().length > 0);
@@ -139,10 +155,43 @@ export function CreateUserModal({ open, onClose, myRole }: CreateUserModalProps)
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             type="password"
-            placeholder="8자 이상"
+            placeholder={PASSWORD_PLACEHOLDER}
             autoComplete="new-password"
             className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2.5 outline-none focus:border-slate-400"
           />
+          {password.length > 0 && (
+            <>
+              <div className="mt-2 flex items-center gap-2">
+                <div className="flex gap-1 flex-1">
+                  {[1, 2, 3].map((i) => (
+                    <div
+                      key={i}
+                      className={`h-1 flex-1 rounded-full transition-colors ${
+                        i <= strengthStyle.bars ? strengthStyle.fill : 'bg-slate-200'
+                      }`}
+                    />
+                  ))}
+                </div>
+                <span className={`text-xs font-medium ${strengthStyle.text}`}>
+                  {STRENGTH_LABEL[pwCheck.strength]}
+                </span>
+              </div>
+              <ul className="mt-2 space-y-1">
+                {pwCheck.rules.map((rule) => (
+                  <li key={rule.key} className="flex items-center gap-1.5 text-xs">
+                    {rule.passed ? (
+                      <Check size={12} className="text-green-500 shrink-0" />
+                    ) : (
+                      <X size={12} className="text-slate-300 shrink-0" />
+                    )}
+                    <span className={rule.passed ? 'text-green-600' : 'text-slate-400'}>
+                      {rule.label}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
         </div>
 
         {isSuperAdmin && (

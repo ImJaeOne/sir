@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { login } from '@/app/auth/actions';
+import { SirSymbol } from '@/components/icons/SirSymbol';
+import { SirLogoIcon } from '@/components/icons/SirLogo.Icon';
 
 export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
@@ -12,25 +14,35 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
 
+    // === [TEMP] login latency probe — 진단 끝나면 제거 ===
+    const t0 = Date.now();
+    sessionStorage.setItem('login-probe-start', String(t0));
+    console.log(`[login-probe] click → server action 호출`);
+    // ====================================================
+
     const formData = new FormData(e.currentTarget);
     const result = await login(formData);
 
     if (!result.success) {
+      sessionStorage.removeItem('login-probe-start');
       setError(result.error ?? '로그인에 실패했습니다.');
       setLoading(false);
+    } else {
+      // success 시엔 redirect 가 발생해 여기 도달 안 함
+      console.log(`[login-probe] server action 응답 (no redirect): ${Date.now() - t0}ms`);
     }
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-bg-light flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         {/* 로고 */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-10 h-10 bg-blue-600 rounded-xl mb-3">
-            <span className="text-white text-sm font-bold">S</span>
+        <div className="flex flex-col items-center mb-8">
+          <div className="flex items-center gap-2.5 mb-3">
+            <SirSymbol size={22} />
+            <SirLogoIcon width={72} height={28} />
           </div>
-          <h1 className="text-xl font-bold text-slate-800">InnoPlan SIR</h1>
-          <p className="text-sm text-slate-400 mt-1">AI 기반 디지털 평판 관리 플랫폼</p>
+          <p className="text-sm text-text-muted">AI 기반 디지털 평판 관리 플랫폼</p>
         </div>
 
         {/* 에러 메시지 */}
@@ -41,9 +53,12 @@ export default function LoginPage() {
         )}
 
         {/* 폼 */}
-        <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-slate-200 p-6 space-y-4">
+        <form
+          onSubmit={handleSubmit}
+          className="bg-white rounded-2xl border border-border-light p-6 space-y-4 shadow-sm"
+        >
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-1">
+            <label htmlFor="email" className="block text-sm font-medium text-text-dark mb-1">
               이메일
             </label>
             <input
@@ -51,13 +66,13 @@ export default function LoginPage() {
               name="email"
               type="email"
               required
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-border-light rounded-lg text-sm placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-bg-accent focus:border-transparent"
               placeholder="name@company.com"
             />
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-slate-700 mb-1">
+            <label htmlFor="password" className="block text-sm font-medium text-text-dark mb-1">
               비밀번호
             </label>
             <input
@@ -65,24 +80,19 @@ export default function LoginPage() {
               name="password"
               type="password"
               required
-              minLength={6}
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="6자 이상"
+              className="w-full px-3 py-2 border border-border-light rounded-lg text-sm placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-bg-accent focus:border-transparent"
+              placeholder="비밀번호"
             />
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
+            className="w-full py-2.5 bg-bg-accent text-white text-sm font-medium rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity cursor-pointer"
           >
             {loading ? '로그인 중...' : '로그인'}
           </button>
         </form>
-
-        <p className="text-center text-xs text-slate-400 mt-4">
-          계정이 필요하시면 관리자에게 문의해주세요.
-        </p>
       </div>
     </div>
   );
