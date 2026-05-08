@@ -29,6 +29,13 @@ function kstTodayStr(): string {
   return new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
 }
 
+/** YYYY-MM-DD (KST 어제). */
+function kstYesterdayStr(): string {
+  return new Date(Date.now() + 9 * 60 * 60 * 1000 - 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
+}
+
 /** 모니터링 검색 트렌드 — 네이버 데이터랩 일배치 캐시 + route handler.
  *
  * 1) Supabase RLS 로 워크스페이스 접근 권한 확인 + company_name 조회
@@ -94,19 +101,33 @@ export async function POST(req: NextRequest) {
     .maybeSingle();
 
   if (cached && cached.generated_kst_date === today && cached.keyword === keyword) {
-    return NextResponse.json({
-      keyword: cached.keyword,
-      start: cached.start_date,
-      end: cached.end_date,
-      points: cached.points as SearchPoint[],
-      cached: true,
-    });
+    // 신선도 체크 — points 의 마지막 날짜가 어제 KST 이상이어야 hit.
+    // 네이버 데이터랩은 D-1 까지만 주고, 그 데이터를 KST 09시 부근에 publish 한다.
+    // 새벽에 처음 페이지 연 ws 는 그 시점 응답이 D-2 까지뿐이라 캐시에 D-2 가 박히는데,
+    // generated_kst_date 만 today 로 매칭되면 그날 종일 D-2 끊김 그래프가 노출됨.
+    // points 마지막이 어제 미만이면 stale 로 처리해 아래 fetch 흐름으로 자연스럽게 폴.
+    const yesterday = kstYesterdayStr();
+    const points = cached.points as SearchPoint[];
+    const lastDate = points.at(-1)?.date ?? '';
+    if (lastDate >= yesterday) {
+      return NextResponse.json({
+        keyword: cached.keyword,
+        start: cached.start_date,
+        end: cached.end_date,
+        points,
+        cached: true,
+      });
+    }
+    // 아래로 fall-through → 데이터랩 재호출 + UPSERT
   }
 
   // 2) 캐시 miss → 네이버 데이터랩 365일 호출
-  const kstNow = new Date(Date.now() + 9 * 60 * 60 * 1000);
-  const endDate = kstNow.toISOString().slice(0, 10);
-  const startMs = kstNow.getTime() - 364 * 24 * 60 * 60 * 1000;
+  // ⚠️ endDate 를 오늘(KST)로 보내면 데이터랩이 365일치 요청에서 마지막 2일을 잘라
+  // D-2 까지만 응답함 (짧은 기간 요청에선 D-1 까지 정상). 이유는 비공개 정책.
+  // → endDate=어제(KST D-1) 로 한 칸 당겨서 365일치 요청하면 어제까지 모두 받음.
+  const yesterdayMs = Date.now() + 9 * 60 * 60 * 1000 - 24 * 60 * 60 * 1000;
+  const endDate = new Date(yesterdayMs).toISOString().slice(0, 10);
+  const startMs = yesterdayMs - 364 * 24 * 60 * 60 * 1000;
   const startDate = new Date(startMs).toISOString().slice(0, 10);
 
   let datalab: DatalabResponse;

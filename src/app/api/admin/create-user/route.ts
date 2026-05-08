@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient as createServerClient } from '@/lib/supabase/server';
 import { createClient } from '@supabase/supabase-js';
 import { getErrorMessage } from '@/lib/utils';
+import { checkPassword, PASSWORD_POLICY_MESSAGE } from '@/lib/auth/passwordPolicy';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,6 +45,9 @@ export async function POST(request: NextRequest) {
       { detail: '이메일, 비밀번호, 회사명은 필수입니다' },
       { status: 400 },
     );
+  }
+  if (!checkPassword(password).ok) {
+    return NextResponse.json({ detail: PASSWORD_POLICY_MESSAGE }, { status: 400 });
   }
   if (
     role === 'user' &&

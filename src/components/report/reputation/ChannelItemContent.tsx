@@ -78,9 +78,6 @@ export function ChannelItemContent({ name, items }: ChannelItemContentProps) {
           >
             {rowVirtualizer.getVirtualItems().map((virtualRow) => {
               const item = filtered[virtualRow.index];
-              const dateLabel = item.published_at
-                ? item.published_at.slice(0, 10).replace(/-/g, '.')
-                : null;
               const meta = formatMeta(name, item);
               return (
                 <div
@@ -120,11 +117,6 @@ export function ChannelItemContent({ name, items }: ChannelItemContentProps) {
                           {meta && (
                             <span className="text-[10px] text-text-muted tabular-nums">{meta}</span>
                           )}
-                          {dateLabel && (
-                            <span className="text-[10px] text-text-muted tabular-nums">
-                              {dateLabel}
-                            </span>
-                          )}
                         </div>
                       </div>
                       {/* 모바일 */}
@@ -132,11 +124,6 @@ export function ChannelItemContent({ name, items }: ChannelItemContentProps) {
                         <SentimentBadge sentiment={item.sentiment} />
                         {meta && (
                           <span className="text-[10px] text-text-muted tabular-nums">{meta}</span>
-                        )}
-                        {dateLabel && (
-                          <span className="text-[10px] text-text-muted tabular-nums">
-                            {dateLabel}
-                          </span>
                         )}
                       </span>
                       <p className="lg:hidden text-sm text-text-dark font-semibold leading-relaxed">

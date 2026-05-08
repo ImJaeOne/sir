@@ -12,6 +12,6 @@ export const config = {
     /*
      * 정적 파일과 API health 엔드포인트, /report-pdf (Playwright 가 URL 토큰으로 자체 인증) 를 제외한 모든 경로
      */
-    '/((?!_next/static|_next/image|favicon.ico|api/health|report-pdf|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|manifest.json|api/health|report-pdf|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };

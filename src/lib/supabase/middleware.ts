@@ -12,6 +12,15 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.next({ request });
   }
 
+  // === [TEMP] login latency probe — 진단 끝나면 제거 ===
+  const tMw = Date.now();
+  const probePath = request.nextUrl.pathname;
+  const isProbeTarget = probePath.startsWith('/report/') || probePath === '/';
+  if (isProbeTarget) {
+    console.log(`[login-probe][mw] === ${probePath} middleware 진입 ===`);
+  }
+  // ====================================================
+
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient<Database>(
@@ -35,9 +44,15 @@ export async function updateSession(request: NextRequest) {
     },
   );
 
+  // === [TEMP] login latency probe — 진단 끝나면 제거 ===
+  const tGetUser = Date.now();
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  if (isProbeTarget) {
+    console.log(`[login-probe][mw] getUser: ${Date.now() - tGetUser}ms`);
+  }
+  // ====================================================
 
   const pathname = request.nextUrl.pathname;
   const isAuthPage = pathname.startsWith('/auth/login') || pathname.startsWith('/auth/signup');
@@ -90,6 +105,12 @@ export async function updateSession(request: NextRequest) {
       }
     }
   }
+
+  // === [TEMP] login latency probe — 진단 끝나면 제거 ===
+  if (isProbeTarget) {
+    console.log(`[login-probe][mw] middleware 총: ${Date.now() - tMw}ms`);
+  }
+  // ====================================================
 
   return supabaseResponse;
 }
