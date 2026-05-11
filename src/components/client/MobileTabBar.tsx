@@ -26,8 +26,18 @@ export function MobileTabBar() {
 
   const items: { label: string; Icon: typeof FileText; href: string; active: boolean }[] = [
     { label: '보고서', Icon: FileText, href: reportHref, active: pathname.startsWith('/report/') },
-    { label: '인스턴스', Icon: LineChart, href: monitoringHref, active: pathname.startsWith('/monitoring/') },
-    { label: '위기 대응', Icon: ShieldAlert, href: crisisHref, active: pathname.startsWith('/crisis/') },
+    {
+      label: '인사이트',
+      Icon: LineChart,
+      href: monitoringHref,
+      active: pathname.startsWith('/monitoring/'),
+    },
+    {
+      label: '위기 대응',
+      Icon: ShieldAlert,
+      href: crisisHref,
+      active: pathname.startsWith('/crisis/'),
+    },
   ];
 
   const handleClick = (href: string) => {
@@ -48,7 +58,9 @@ export function MobileTabBar() {
           className="flex-1 flex flex-col items-center justify-center gap-1 py-2.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <Icon size={20} color={active ? '#362CFF' : '#828EA6'} strokeWidth={1.75} />
-          <span className={`text-[11px] font-medium ${active ? 'text-text-accent' : 'text-text-muted'}`}>
+          <span
+            className={`text-[11px] font-medium ${active ? 'text-text-accent' : 'text-text-muted'}`}
+          >
             {label}
           </span>
         </button>

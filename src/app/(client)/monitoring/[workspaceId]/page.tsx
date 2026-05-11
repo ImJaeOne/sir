@@ -2,22 +2,8 @@
 
 import { useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
-import {
-  ComposedChart,
-  Line,
-  Bar,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-} from 'recharts';
-import {
-  TrendingDown,
-  Activity,
-  MessageSquare,
-  Calendar,
-} from 'lucide-react';
+import { ComposedChart, Line, Bar, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
+import { TrendingDown, Activity, MessageSquare, Calendar } from 'lucide-react';
 import { useWorkspace } from '@/hooks/workspace/useWorkspaceQuery';
 import {
   useMonitoringDaily,
@@ -149,13 +135,13 @@ export default function MonitoringPage() {
   const { data: search = [], isPending: searchLoading } = useMonitoringSearchLive(
     workspaceId,
     start,
-    end,
+    end
   );
   // E 탭(필터 토글) 전용 raw 매트릭스. E 탭 활성화 시에만 가져온다.
   const { data: matrix = [], isPending: matrixLoading } = useMonitoringChannelMatrix(
     activeTab === 'E' ? workspaceId : '',
     start,
-    end,
+    end
   );
 
   const isLoading = dailyLoading || stockLoading || risksLoading || searchLoading;
@@ -222,11 +208,17 @@ export default function MonitoringPage() {
         const t = d.positive + d.neutral + d.negative;
         // dataKey 로 쓰는 positive/neutral/negative 는 % (Y축 0~100 용).
         // raw 건수는 tooltip 표시용으로 별도 키(rawPositive…) 에 보존.
-        if (!t) return {
-          date: d.date,
-          positive: 0, neutral: 0, negative: 0, totalVolume: 0,
-          rawPositive: 0, rawNeutral: 0, rawNegative: 0,
-        };
+        if (!t)
+          return {
+            date: d.date,
+            positive: 0,
+            neutral: 0,
+            negative: 0,
+            totalVolume: 0,
+            rawPositive: 0,
+            rawNeutral: 0,
+            rawNegative: 0,
+          };
         let pos = Math.round((d.positive / t) * 100);
         let neg = Math.round((d.negative / t) * 100);
         if (pos + neg > 100) {
@@ -236,11 +228,16 @@ export default function MonitoringPage() {
         const neu = 100 - pos - neg;
         return {
           date: d.date,
-          positive: pos, neutral: neu, negative: neg, totalVolume: t,
-          rawPositive: d.positive, rawNeutral: d.neutral, rawNegative: d.negative,
+          positive: pos,
+          neutral: neu,
+          negative: neg,
+          totalVolume: t,
+          rawPositive: d.positive,
+          rawNeutral: d.neutral,
+          rawNegative: d.negative,
         };
       }),
-    [merged],
+    [merged]
   );
 
   // E 탭용: matrix 를 (relevant × sentiment) 토글에 따라 슬라이스해 채널 4선용 일자 시리즈로 변환.
@@ -267,18 +264,18 @@ export default function MonitoringPage() {
   return (
     <div className="h-full bg-white overflow-y-auto">
       <div className="mx-auto w-full max-w-[1240px] px-4 lg:px-10 py-7 lg:py-10 flex flex-col gap-7">
-
         {/* 헤더 ─────────────────────────────────────────── */}
         <header className="flex flex-col gap-1.5">
           <div className="flex items-center gap-2 text-xs text-slate-400 font-medium">
             <Activity size={13} className="text-slate-300" />
-            <span>SIR · Instance</span>
+            <span>SIR · Insight</span>
           </div>
           <h1 className="text-[26px] lg:text-[28px] font-bold tracking-[-0.02em] text-slate-900 leading-[1.2]">
-            {workspace?.company_name ?? '워크스페이스'} 인스턴스
+            {workspace?.company_name ?? '워크스페이스'} 인사이트
           </h1>
           <p className="text-[13px] text-slate-500 leading-[1.6] max-w-[860px]">
-            워크스페이스 전체 누적 수치와 최신 주가를 상단에 고정 표시합니다. 아래 프리셋으로 차트의 기간 범위를 조정할 수 있습니다.
+            워크스페이스 전체 누적 수치와 최신 주가를 상단에 고정 표시합니다. 아래 프리셋으로 차트의
+            기간 범위를 조정할 수 있습니다.
           </p>
         </header>
 
@@ -355,8 +352,14 @@ export default function MonitoringPage() {
               minTickGap={32}
             />
           );
-          const priceMin = Math.min(...merged.filter((d) => d.low != null).map((d) => d.low as number), Infinity);
-          const priceMax = Math.max(...merged.filter((d) => d.high != null).map((d) => d.high as number), -Infinity);
+          const priceMin = Math.min(
+            ...merged.filter((d) => d.low != null).map((d) => d.low as number),
+            Infinity
+          );
+          const priceMax = Math.max(
+            ...merged.filter((d) => d.high != null).map((d) => d.high as number),
+            -Infinity
+          );
           const priceDomain: [number | string, number | string] =
             isFinite(priceMin) && isFinite(priceMax)
               ? [Math.floor(priceMin * 0.98), Math.ceil(priceMax * 1.02)]
@@ -373,13 +376,18 @@ export default function MonitoringPage() {
               fill="transparent"
               barSize={Math.max(barSize * 1.5, 4)}
               isAnimationActive={false}
-              shape={(props) => <CandleBar {...props} priceMin={priceDomain[0] as number} priceMax={priceDomain[1] as number} />}
+              shape={(props) => (
+                <CandleBar
+                  {...props}
+                  priceMin={priceDomain[0] as number}
+                  priceMax={priceDomain[1] as number}
+                />
+              )}
             />
           );
 
           return (
             <div className="flex flex-col gap-4">
-
               {/* ── A. 주가 & 수집량 ─────────────────────── */}
               {activeTab === 'A' && (
                 <ChartCard
@@ -390,13 +398,46 @@ export default function MonitoringPage() {
                 >
                   <div className="h-[300px]">
                     <ChartCanvas width="105%">
-                      <ComposedChart data={merged} margin={{ top: 12, right: 24, bottom: 0, left: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} yAxisId="price" />
+                      <ComposedChart
+                        data={merged}
+                        margin={{ top: 12, right: 24, bottom: 0, left: 0 }}
+                      >
+                        <CartesianGrid
+                          strokeDasharray="3 3"
+                          stroke="#f1f5f9"
+                          vertical={false}
+                          yAxisId="price"
+                        />
                         {sharedXAxis}
-                        <YAxis yAxisId="vol" orientation="left" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={36} />
-                        <YAxis yAxisId="price" orientation="right" tickFormatter={priceTickFormatter} tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={48} domain={priceDomain} />
+                        <YAxis
+                          yAxisId="vol"
+                          orientation="left"
+                          tick={{ fontSize: 10, fill: '#94a3b8' }}
+                          axisLine={false}
+                          tickLine={false}
+                          width={36}
+                        />
+                        <YAxis
+                          yAxisId="price"
+                          orientation="right"
+                          tickFormatter={priceTickFormatter}
+                          tick={{ fontSize: 10, fill: '#94a3b8' }}
+                          axisLine={false}
+                          tickLine={false}
+                          width={48}
+                          domain={priceDomain}
+                        />
                         <Tooltip cursor={{ fill: PRIMARY_SOFT }} content={<PriceVolumeTooltip />} />
-                        <Line yAxisId="vol" type="monotone" dataKey="totalVolume" name="수집량" stroke={PRIMARY} strokeWidth={1.8} dot={false} isAnimationActive={false} />
+                        <Line
+                          yAxisId="vol"
+                          type="monotone"
+                          dataKey="totalVolume"
+                          name="수집량"
+                          stroke={PRIMARY}
+                          strokeWidth={1.8}
+                          dot={false}
+                          isAnimationActive={false}
+                        />
                         {candleBar}
                       </ComposedChart>
                     </ChartCanvas>
@@ -423,29 +464,106 @@ export default function MonitoringPage() {
                   >
                     <div className="h-[300px]">
                       <ChartCanvas width="105%">
-                        <ComposedChart data={merged.map((d, i) => ({ ...d, ...sentimentSeries[i] }))} margin={{ top: 12, right: 24, bottom: 0, left: 0 }}>
+                        <ComposedChart
+                          data={merged.map((d, i) => ({ ...d, ...sentimentSeries[i] }))}
+                          margin={{ top: 12, right: 24, bottom: 0, left: 0 }}
+                        >
                           <defs>
                             <linearGradient id="gPos3" x1="0" y1="0" x2="0" y2="1">
                               <stop offset="0%" stopColor={SENTIMENT_COLOR.pos} stopOpacity={0.4} />
-                              <stop offset="100%" stopColor={SENTIMENT_COLOR.pos} stopOpacity={0.08} />
+                              <stop
+                                offset="100%"
+                                stopColor={SENTIMENT_COLOR.pos}
+                                stopOpacity={0.08}
+                              />
                             </linearGradient>
                             <linearGradient id="gNeu3" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="0%" stopColor={SENTIMENT_COLOR.neu} stopOpacity={0.35} />
-                              <stop offset="100%" stopColor={SENTIMENT_COLOR.neu} stopOpacity={0.06} />
+                              <stop
+                                offset="0%"
+                                stopColor={SENTIMENT_COLOR.neu}
+                                stopOpacity={0.35}
+                              />
+                              <stop
+                                offset="100%"
+                                stopColor={SENTIMENT_COLOR.neu}
+                                stopOpacity={0.06}
+                              />
                             </linearGradient>
                             <linearGradient id="gNeg3" x1="0" y1="0" x2="0" y2="1">
                               <stop offset="0%" stopColor={SENTIMENT_COLOR.neg} stopOpacity={0.4} />
-                              <stop offset="100%" stopColor={SENTIMENT_COLOR.neg} stopOpacity={0.08} />
+                              <stop
+                                offset="100%"
+                                stopColor={SENTIMENT_COLOR.neg}
+                                stopOpacity={0.08}
+                              />
                             </linearGradient>
                           </defs>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} yAxisId="sent" />
+                          <CartesianGrid
+                            strokeDasharray="3 3"
+                            stroke="#f1f5f9"
+                            vertical={false}
+                            yAxisId="sent"
+                          />
                           {sharedXAxis}
-                          <YAxis yAxisId="sent" orientation="left" domain={[0, 100]} ticks={[0, 25, 50, 75, 100]} allowDataOverflow tickFormatter={(v) => `${v}%`} tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={36} />
-                          <YAxis yAxisId="price" orientation="right" tickFormatter={priceTickFormatter} tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={48} domain={priceDomain} />
-                          <Tooltip cursor={{ fill: PRIMARY_SOFT }} content={<SentimentPriceTooltip />} />
-                          <Area yAxisId="sent" type="monotone" dataKey="positive" name="긍정" stackId="s" stroke={SENTIMENT_COLOR.pos} strokeWidth={1.2} fill="url(#gPos3)" isAnimationActive={false} />
-                          <Area yAxisId="sent" type="monotone" dataKey="neutral" name="중립" stackId="s" stroke={SENTIMENT_COLOR.neu} strokeWidth={1.2} fill="url(#gNeu3)" isAnimationActive={false} />
-                          <Area yAxisId="sent" type="monotone" dataKey="negative" name="부정" stackId="s" stroke={SENTIMENT_COLOR.neg} strokeWidth={1.2} fill="url(#gNeg3)" isAnimationActive={false} />
+                          <YAxis
+                            yAxisId="sent"
+                            orientation="left"
+                            domain={[0, 100]}
+                            ticks={[0, 25, 50, 75, 100]}
+                            allowDataOverflow
+                            tickFormatter={(v) => `${v}%`}
+                            tick={{ fontSize: 10, fill: '#94a3b8' }}
+                            axisLine={false}
+                            tickLine={false}
+                            width={36}
+                          />
+                          <YAxis
+                            yAxisId="price"
+                            orientation="right"
+                            tickFormatter={priceTickFormatter}
+                            tick={{ fontSize: 10, fill: '#94a3b8' }}
+                            axisLine={false}
+                            tickLine={false}
+                            width={48}
+                            domain={priceDomain}
+                          />
+                          <Tooltip
+                            cursor={{ fill: PRIMARY_SOFT }}
+                            content={<SentimentPriceTooltip />}
+                          />
+                          <Area
+                            yAxisId="sent"
+                            type="monotone"
+                            dataKey="positive"
+                            name="긍정"
+                            stackId="s"
+                            stroke={SENTIMENT_COLOR.pos}
+                            strokeWidth={1.2}
+                            fill="url(#gPos3)"
+                            isAnimationActive={false}
+                          />
+                          <Area
+                            yAxisId="sent"
+                            type="monotone"
+                            dataKey="neutral"
+                            name="중립"
+                            stackId="s"
+                            stroke={SENTIMENT_COLOR.neu}
+                            strokeWidth={1.2}
+                            fill="url(#gNeu3)"
+                            isAnimationActive={false}
+                          />
+                          <Area
+                            yAxisId="sent"
+                            type="monotone"
+                            dataKey="negative"
+                            name="부정"
+                            stackId="s"
+                            stroke={SENTIMENT_COLOR.neg}
+                            strokeWidth={1.2}
+                            fill="url(#gNeg3)"
+                            isAnimationActive={false}
+                          />
                           {candleBar}
                         </ComposedChart>
                       </ChartCanvas>
@@ -473,14 +591,59 @@ export default function MonitoringPage() {
                 >
                   <div className="h-[300px]">
                     <ChartCanvas width="105%">
-                      <ComposedChart data={merged} margin={{ top: 12, right: 24, bottom: 0, left: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} yAxisId="price" />
+                      <ComposedChart
+                        data={merged}
+                        margin={{ top: 12, right: 24, bottom: 0, left: 0 }}
+                      >
+                        <CartesianGrid
+                          strokeDasharray="3 3"
+                          stroke="#f1f5f9"
+                          vertical={false}
+                          yAxisId="price"
+                        />
                         {sharedXAxis}
-                        <YAxis yAxisId="srch" orientation="left" domain={[0, 100]} tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={32} />
-                        <YAxis yAxisId="price" orientation="right" tickFormatter={priceTickFormatter} tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={48} domain={priceDomain} />
+                        <YAxis
+                          yAxisId="srch"
+                          orientation="left"
+                          domain={[0, 100]}
+                          tick={{ fontSize: 10, fill: '#94a3b8' }}
+                          axisLine={false}
+                          tickLine={false}
+                          width={32}
+                        />
+                        <YAxis
+                          yAxisId="price"
+                          orientation="right"
+                          tickFormatter={priceTickFormatter}
+                          tick={{ fontSize: 10, fill: '#94a3b8' }}
+                          axisLine={false}
+                          tickLine={false}
+                          width={48}
+                          domain={priceDomain}
+                        />
                         <Tooltip cursor={{ fill: PRIMARY_SOFT }} content={<SearchPriceTooltip />} />
-                        <Line yAxisId="srch" type="monotone" dataKey="searchNaver" name="네이버" stroke={SEARCH_NAVER} strokeWidth={1.8} dot={false} isAnimationActive={false} connectNulls />
-                        <Line yAxisId="srch" type="monotone" dataKey="searchGoogle" name="구글" stroke={SEARCH_GOOGLE} strokeWidth={1.8} dot={false} isAnimationActive={false} connectNulls />
+                        <Line
+                          yAxisId="srch"
+                          type="monotone"
+                          dataKey="searchNaver"
+                          name="네이버"
+                          stroke={SEARCH_NAVER}
+                          strokeWidth={1.8}
+                          dot={false}
+                          isAnimationActive={false}
+                          connectNulls
+                        />
+                        <Line
+                          yAxisId="srch"
+                          type="monotone"
+                          dataKey="searchGoogle"
+                          name="구글"
+                          stroke={SEARCH_GOOGLE}
+                          strokeWidth={1.8}
+                          dot={false}
+                          isAnimationActive={false}
+                          connectNulls
+                        />
                         {candleBar}
                       </ComposedChart>
                     </ChartCanvas>
@@ -508,12 +671,40 @@ export default function MonitoringPage() {
                   >
                     <div className="h-[300px]">
                       <ChartCanvas width="105%">
-                        <ComposedChart data={merged} margin={{ top: 12, right: 24, bottom: 0, left: 0 }}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} yAxisId="risk" />
+                        <ComposedChart
+                          data={merged}
+                          margin={{ top: 12, right: 24, bottom: 0, left: 0 }}
+                        >
+                          <CartesianGrid
+                            strokeDasharray="3 3"
+                            stroke="#f1f5f9"
+                            vertical={false}
+                            yAxisId="risk"
+                          />
                           {sharedXAxis}
-                          <YAxis yAxisId="risk" orientation="left" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={28} allowDecimals={false} />
-                          <YAxis yAxisId="price" orientation="right" tickFormatter={priceTickFormatter} tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={48} domain={priceDomain} />
-                          <Tooltip cursor={{ fill: 'rgba(239, 68, 68, 0.06)' }} content={<RiskPriceTooltip />} />
+                          <YAxis
+                            yAxisId="risk"
+                            orientation="left"
+                            tick={{ fontSize: 10, fill: '#94a3b8' }}
+                            axisLine={false}
+                            tickLine={false}
+                            width={28}
+                            allowDecimals={false}
+                          />
+                          <YAxis
+                            yAxisId="price"
+                            orientation="right"
+                            tickFormatter={priceTickFormatter}
+                            tick={{ fontSize: 10, fill: '#94a3b8' }}
+                            axisLine={false}
+                            tickLine={false}
+                            width={48}
+                            domain={priceDomain}
+                          />
+                          <Tooltip
+                            cursor={{ fill: 'rgba(239, 68, 68, 0.06)' }}
+                            content={<RiskPriceTooltip />}
+                          />
                           {CRITICAL_TYPES.map((c) => (
                             <Area
                               key={c.id}
@@ -535,7 +726,10 @@ export default function MonitoringPage() {
                     </div>
                     <ChartLegend
                       items={[
-                        ...CRITICAL_TYPES.map((c) => ({ color: CRITICAL_COLOR[c.id], label: c.label })),
+                        ...CRITICAL_TYPES.map((c) => ({
+                          color: CRITICAL_COLOR[c.id],
+                          label: c.label,
+                        })),
                         { color: CANDLE_UP, label: '주가 상승 (우)' },
                         { color: CANDLE_DOWN, label: '주가 하락 (우)' },
                       ]}
@@ -557,7 +751,9 @@ export default function MonitoringPage() {
                     />
                     {/* 채널 가시성 칩 */}
                     <div className="flex items-center gap-1.5 flex-wrap pt-2 border-t border-slate-100 lg:pt-0 lg:border-t-0 lg:border-l lg:border-slate-100 lg:pl-6">
-                      <span className="text-[10px] font-bold tracking-[0.06em] uppercase text-slate-400 mr-1">채널</span>
+                      <span className="text-[10px] font-bold tracking-[0.06em] uppercase text-slate-400 mr-1">
+                        채널
+                      </span>
                       {MONITORING_CHANNELS.map((c) => {
                         const on = visibleChannels.has(c.id);
                         return (
@@ -575,7 +771,10 @@ export default function MonitoringPage() {
                           >
                             <span
                               className="inline-block w-2 h-2 rounded-full"
-                              style={{ background: on ? '#fff' : CHANNEL_COLOR[c.id], opacity: on ? 0.9 : 0.7 }}
+                              style={{
+                                background: on ? '#fff' : CHANNEL_COLOR[c.id],
+                                opacity: on ? 0.9 : 0.7,
+                              }}
                             />
                             {c.label}
                           </button>
@@ -593,12 +792,42 @@ export default function MonitoringPage() {
                   >
                     <div className="h-[300px]">
                       <ChartCanvas width="105%">
-                        <ComposedChart data={channelFiltered} margin={{ top: 12, right: 24, bottom: 0, left: 0 }}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} yAxisId="vol" />
+                        <ComposedChart
+                          data={channelFiltered}
+                          margin={{ top: 12, right: 24, bottom: 0, left: 0 }}
+                        >
+                          <CartesianGrid
+                            strokeDasharray="3 3"
+                            stroke="#f1f5f9"
+                            vertical={false}
+                            yAxisId="vol"
+                          />
                           {sharedXAxis}
-                          <YAxis yAxisId="vol" orientation="left" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={36} allowDecimals={false} />
-                          <YAxis yAxisId="price" orientation="right" tickFormatter={priceTickFormatter} tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={48} domain={priceDomain} />
-                          <Tooltip cursor={{ fill: PRIMARY_SOFT }} content={<ChannelPriceTooltip visibleChannels={visibleChannels} showOhlc />} />
+                          <YAxis
+                            yAxisId="vol"
+                            orientation="left"
+                            tick={{ fontSize: 10, fill: '#94a3b8' }}
+                            axisLine={false}
+                            tickLine={false}
+                            width={36}
+                            allowDecimals={false}
+                          />
+                          <YAxis
+                            yAxisId="price"
+                            orientation="right"
+                            tickFormatter={priceTickFormatter}
+                            tick={{ fontSize: 10, fill: '#94a3b8' }}
+                            axisLine={false}
+                            tickLine={false}
+                            width={48}
+                            domain={priceDomain}
+                          />
+                          <Tooltip
+                            cursor={{ fill: PRIMARY_SOFT }}
+                            content={
+                              <ChannelPriceTooltip visibleChannels={visibleChannels} showOhlc />
+                            }
+                          />
                           {MONITORING_CHANNELS.filter((c) => visibleChannels.has(c.id)).map((c) => (
                             <Area
                               key={c.id}
@@ -620,10 +849,12 @@ export default function MonitoringPage() {
                     </div>
                     <ChartLegend
                       items={[
-                        ...MONITORING_CHANNELS.filter((c) => visibleChannels.has(c.id)).map((c) => ({
-                          color: CHANNEL_COLOR[c.id],
-                          label: c.label,
-                        })),
+                        ...MONITORING_CHANNELS.filter((c) => visibleChannels.has(c.id)).map(
+                          (c) => ({
+                            color: CHANNEL_COLOR[c.id],
+                            label: c.label,
+                          })
+                        ),
                         { color: CANDLE_UP, label: '주가 상승 (우)' },
                         { color: CANDLE_DOWN, label: '주가 하락 (우)' },
                       ]}
@@ -642,7 +873,10 @@ export default function MonitoringPage() {
                 >
                   <div className="h-[280px]">
                     <ChartCanvas>
-                      <ComposedChart data={merged} margin={{ top: 12, right: 18, bottom: 0, left: 0 }}>
+                      <ComposedChart
+                        data={merged}
+                        margin={{ top: 12, right: 18, bottom: 0, left: 0 }}
+                      >
                         <defs>
                           <linearGradient id="volBar2" x1="0" y1="0" x2="0" y2="1">
                             <stop offset="0%" stopColor={PRIMARY} stopOpacity={0.5} />
@@ -651,12 +885,57 @@ export default function MonitoringPage() {
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                         {sharedXAxis}
-                        <YAxis yAxisId="vol" orientation="left" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={36} />
-                        <YAxis yAxisId="srch" orientation="right" domain={[0, 100]} tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={36} />
-                        <Tooltip cursor={{ fill: PRIMARY_SOFT }} content={<VolumeSearchTooltip />} />
-                        <Bar yAxisId="vol" dataKey="totalVolume" name="수집량" fill="url(#volBar2)" isAnimationActive={false} barSize={barSize} />
-                        <Line yAxisId="srch" type="monotone" dataKey="searchNaver" name="네이버" stroke={SEARCH_NAVER} strokeWidth={1.8} dot={false} isAnimationActive={false} connectNulls />
-                        <Line yAxisId="srch" type="monotone" dataKey="searchGoogle" name="구글" stroke={SEARCH_GOOGLE} strokeWidth={1.8} dot={false} isAnimationActive={false} connectNulls />
+                        <YAxis
+                          yAxisId="vol"
+                          orientation="left"
+                          tick={{ fontSize: 10, fill: '#94a3b8' }}
+                          axisLine={false}
+                          tickLine={false}
+                          width={36}
+                        />
+                        <YAxis
+                          yAxisId="srch"
+                          orientation="right"
+                          domain={[0, 100]}
+                          tick={{ fontSize: 10, fill: '#94a3b8' }}
+                          axisLine={false}
+                          tickLine={false}
+                          width={36}
+                        />
+                        <Tooltip
+                          cursor={{ fill: PRIMARY_SOFT }}
+                          content={<VolumeSearchTooltip />}
+                        />
+                        <Bar
+                          yAxisId="vol"
+                          dataKey="totalVolume"
+                          name="수집량"
+                          fill="url(#volBar2)"
+                          isAnimationActive={false}
+                          barSize={barSize}
+                        />
+                        <Line
+                          yAxisId="srch"
+                          type="monotone"
+                          dataKey="searchNaver"
+                          name="네이버"
+                          stroke={SEARCH_NAVER}
+                          strokeWidth={1.8}
+                          dot={false}
+                          isAnimationActive={false}
+                          connectNulls
+                        />
+                        <Line
+                          yAxisId="srch"
+                          type="monotone"
+                          dataKey="searchGoogle"
+                          name="구글"
+                          stroke={SEARCH_GOOGLE}
+                          strokeWidth={1.8}
+                          dot={false}
+                          isAnimationActive={false}
+                          connectNulls
+                        />
                       </ComposedChart>
                     </ChartCanvas>
                   </div>
@@ -669,14 +948,12 @@ export default function MonitoringPage() {
                   />
                 </ChartCard>
               )}
-
             </div>
           );
         })()}
 
         {/* AI 분석 ─────────────────────────────────────── */}
         <AiAnalysisCard workspaceId={workspaceId} start={start} end={end} presetDays={presetDays} />
-
       </div>
     </div>
   );
@@ -836,7 +1113,12 @@ interface CandleBarProps {
   y?: number;
   width?: number;
   height?: number;
-  payload?: { open?: number | null; close?: number | null; high?: number | null; low?: number | null };
+  payload?: {
+    open?: number | null;
+    close?: number | null;
+    high?: number | null;
+    low?: number | null;
+  };
   priceMin: number;
   priceMax: number;
 }
@@ -846,9 +1128,16 @@ interface CandleBarProps {
 function CandleBar(props: CandleBarProps) {
   const { x, y, width, height, payload, priceMin, priceMax } = props;
   if (
-    x == null || y == null || width == null || height == null ||
-    !payload?.open || !payload.close || !payload.high || !payload.low
-  ) return null;
+    x == null ||
+    y == null ||
+    width == null ||
+    height == null ||
+    !payload?.open ||
+    !payload.close ||
+    !payload.high ||
+    !payload.low
+  )
+    return null;
 
   const { open, close, high, low } = payload;
   const isUp = close >= open;
@@ -874,7 +1163,14 @@ function CandleBar(props: CandleBarProps) {
   return (
     <g>
       <line x1={cx} y1={wickTop} x2={cx} y2={wickBottom} stroke={color} strokeWidth={1} />
-      <rect x={x + width * 0.15} y={bodyTop} width={width * 0.7} height={bodyH} fill={color} rx={1} />
+      <rect
+        x={x + width * 0.15}
+        y={bodyTop}
+        width={width * 0.7}
+        height={bodyH}
+        fill={color}
+        rx={1}
+      />
     </g>
   );
 }
@@ -936,7 +1232,12 @@ function TooltipRow({
 }) {
   return (
     <div className="flex items-center gap-2.5 py-0.5">
-      {color && <span className="inline-block w-2 h-2 rounded-full shrink-0" style={{ background: color }} />}
+      {color && (
+        <span
+          className="inline-block w-2 h-2 rounded-full shrink-0"
+          style={{ background: color }}
+        />
+      )}
       <span className="text-[12px] text-slate-500">{label}</span>
       <span
         className={`ml-auto text-[12px] tabular-nums ${bold ? 'font-bold text-slate-900' : 'font-semibold text-slate-700'}`}
@@ -983,7 +1284,11 @@ function PriceVolumeTooltip({
         </div>
       </div>
       <div className="border-t border-slate-100 mt-1.5 pt-1.5">
-        <TooltipRow color={PRIMARY} label="수집량" value={`${(d.totalVolume ?? 0).toLocaleString()}건`} />
+        <TooltipRow
+          color={PRIMARY}
+          label="수집량"
+          value={`${(d.totalVolume ?? 0).toLocaleString()}건`}
+        />
       </div>
       {d.isCarried && (
         <p className="text-[10px] text-amber-600 mt-1.5 font-semibold">⚠ 직전 일자 자동 보정</p>
@@ -1002,11 +1307,18 @@ function SentimentPriceTooltip({
   label?: string;
 }) {
   if (!active || !payload?.length) return null;
-  const d = payload[0]?.payload as (TipPayload['payload'] & {
-    positive?: number; neutral?: number; negative?: number;
-    rawPositive?: number; rawNeutral?: number; rawNegative?: number;
-    open?: number | null; high?: number | null; low?: number | null; close?: number | null;
-  });
+  const d = payload[0]?.payload as TipPayload['payload'] & {
+    positive?: number;
+    neutral?: number;
+    negative?: number;
+    rawPositive?: number;
+    rawNeutral?: number;
+    rawNegative?: number;
+    open?: number | null;
+    high?: number | null;
+    low?: number | null;
+    close?: number | null;
+  };
   if (!d) return null;
   const hasOhlc = d.open != null && d.close != null && d.high != null && d.low != null;
   const upDay = hasOhlc && (d.close ?? 0) >= (d.open ?? 0);
@@ -1033,8 +1345,18 @@ function SentimentPriceTooltip({
         <div className="bg-slate-100 self-stretch" />
         {/* 우: 3행 — 1행 시가/종가, 2행 저가/고가, 3행 등락률 */}
         <div className="flex flex-col gap-0.5">
-          <PricePairRow leftLabel="시가" leftValue={fmt(d.open)} rightLabel="종가" rightValue={fmt(d.close)} />
-          <PricePairRow leftLabel="저가" leftValue={fmt(d.low)} rightLabel="고가" rightValue={fmt(d.high)} />
+          <PricePairRow
+            leftLabel="시가"
+            leftValue={fmt(d.open)}
+            rightLabel="종가"
+            rightValue={fmt(d.close)}
+          />
+          <PricePairRow
+            leftLabel="저가"
+            leftValue={fmt(d.low)}
+            rightLabel="고가"
+            rightValue={fmt(d.high)}
+          />
           <div className="flex items-center gap-2.5 py-0.5">
             <span className="text-[11.5px] text-slate-500">등락률</span>
             <span
@@ -1069,11 +1391,15 @@ function PricePairRow({
     <div className="grid grid-cols-2 gap-x-3 py-0.5">
       <div className="flex items-center gap-2">
         <span className="text-[11.5px] text-slate-500">{leftLabel}</span>
-        <span className="ml-auto text-[12px] tabular-nums font-semibold text-slate-700">{leftValue}</span>
+        <span className="ml-auto text-[12px] tabular-nums font-semibold text-slate-700">
+          {leftValue}
+        </span>
       </div>
       <div className="flex items-center gap-2">
         <span className="text-[11.5px] text-slate-500">{rightLabel}</span>
-        <span className="ml-auto text-[12px] tabular-nums font-semibold text-slate-700">{rightValue}</span>
+        <span className="ml-auto text-[12px] tabular-nums font-semibold text-slate-700">
+          {rightValue}
+        </span>
       </div>
     </div>
   );
@@ -1089,36 +1415,70 @@ function SearchPriceTooltip({
   label?: string;
 }) {
   if (!active || !payload?.length) return null;
-  const d = payload[0]?.payload as (TipPayload['payload'] & {
+  const d = payload[0]?.payload as TipPayload['payload'] & {
     searchNaver?: number | null;
     searchGoogle?: number | null;
     open?: number | null;
     close?: number | null;
     high?: number | null;
     low?: number | null;
-  });
+  };
   if (!d) return null;
   const hasOhlc = d.open != null && d.close != null && d.high != null && d.low != null;
   const upDay = hasOhlc && (d.close ?? 0) >= (d.open ?? 0);
   return (
     <TooltipShell label={label}>
-      <TooltipRow color={SEARCH_NAVER} label="네이버" value={d.searchNaver != null ? d.searchNaver.toString() : '—'} />
-      <TooltipRow color={SEARCH_GOOGLE} label="구글" value={d.searchGoogle != null ? d.searchGoogle.toString() : '—'} />
+      <TooltipRow
+        color={SEARCH_NAVER}
+        label="네이버"
+        value={d.searchNaver != null ? d.searchNaver.toString() : '—'}
+      />
+      <TooltipRow
+        color={SEARCH_GOOGLE}
+        label="구글"
+        value={d.searchGoogle != null ? d.searchGoogle.toString() : '—'}
+      />
       <div className="border-t border-slate-100 mt-1.5 pt-1.5">
         {hasOhlc ? (
           <>
-            <TooltipRow color={PRICE_LINE} label="주가 종가" value={`${d.close!.toLocaleString()}원`} bold />
+            <TooltipRow
+              color={PRICE_LINE}
+              label="주가 종가"
+              value={`${d.close!.toLocaleString()}원`}
+              bold
+            />
             <div className="grid grid-cols-2 gap-x-3 mt-1 text-[11px] text-slate-400">
-              <span>시 <span className="text-slate-700 font-semibold tabular-nums ml-1">{d.open!.toLocaleString()}</span></span>
-              <span>고 <span className="text-slate-700 font-semibold tabular-nums ml-1">{d.high!.toLocaleString()}</span></span>
-              <span>저 <span className="text-slate-700 font-semibold tabular-nums ml-1">{d.low!.toLocaleString()}</span></span>
+              <span>
+                시{' '}
+                <span className="text-slate-700 font-semibold tabular-nums ml-1">
+                  {d.open!.toLocaleString()}
+                </span>
+              </span>
+              <span>
+                고{' '}
+                <span className="text-slate-700 font-semibold tabular-nums ml-1">
+                  {d.high!.toLocaleString()}
+                </span>
+              </span>
+              <span>
+                저{' '}
+                <span className="text-slate-700 font-semibold tabular-nums ml-1">
+                  {d.low!.toLocaleString()}
+                </span>
+              </span>
               <span className={upDay ? 'text-red-500' : 'text-blue-500'}>
-                {upDay ? '▲' : '▼'} {Math.abs((((d.close ?? 0) - (d.open ?? 0)) / (d.open ?? 1)) * 100).toFixed(2)}%
+                {upDay ? '▲' : '▼'}{' '}
+                {Math.abs((((d.close ?? 0) - (d.open ?? 0)) / (d.open ?? 1)) * 100).toFixed(2)}%
               </span>
             </div>
           </>
         ) : d.close != null ? (
-          <TooltipRow color={PRICE_LINE} label="주가 종가" value={`${d.close.toLocaleString()}원`} bold />
+          <TooltipRow
+            color={PRICE_LINE}
+            label="주가 종가"
+            value={`${d.close.toLocaleString()}원`}
+            bold
+          />
         ) : (
           <TooltipRow label="주가" value="—" />
         )}
@@ -1137,11 +1497,11 @@ function RiskPriceTooltip({
   label?: string;
 }) {
   if (!active || !payload?.length) return null;
-  const d = payload[0]?.payload as (TipPayload['payload'] & { close?: number | null });
+  const d = payload[0]?.payload as TipPayload['payload'] & { close?: number | null };
   // payload 는 Bar/Area 들 + 주가 series. 리스크 부분만 남기기 위해 종가 라인(name="종가")
   // 과 캔들 막대(name="주가") 를 둘 다 제외.
   const riskParts = payload.filter(
-    (p) => (p.value ?? 0) > 0 && p.name !== '종가' && p.name !== '주가',
+    (p) => (p.value ?? 0) > 0 && p.name !== '종가' && p.name !== '주가'
   );
   return (
     <TooltipShell label={label}>
@@ -1154,7 +1514,12 @@ function RiskPriceTooltip({
       )}
       <div className="border-t border-slate-100 mt-1.5 pt-1.5">
         {d?.close != null ? (
-          <TooltipRow color={PRICE_LINE} label="주가 종가" value={`${d.close.toLocaleString()}원`} bold />
+          <TooltipRow
+            color={PRICE_LINE}
+            label="주가 종가"
+            value={`${d.close.toLocaleString()}원`}
+            bold
+          />
         ) : (
           <TooltipRow label="주가" value="—" />
         )}
@@ -1177,17 +1542,18 @@ function ChannelPriceTooltip({
   showOhlc?: boolean;
 }) {
   if (!active || !payload?.length) return null;
-  const d = payload[0]?.payload as (TipPayload['payload'] & {
+  const d = payload[0]?.payload as TipPayload['payload'] & {
     channelVolume?: Record<Channel, number>;
     open?: number | null;
     high?: number | null;
     low?: number | null;
     close?: number | null;
-  });
+  };
   if (!d) return null;
   const visible = MONITORING_CHANNELS.filter((c) => visibleChannels.has(c.id));
   const total = visible.reduce((s, c) => s + (d.channelVolume?.[c.id] ?? 0), 0);
-  const hasOhlc = !!showOhlc && d.open != null && d.close != null && d.high != null && d.low != null;
+  const hasOhlc =
+    !!showOhlc && d.open != null && d.close != null && d.high != null && d.low != null;
   const upDay = hasOhlc && (d.close ?? 0) >= (d.open ?? 0);
 
   const channelBlock =
@@ -1269,20 +1635,32 @@ function VolumeSearchTooltip({
   label?: string;
 }) {
   if (!active || !payload?.length) return null;
-  const d = payload[0]?.payload as (TipPayload['payload'] & {
+  const d = payload[0]?.payload as TipPayload['payload'] & {
     totalVolume?: number;
     searchNaver?: number | null;
     searchGoogle?: number | null;
-  });
+  };
   if (!d) return null;
   return (
     <TooltipShell label={label}>
-      <TooltipRow color={PRIMARY} label="수집량" value={`${(d.totalVolume ?? 0).toLocaleString()}건`} bold />
+      <TooltipRow
+        color={PRIMARY}
+        label="수집량"
+        value={`${(d.totalVolume ?? 0).toLocaleString()}건`}
+        bold
+      />
       <div className="border-t border-slate-100 mt-1.5 pt-1.5">
-        <TooltipRow color={SEARCH_NAVER} label="네이버" value={d.searchNaver != null ? d.searchNaver.toString() : '—'} />
-        <TooltipRow color={SEARCH_GOOGLE} label="구글" value={d.searchGoogle != null ? d.searchGoogle.toString() : '—'} />
+        <TooltipRow
+          color={SEARCH_NAVER}
+          label="네이버"
+          value={d.searchNaver != null ? d.searchNaver.toString() : '—'}
+        />
+        <TooltipRow
+          color={SEARCH_GOOGLE}
+          label="구글"
+          value={d.searchGoogle != null ? d.searchGoogle.toString() : '—'}
+        />
       </div>
     </TooltipShell>
   );
 }
-
