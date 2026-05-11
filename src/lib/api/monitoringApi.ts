@@ -350,6 +350,49 @@ export async function getMonitoringChannelMatrix(
     .map(([date, byChannel]) => ({ date, byChannel }));
 }
 
+// ── 라이프타임 KPI (기간 무관, 누적 + 최신) ─────────────────────────
+
+export interface MonitoringLifetimeTotals {
+  totalVolume: number;         // 워크스페이스 누적 수집량 (news + sns + community raw rows)
+  lastClose: number | null;    // 가장 최근 종가
+  totalRisk: number;           // 누적 critical_type IS NOT NULL 건수
+}
+
+export async function getMonitoringLifetimeTotals(
+  workspaceId: string,
+): Promise<MonitoringLifetimeTotals> {
+  const itemTables = ['news_items', 'sns_items', 'community_items'] as const;
+
+  const volCounts = await Promise.all(
+    itemTables.map((t) =>
+      supabase.from(t).select('id', { count: 'exact', head: true }).eq('workspace_id', workspaceId),
+    ),
+  );
+  const totalVolume = volCounts.reduce((s, r) => s + (r.count ?? 0), 0);
+
+  const { data: stockRow } = await supabase
+    .from('stock_prices')
+    .select('close_price')
+    .eq('workspace_id', workspaceId)
+    .order('date', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const lastClose = stockRow?.close_price ?? null;
+
+  const riskCounts = await Promise.all(
+    itemTables.map((t) =>
+      supabase
+        .from(t)
+        .select('id', { count: 'exact', head: true })
+        .eq('workspace_id', workspaceId)
+        .not('critical_type', 'is', null),
+    ),
+  );
+  const totalRisk = riskCounts.reduce((s, r) => s + (r.count ?? 0), 0);
+
+  return { totalVolume, lastClose, totalRisk };
+}
+
 // ── 네이버 데이터랩 라이브 검색 트렌드 ─────────────────────────────
 // 365일치 시계열을 한 번 가져와 클라이언트가 5 프리셋(7/30/90/180/365)으로 슬라이스 + 재정규화한다.
 // 보고서별 정규화 baseline 차이로 인한 시각적 점프 문제를 해결.
@@ -425,23 +468,28 @@ export async function getMonitoringAiAnalysis(
   return res.json();
 }
 
-/** 모니터링 AI 분석 — 오늘(KST) 캐시 row 만 SELECT. 없으면 null. 신규 분석 호출 X.
+/** 모니터링 AI 분석 — 이번 주(KST 월요일 시작) 캐시 row SELECT. 없으면 null. 신규 분석 호출 X.
  *
  *  AiAnalysisCard 가 mount 시 자동 호출 → DB 에 이미 있는 분석을 페이지 진입 즉시 표시.
  *  스키마: monitoring_ai_analyses (마이그 056). RLS 로 멤버만 SELECT 가능.
+ *  column `generated_kst_date` 는 이제 "그 주의 월요일 일자(KST)" 를 저장.
  *  database.types.ts 미생성 → as any cast.
  */
 export async function getMonitoringAiAnalysisCached(
   workspaceId: string,
 ): Promise<MonitoringAiAnalysisResult | null> {
-  const todayKst = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const kstNow = new Date(Date.now() + 9 * 60 * 60 * 1000);
+  // JS getUTCDay(): 0=일, 1=월 ... → 월요일 기준 days-from-monday 계산
+  const daysFromMonday = (kstNow.getUTCDay() + 6) % 7;
+  const monday = new Date(kstNow.getTime() - daysFromMonday * 86400000);
+  const weekStartKst = monday.toISOString().slice(0, 10);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase as any)
     .from('monitoring_ai_analyses')
     .select('content, model, input_tokens, output_tokens, cache_read_tokens, created_at, period_start, period_end')
     .eq('workspace_id', workspaceId)
-    .eq('generated_kst_date', todayKst)
+    .eq('generated_kst_date', weekStartKst)
     .maybeSingle();
 
   if (error || !data) return null;

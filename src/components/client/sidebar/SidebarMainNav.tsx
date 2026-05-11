@@ -35,7 +35,7 @@ export function SidebarMainNav({ isOpen }: SidebarMainNavProps) {
 
   const items: { label: string; Icon: typeof FileText; href: string; active: boolean }[] = [
     { label: '보고서', Icon: FileText, href: reportHref, active: isReport },
-    { label: '모니터링', Icon: LineChart, href: monitoringHref, active: isMonitoring },
+    { label: '인스턴스', Icon: LineChart, href: monitoringHref, active: isMonitoring },
     { label: '위기 대응 센터', Icon: ShieldAlert, href: crisisHref, active: isCrisis },
   ];
 

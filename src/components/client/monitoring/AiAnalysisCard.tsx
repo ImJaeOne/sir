@@ -11,7 +11,11 @@ interface Props {
   workspaceId: string;
   start: string;
   end: string;
+  presetDays: number;
 }
+
+/** 7/30/90 만 분석 가능. 180/365 는 토큰 부하 + 분석 신뢰도 저하로 비활성. */
+const ALLOWED_PRESETS = new Set([7, 30, 90]);
 
 /** ISO timestamptz → "HH:mm" (KST). */
 function formatTime(iso: string | null | undefined): string {
@@ -28,9 +32,9 @@ function formatTime(iso: string | null | undefined): string {
   }
 }
 
-export function AiAnalysisCard({ workspaceId, start, end }: Props) {
+export function AiAnalysisCard({ workspaceId, start, end, presetDays }: Props) {
   const [open, setOpen] = useState(false);
-  // 페이지 mount 시 DB 의 today_kst 캐시 row 자동 SELECT (없으면 null).
+  // 페이지 mount 시 DB 의 이번 주(KST 월요일) 캐시 row 자동 SELECT (없으면 null).
   const cachedQuery = useMonitoringAiAnalysisCached(workspaceId);
   const mutation = useMonitoringAiAnalysis(workspaceId, start, end);
   const result = mutation.data ?? cachedQuery.data;
@@ -40,8 +44,10 @@ export function AiAnalysisCard({ workspaceId, start, end }: Props) {
   // 캐시 row 의 실제 분석 기간 (없으면 page 의 현재 period 로 fallback).
   const displayStart = result?.period_start ?? start;
   const displayEnd = result?.period_end ?? end;
+  const presetAllowed = ALLOWED_PRESETS.has(presetDays);
 
   const onRun = () => {
+    if (!presetAllowed) return;
     mutation.mutate();
     setOpen(true);
   };
@@ -53,21 +59,24 @@ export function AiAnalysisCard({ workspaceId, start, end }: Props) {
         onClick={() => setOpen((v) => !v)}
         className="w-full flex items-center justify-between gap-3 p-4 lg:p-5 cursor-pointer"
       >
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-violet-500/10 text-violet-600 flex items-center justify-center">
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          <div className="w-8 h-8 rounded-lg bg-violet-500/10 text-violet-600 flex items-center justify-center shrink-0">
             <Sparkles size={16} />
           </div>
-          <div className="flex flex-col items-start">
-            <span className="text-sm font-bold text-slate-800">AI 분석</span>
-            <span className="text-[11px] text-slate-500">
+          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+            <span className="text-sm font-bold text-slate-800 shrink-0">AI 분석</span>
+            <span className="text-[12px] font-bold text-violet-700 bg-violet-100/70 px-2 py-0.5 rounded-md tabular-nums shrink-0">
+              {displayStart} ~ {displayEnd}
+            </span>
+            <span className="text-[11px] text-slate-400 hidden sm:inline truncate ml-auto pr-2">
               {result
-                ? `오늘 ${formatTime(result.generated_at)} 분석 완료 (${displayStart} ~ ${displayEnd})`
-                : `${start} ~ ${end} 기간을 AI 가 해석 · 하루 1회 갱신`}
+                ? `${formatTime(result.generated_at)} 분석 완료 · 주 1회 갱신`
+                : '워크스페이스 여론·주가를 AI가 해석합니다 · 주 1회 갱신'}
             </span>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          {!result && !isLoading && (
+        <div className="flex items-center gap-2 shrink-0">
+          {!result && !isLoading && presetAllowed && (
             <span
               role="button"
               onClick={(e) => {
@@ -77,6 +86,14 @@ export function AiAnalysisCard({ workspaceId, start, end }: Props) {
               className="text-xs font-bold px-3 py-1.5 rounded-lg bg-violet-600 text-white hover:bg-violet-700 transition-colors cursor-pointer"
             >
               분석하기
+            </span>
+          )}
+          {!result && !isLoading && !presetAllowed && (
+            <span
+              className="text-xs font-bold px-3 py-1.5 rounded-lg bg-slate-100 text-slate-400 cursor-not-allowed"
+              title="7/30/90일 기간에서만 AI 분석을 실행할 수 있습니다"
+            >
+              분석 불가
             </span>
           )}
           {isLoading && (
@@ -122,9 +139,14 @@ export function AiAnalysisCard({ workspaceId, start, end }: Props) {
                 <ReactMarkdown>{result.content}</ReactMarkdown>
               </article>
             )}
-            {!result && !isLoading && !error && (
+            {!result && !isLoading && !error && presetAllowed && (
               <div className="text-center py-8 text-slate-400 text-xs">
-                위 <span className="font-bold text-violet-600">분석하기</span> 버튼을 눌러 AI 가 30일치 데이터를 해석합니다.
+                위 <span className="font-bold text-violet-600">분석하기</span> 버튼을 눌러 AI 가 {presetDays}일치 데이터를 해석합니다.
+              </div>
+            )}
+            {!result && !isLoading && !error && !presetAllowed && (
+              <div className="text-center py-8 text-slate-400 text-xs">
+                AI 분석은 <span className="font-bold text-slate-600">7일 · 30일 · 90일</span> 기간에서만 가능합니다. 위 기간 프리셋을 변경해주세요.
               </div>
             )}
           </div>

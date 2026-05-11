@@ -26,7 +26,7 @@ export function MobileTabBar() {
 
   const items: { label: string; Icon: typeof FileText; href: string; active: boolean }[] = [
     { label: '보고서', Icon: FileText, href: reportHref, active: pathname.startsWith('/report/') },
-    { label: '모니터링', Icon: LineChart, href: monitoringHref, active: pathname.startsWith('/monitoring/') },
+    { label: '인스턴스', Icon: LineChart, href: monitoringHref, active: pathname.startsWith('/monitoring/') },
     { label: '위기 대응', Icon: ShieldAlert, href: crisisHref, active: pathname.startsWith('/crisis/') },
   ];
 
