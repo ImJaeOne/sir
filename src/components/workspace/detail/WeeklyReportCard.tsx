@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { ChevronDown, ChevronUp, ChevronRight, RefreshCw, AlertCircle, Check, Clock, X, Loader2 } from 'lucide-react';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
-import { useRetryFailedReport } from '@/hooks/workspace/useWorkspaceMutation';
+import { useRetryFailedReport, useRegenerateReport } from '@/hooks/workspace/useWorkspaceMutation';
 import type { Report, ReportProgress } from '@/lib/api/workspaceApi';
 import { getErrorMessage } from '@/lib/utils';
 import {
@@ -129,6 +129,7 @@ export function WeeklyReportCard({
 }: WeeklyReportCardProps) {
   const router = useRouter();
   const retry = useRetryFailedReport(workspaceId);
+  const regenerate = useRegenerateReport(workspaceId);
   const [retryTarget, setRetryTarget] = useState<Report | null>(null);
 
   // ── 공통: 주간 strategies 상태 ─────────────────────────────
@@ -219,6 +220,15 @@ export function WeeklyReportCard({
     }
   };
 
+  const handleRegenerate = async () => {
+    try {
+      await regenerate.mutateAsync(report.id);
+      toast.success('전략·총평 재생성을 시작했습니다. 수 분 후 새로고침하세요.');
+    } catch (e) {
+      toast.error(getErrorMessage(e, '재생성 실패'));
+    }
+  };
+
   const weeklyFailedChannels = !hasDaily
     ? round1Sessions
         .map((s, i) => ({ label: WEEKLY_PLATFORM_LABELS[WEEKLY_PLATFORMS[i]], failed: s?.status === 'failed' }))
@@ -294,6 +304,20 @@ export function WeeklyReportCard({
               >
                 <RefreshCw size={10} className={retry.isPending ? 'animate-spin' : ''} />
                 실패 재시도 ({weeklyFailedChannels.length})
+              </button>
+            )}
+            {compileFailed && !hasFailedDay && weeklyFailedChannels.length === 0 && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleRegenerate();
+                }}
+                disabled={regenerate.isPending}
+                title="채널 수집은 정상인데 전략·총평만 실패한 경우. 전략·총평을 다시 생성합니다."
+                className="flex items-center gap-1 text-[10px] font-semibold text-violet-600 bg-white border border-violet-200 rounded-md px-2 py-1 hover:bg-violet-100 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <RefreshCw size={10} className={regenerate.isPending ? 'animate-spin' : ''} />
+                {regenerate.isPending ? '재생성 중' : '전략·총평 재생성'}
               </button>
             )}
           </div>
