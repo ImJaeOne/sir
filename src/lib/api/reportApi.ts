@@ -25,6 +25,7 @@ export type {
 } from '@/types/report';
 
 import { summarySectionSchema, strategyDataSchema, trendPointSchema } from '@/types/report';
+import { calculateSir } from '@/utils/sirChannel';
 import type {
   SummarySection,
   SirStockPoint,
@@ -419,78 +420,67 @@ const CHANNEL_CONFIG: { id: string; label: string; color: string }[] = [
   { id: 'community', label: '커뮤니티', color: '#22c55e' },
 ];
 
-/** channelItems(감정 집계) + daily_platform_stats(채널별 SIR 평균) 으로 채널 통계 산출.
+/** channelItems(raw is_relevant=true items) 로 채널별 통계 + SIR 직접 계산.
  *
- * 이전: sessions.sir_score 평균 — 주간/월간 보고서엔 sessions.report_id 매칭이 0건이라
- *       모든 채널이 500 default 로 폴백되는 버그.
- * 이후: 보고서 기간(period_start~period_end) 안의 daily_platform_stats.sir_score 평균.
- *       getPrevDailySnapshot 도 같은 source 라 "전일 대비" 비교가 일관됨.
+ * 이전: daily_platform_stats.sir_score 의 보고서 기간 평균.
+ *       SIR 공식이 4/30 / 5/4 두 차례 변경됐지만 daily_platform_stats 행은 재계산 안 됨 →
+ *       옛 공식 값이 stale 로 잔존 → 카운트와 sir 불일치 (예: 4/28 news pos=10/0/0인데 sir=389).
+ *       또 carry(cnt=0) 일자도 단순 평균에 들어가서 결과를 500 쪽으로 끌어내림.
+ * 이후: channelItems 의 sentiment 분포를 그대로 calculateSir() 에 넣어 그 자리에서 산출.
+ *       SIR 공식의 confidence 보정 + negativity bias 가 주간 합계 기준으로 한 번에 정확히 적용.
+ *       stale 의존 0. daily_platform_stats 의 sir_score 컬럼은 더 이상 채널 SIR 산정에 안 쓰임
+ *       (다만 채널 일별 시계열 차트 등 다른 곳에서 여전히 참조되니 컬럼 자체는 유지).
+ *
+ * periodStart / periodEnd 인자는 시그니처 유지 (호출자 호환). 내부 미사용.
  */
 export async function getChannelStats(
-  workspaceId: string,
+  _workspaceId: string,
   channelItems: ChannelItem[],
-  reportId?: string,
-  periodStart?: string,
-  periodEnd?: string,
+  _reportId?: string,
+  _periodStart?: string,
+  _periodEnd?: string,
 ): Promise<ChannelStat[]> {
   // channelItems 가 비어 있어도 4채널 placeholder stat 을 반환해야 SirCard 가 렌더됨
   // (이전: return [] 로 차트/카드 통째로 사라짐 — 5/4 SB성보 같은 전체 0건 케이스에서 빈 화면)
   // SirCard 의 stat.value === 0 분기가 amber 배지 + "직전 일자 기준" 표시로 빈 상태 명시.
 
-  // 채널별 감정 집계 (positive/negative/neutral count)
-  const byChannel = new Map<string, { positive: number; negative: number; neutral: number }>();
+  // 채널별 감정 집계 (positive/negative/neutral count) + raw items
+  const byChannel = new Map<
+    string,
+    { positive: number; negative: number; neutral: number; items: ChannelItem[] }
+  >();
   for (const item of channelItems) {
     const channel = PLATFORM_TO_CHANNEL[item.platform_id] ?? item.platform_id;
     if (!byChannel.has(channel)) {
-      byChannel.set(channel, { positive: 0, negative: 0, neutral: 0 });
+      byChannel.set(channel, { positive: 0, negative: 0, neutral: 0, items: [] });
     }
-    const counts = byChannel.get(channel)!;
-    if (item.sentiment === 'positive') counts.positive++;
-    else if (item.sentiment === 'negative') counts.negative++;
-    else counts.neutral++;
-  }
-
-  // 채널별 SIR 평균 — 보고서 기간 daily_platform_stats 사용
-  const sirByChannel = new Map<string, number[]>();
-  if (periodStart && periodEnd) {
-    const { data: snaps } = await supabase
-      .from('daily_snapshots')
-      .select('id')
-      .eq('workspace_id', workspaceId)
-      .gte('date', periodStart)
-      .lte('date', periodEnd);
-    const snapIds = (snaps ?? []).map((s) => s.id);
-    if (snapIds.length > 0) {
-      const { data: dps } = await supabase
-        .from('daily_platform_stats')
-        .select('platform_id, sir_score')
-        .in('daily_snapshot_id', snapIds)
-        .not('sir_score', 'is', null);
-      for (const r of dps ?? []) {
-        if (r.sir_score == null || !r.platform_id) continue;
-        const channel = PLATFORM_TO_CHANNEL[r.platform_id] ?? r.platform_id;
-        if (!sirByChannel.has(channel)) sirByChannel.set(channel, []);
-        sirByChannel.get(channel)!.push(r.sir_score);
-      }
-    }
+    const bucket = byChannel.get(channel)!;
+    bucket.items.push(item);
+    if (item.sentiment === 'positive') bucket.positive++;
+    else if (item.sentiment === 'negative') bucket.negative++;
+    else bucket.neutral++;
   }
 
   return CHANNEL_CONFIG.map((c) => {
-    const counts = byChannel.get(c.id) ?? { positive: 0, negative: 0, neutral: 0 };
-    const sirScores = sirByChannel.get(c.id) ?? [];
-    const avgSir =
-      sirScores.length > 0
-        ? Math.round(sirScores.reduce((a, b) => a + b, 0) / sirScores.length)
+    const bucket = byChannel.get(c.id) ?? { positive: 0, negative: 0, neutral: 0, items: [] };
+    const sir =
+      bucket.items.length > 0
+        ? calculateSir(
+            bucket.items.map((it) => ({
+              platform_id: it.platform_id,
+              sentiment: it.sentiment ?? null,
+            })),
+          )
         : 500;
     return {
       id: c.id,
       label: c.label,
-      value: counts.positive + counts.negative + counts.neutral,
+      value: bucket.positive + bucket.negative + bucket.neutral,
       color: c.color,
-      sir: avgSir,
-      positive: counts.positive,
-      negative: counts.negative,
-      neutral: counts.neutral,
+      sir,
+      positive: bucket.positive,
+      negative: bucket.negative,
+      neutral: bucket.neutral,
     };
   });
 }
