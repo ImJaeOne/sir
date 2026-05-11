@@ -25,28 +25,18 @@ function localizeLoginError(message: string): string {
 }
 
 export async function login(formData: FormData): Promise<AuthResult> {
-  // === [TEMP] login latency probe — 진단 끝나면 제거 ===
-  const tStart = Date.now();
-  console.log(`[login-probe][server] === login() 진입 ===`);
-  // ====================================================
-
   const supabase = await createClient();
 
   const email = formData.get('email') as string;
   const password = formData.get('password') as string;
 
-  const tSignIn = Date.now();
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-  console.log(`[login-probe][server] signInWithPassword: ${Date.now() - tSignIn}ms`);
 
   if (error) {
     return { success: false, error: localizeLoginError(error.message) };
   }
 
-  const tResolve = Date.now();
   const target = data.user ? await resolveLandingPath(supabase, data.user.id) : '/';
-  console.log(`[login-probe][server] resolveLandingPath: ${Date.now() - tResolve}ms  → ${target}`);
-  console.log(`[login-probe][server] login() 총: ${Date.now() - tStart}ms (redirect 직전)`);
   redirect(target);
 }
 
