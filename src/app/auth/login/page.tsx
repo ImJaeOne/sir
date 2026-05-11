@@ -14,22 +14,12 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
 
-    // === [TEMP] login latency probe — 진단 끝나면 제거 ===
-    const t0 = Date.now();
-    sessionStorage.setItem('login-probe-start', String(t0));
-    console.log(`[login-probe] click → server action 호출`);
-    // ====================================================
-
     const formData = new FormData(e.currentTarget);
     const result = await login(formData);
 
     if (!result.success) {
-      sessionStorage.removeItem('login-probe-start');
       setError(result.error ?? '로그인에 실패했습니다.');
       setLoading(false);
-    } else {
-      // success 시엔 redirect 가 발생해 여기 도달 안 함
-      console.log(`[login-probe] server action 응답 (no redirect): ${Date.now() - t0}ms`);
     }
   }
 

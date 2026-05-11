@@ -56,18 +56,6 @@ export default function ClientReportPage() {
   // → hydration mismatch 방지 위해 mount 전까지 서버와 동일하게 Loading 만 렌더
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []); // eslint-disable-line react-hooks/set-state-in-effect
-
-  // === [TEMP] login latency probe — 진단 끝나면 제거 ===
-  useEffect(() => {
-    const start = sessionStorage.getItem('login-probe-start');
-    if (start) {
-      const elapsed = Date.now() - parseInt(start, 10);
-      console.log(`[login-probe] 🏁 click → 보고서 페이지 mount: ${elapsed}ms`);
-      sessionStorage.removeItem('login-probe-start');
-    }
-  }, []);
-  // ====================================================
-
   if (!mounted) return <Loading />;
 
   return (

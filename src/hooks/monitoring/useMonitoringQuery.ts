@@ -5,6 +5,7 @@ import {
   getMonitoringRisks,
   getMonitoringChannelMatrix,
   getMonitoringAiAnalysisCached,
+  getMonitoringLifetimeTotals,
 } from '@/lib/api/monitoringApi';
 import { monitoringKeys } from './monitoringKeys';
 
@@ -59,5 +60,15 @@ export function useMonitoringAiAnalysisCached(workspaceId: string) {
     queryFn: () => getMonitoringAiAnalysisCached(workspaceId),
     enabled: !!workspaceId,
     staleTime: ONE_HOUR,
+  });
+}
+
+/** 라이프타임 KPI — 기간 탭과 무관한 누적/최신 수치. 상단 카드 3장 전용. */
+export function useMonitoringLifetimeTotals(workspaceId: string) {
+  return useQuery({
+    queryKey: monitoringKeys.lifetimeTotals(workspaceId),
+    queryFn: () => getMonitoringLifetimeTotals(workspaceId),
+    enabled: !!workspaceId,
+    staleTime: FIVE_MIN,
   });
 }
