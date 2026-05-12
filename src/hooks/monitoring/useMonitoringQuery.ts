@@ -6,6 +6,7 @@ import {
   getMonitoringChannelMatrix,
   getMonitoringAiAnalysisCached,
   getMonitoringLifetimeTotals,
+  getMonitoringDayItems,
 } from '@/lib/api/monitoringApi';
 import { monitoringKeys } from './monitoringKeys';
 
@@ -69,6 +70,17 @@ export function useMonitoringLifetimeTotals(workspaceId: string) {
     queryKey: monitoringKeys.lifetimeTotals(workspaceId),
     queryFn: () => getMonitoringLifetimeTotals(workspaceId),
     enabled: !!workspaceId,
+    staleTime: FIVE_MIN,
+  });
+}
+
+/** 차트 데이터 포인트 클릭 → 우측 drawer 에 노출할 그 날(KST) 의 채널별 수집 데이터.
+ *  date 가 비어있으면 비활성 (drawer 닫혀있을 때 무용 호출 방지). */
+export function useMonitoringDayItems(workspaceId: string, date: string | null) {
+  return useQuery({
+    queryKey: monitoringKeys.dayItems(workspaceId, date ?? ''),
+    queryFn: () => getMonitoringDayItems(workspaceId, date!),
+    enabled: !!workspaceId && !!date,
     staleTime: FIVE_MIN,
   });
 }

@@ -1,7 +1,11 @@
 import { createClient } from '@/lib/supabase/client';
 import type { Database } from '@/types/database.types';
+import type { ChannelItem, NewsClusterResponse } from '@/types/report';
 
 const supabase = createClient();
+
+type Tables = Database['public']['Tables'];
+type Row<T extends keyof Tables> = Tables[T]['Row'];
 
 // ── 채널 매핑 ─────────────────────────────────────────────────────────
 // platforms 테이블의 5종을 4채널로 묶음 (커뮤니티 = naver_stock + dcinside)
@@ -508,5 +512,225 @@ export async function getMonitoringAiAnalysisCached(
     generated_at: data.created_at,
     period_start: data.period_start,
     period_end: data.period_end,
+  };
+}
+
+// ── 일자별 수집 데이터 상세 (차트 클릭 시 drawer 노출용) ───────────────
+// 차트 X축 = KST 일자. 클릭한 일자 하루치 raw items 를 채널별로 묶어서 반환.
+// is_relevant=true 인 항목만 (reportApi.getChannelItems 와 동일 정책 → 동명 노이즈 차단).
+// 뉴스는 cluster_id 가 붙은 row 들의 클러스터 본체(news_clusters) 도 함께 가져와 묶음 보기 가능.
+
+type NewsItemDayRow = Pick<
+  Row<'news_items'>,
+  'id' | 'platform_id' | 'title' | 'summary' | 'sentiment' | 'link' | 'source' | 'published_at' | 'cluster_id'
+>;
+type CommunityItemDayRow = Pick<
+  Row<'community_items'>,
+  'id' | 'platform_id' | 'title' | 'content' | 'sentiment' | 'link' | 'views' | 'published_at'
+>;
+type SnsItemDayRow = Pick<
+  Row<'sns_items'>,
+  'id' | 'platform_id' | 'title' | 'content' | 'summary' | 'sentiment' | 'link' | 'author' | 'views' | 'published_at' | 'impact_score'
+>;
+type NewsClusterDayRow = Pick<
+  Row<'news_clusters'>,
+  'id' | 'representative_title' | 'sentiment' | 'summary'
+>;
+
+export interface DayItemsTotals {
+  total: number;
+  byChannel: Record<Channel, number>;
+  bySentiment: { positive: number; neutral: number; negative: number; unknown: number };
+}
+
+export interface MonitoringDayItems {
+  date: string;
+  newsClusters: NewsClusterResponse[];
+  newsUnclustered: ChannelItem[];
+  blog: ChannelItem[];
+  youtube: ChannelItem[];
+  community: ChannelItem[];
+  totals: DayItemsTotals;
+}
+
+function toChannelItemFromNews(r: NewsItemDayRow): ChannelItem {
+  return {
+    id: r.id,
+    platform_id: r.platform_id,
+    title: r.title ?? '',
+    content: null,
+    summary: r.summary ?? null,
+    sentiment: r.sentiment ?? 'neutral',
+    link: r.link ?? '#',
+    source: r.source ?? null,
+    views: null,
+    published_at: r.published_at ?? null,
+    cluster_id: r.cluster_id ?? null,
+    impact_score: null,
+  };
+}
+
+function toChannelItemFromCommunity(r: CommunityItemDayRow): ChannelItem {
+  return {
+    id: r.id,
+    platform_id: r.platform_id,
+    title: r.title ?? '',
+    content: r.content ?? null,
+    summary: null,
+    sentiment: r.sentiment ?? 'neutral',
+    link: r.link ?? '#',
+    source: null,
+    views: r.views ?? null,
+    published_at: r.published_at ?? null,
+    cluster_id: null,
+    impact_score: null,
+  };
+}
+
+function toChannelItemFromSns(r: SnsItemDayRow): ChannelItem {
+  return {
+    id: r.id,
+    platform_id: r.platform_id,
+    title: r.title ?? '',
+    content: r.content ?? null,
+    summary: r.summary ?? null,
+    sentiment: r.sentiment ?? 'neutral',
+    link: r.link ?? '#',
+    source: r.author ?? null,
+    views: r.views ?? null,
+    published_at: r.published_at ?? null,
+    cluster_id: null,
+    impact_score: r.impact_score ?? null,
+  };
+}
+
+function bumpSentiment(t: DayItemsTotals['bySentiment'], s: string | null) {
+  if (s === 'positive') t.positive += 1;
+  else if (s === 'negative') t.negative += 1;
+  else if (s === 'neutral') t.neutral += 1;
+  else t.unknown += 1;
+}
+
+export async function getMonitoringDayItems(
+  workspaceId: string,
+  date: string,
+): Promise<MonitoringDayItems> {
+  const startISO = `${date}T00:00:00+09:00`;
+  const nextDay = new Date(`${date}T00:00:00+09:00`);
+  nextDay.setDate(nextDay.getDate() + 1);
+  const endISO = nextDay.toISOString();
+
+  const [news, community, sns] = await Promise.all([
+    fetchAllPaged<NewsItemDayRow>((from, to) =>
+      supabase
+        .from('news_items')
+        .select('id, platform_id, title, summary, sentiment, link, source, published_at, cluster_id')
+        .eq('workspace_id', workspaceId)
+        .eq('is_relevant', true)
+        .gte('published_at', startISO)
+        .lt('published_at', endISO)
+        .range(from, to),
+    ),
+    fetchAllPaged<CommunityItemDayRow>((from, to) =>
+      supabase
+        .from('community_items')
+        .select('id, platform_id, title, content, sentiment, link, views, published_at')
+        .eq('workspace_id', workspaceId)
+        .eq('is_relevant', true)
+        .gte('published_at', startISO)
+        .lt('published_at', endISO)
+        .range(from, to),
+    ),
+    fetchAllPaged<SnsItemDayRow>((from, to) =>
+      supabase
+        .from('sns_items')
+        .select('id, platform_id, title, content, summary, sentiment, link, author, views, published_at, impact_score')
+        .eq('workspace_id', workspaceId)
+        .eq('is_relevant', true)
+        .gte('published_at', startISO)
+        .lt('published_at', endISO)
+        .range(from, to),
+    ),
+  ]);
+
+  // 뉴스 클러스터 본체 — 그날 뉴스 row 의 cluster_id 합집합으로만 조회.
+  // (cross-session matching 도 결국 row 의 cluster_id 가 정답이므로 row 기준 fetch.)
+  const clusterIds = Array.from(
+    new Set(news.map((n) => n.cluster_id).filter((v): v is string => !!v)),
+  );
+
+  let clusters: NewsClusterDayRow[] = [];
+  if (clusterIds.length > 0) {
+    clusters = await fetchAllPaged<NewsClusterDayRow>((from, to) =>
+      supabase
+        .from('news_clusters')
+        .select('id, representative_title, sentiment, summary')
+        .eq('workspace_id', workspaceId)
+        .eq('is_relevant', true)
+        .in('id', clusterIds)
+        .range(from, to),
+    );
+  }
+
+  const clusterMap = new Map(clusters.map((c) => [c.id, c]));
+  const itemsByCluster = new Map<
+    string,
+    { title: string; source: string; link: string; published_at: string | null }[]
+  >();
+  for (const n of news) {
+    if (!n.cluster_id || !clusterMap.has(n.cluster_id)) continue;
+    if (!itemsByCluster.has(n.cluster_id)) itemsByCluster.set(n.cluster_id, []);
+    itemsByCluster.get(n.cluster_id)!.push({
+      title: n.title ?? '',
+      source: n.source ?? '',
+      link: n.link ?? '#',
+      published_at: n.published_at ?? null,
+    });
+  }
+
+  const newsClusters: NewsClusterResponse[] = clusters.map((c) => ({
+    id: c.id,
+    representative_title: c.representative_title,
+    sentiment: c.sentiment,
+    summary: c.summary,
+    items: itemsByCluster.get(c.id) ?? [],
+  }));
+
+  // 비클러스터 뉴스 — cluster_id null 또는 cluster row 가 is_relevant=false 라 본체 fetch 에서 빠진 케이스
+  const validClusterSet = new Set(clusters.map((c) => c.id));
+  const newsUnclustered: ChannelItem[] = news
+    .filter((n) => !n.cluster_id || !validClusterSet.has(n.cluster_id))
+    .map(toChannelItemFromNews);
+
+  const blog = sns
+    .filter((s) => s.platform_id === 'naver_blog')
+    .map(toChannelItemFromSns);
+  const youtube = sns
+    .filter((s) => s.platform_id === 'youtube')
+    .map(toChannelItemFromSns);
+  const communityItems = community.map(toChannelItemFromCommunity);
+
+  const totals: DayItemsTotals = {
+    total: news.length + community.length + sns.length,
+    byChannel: {
+      news: news.length,
+      blog: blog.length,
+      youtube: youtube.length,
+      community: communityItems.length,
+    },
+    bySentiment: { positive: 0, neutral: 0, negative: 0, unknown: 0 },
+  };
+  for (const r of news) bumpSentiment(totals.bySentiment, r.sentiment);
+  for (const r of community) bumpSentiment(totals.bySentiment, r.sentiment);
+  for (const r of sns) bumpSentiment(totals.bySentiment, r.sentiment);
+
+  return {
+    date,
+    newsClusters,
+    newsUnclustered,
+    blog,
+    youtube,
+    community: communityItems,
+    totals,
   };
 }
