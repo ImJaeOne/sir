@@ -16,4 +16,6 @@ export const monitoringKeys = {
     ['monitoring', workspaceId, 'aiAnalysisCached'] as const,
   lifetimeTotals: (workspaceId: string) =>
     ['monitoring', workspaceId, 'lifetimeTotals'] as const,
+  dayItems: (workspaceId: string, date: string) =>
+    ['monitoring', workspaceId, 'dayItems', date] as const,
 };

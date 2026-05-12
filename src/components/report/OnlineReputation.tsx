@@ -2,7 +2,6 @@
 
 import { useMemo } from 'react';
 import {
-  useSearchTrendSuspense,
   useChannelItemsSuspense,
   useChannelStatsSuspense,
   useNewsClustersSuspense,
@@ -11,7 +10,6 @@ import {
   usePrevDailySnapshotSuspense,
 } from '@/hooks/report/useReportQuery';
 import { ReportSection } from '@/components/report/ReportSection';
-import { SearchTrendPanel } from '@/components/report/reputation/SearchTrendPanel';
 import { ChannelVolumePanel } from '@/components/report/reputation/ChannelVolumePanel';
 import { ChannelSirPanel } from '@/components/report/reputation/ChannelSirPanel';
 import { SentimentPanel } from '@/components/report/reputation/SentimentPanel';
@@ -26,7 +24,6 @@ interface OnlineReputationProps {
 
 export function OnlineReputation({ workspaceId, reportId, pdfMode = false }: OnlineReputationProps) {
   const { data: report } = useReportInfoSuspense(reportId);
-  const { data: searchTrend } = useSearchTrendSuspense(workspaceId, reportId);
   const { data: channelItems } = useChannelItemsSuspense(workspaceId, reportId);
   const { data: channelStats } = useChannelStatsSuspense(
     workspaceId,
@@ -48,17 +45,6 @@ export function OnlineReputation({ workspaceId, reportId, pdfMode = false }: Onl
     ? (prevDaily?.channelSirMap ?? {})
     : (prevReport?.channelSirMap ?? {});
 
-  const searchTrendProps = useMemo(
-    () => ({
-      naverTrend: searchTrend.naver,
-      googleTrend: searchTrend.google,
-      pdfMode,
-      workspaceId,
-      reportId,
-    }),
-    [searchTrend, pdfMode, workspaceId, reportId],
-  );
-
   const channelVolumeProps = useMemo(
     () => ({ channelStats, pdfMode }),
     [channelStats, pdfMode],
@@ -77,12 +63,11 @@ export function OnlineReputation({ workspaceId, reportId, pdfMode = false }: Onl
   return (
     <div className="print-break">
       <ReportSection id="section-reputation" icon={<OnlineReputationIcon size={36} />} title="기업 평판 분석">
-        {!isDaily && <div className="print-keep"><SearchTrendPanel {...searchTrendProps} /></div>}
         <div className="print-keep"><ChannelVolumePanel {...channelVolumeProps} /></div>
+        <div className="print-keep"><SentimentPanel {...sentimentProps} /></div>
         <div className="print-keep">
           <ChannelSirPanel channelStats={channelStats} isInitial={isInitial} prevIsInitial={prevIsInitial} isDaily={isDaily} prevChannelSirMap={prevChannelSirMap} />
         </div>
-        <div className="print-keep"><SentimentPanel {...sentimentProps} /></div>
         <div className="print-keep"><ChannelDetailPanel {...channelDetailProps} /></div>
       </ReportSection>
     </div>

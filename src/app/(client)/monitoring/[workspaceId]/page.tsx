@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { ComposedChart, Line, Bar, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
+import { ComposedChart, Line, Bar, Area, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine } from 'recharts';
 import { TrendingDown, Activity, MessageSquare, Calendar } from 'lucide-react';
 import { useWorkspace } from '@/hooks/workspace/useWorkspaceQuery';
 import {
@@ -24,6 +24,7 @@ import {
 } from '@/lib/api/monitoringApi';
 import { ChartCanvas } from '@/components/chart/ChartCanvas';
 import { AiAnalysisCard } from '@/components/client/monitoring/AiAnalysisCard';
+import { DayDetailDrawer } from '@/components/client/monitoring/DayDetailDrawer';
 
 // ── color tokens ────────────────────────────────────────────────────────
 const CHANNEL_COLOR: Record<Channel, string> = {
@@ -110,6 +111,8 @@ export default function MonitoringPage() {
   const end = useMemo(() => shiftDays(today, -1), [today]);
   const start = useMemo(() => shiftDays(end, -(presetDays - 1)), [end, presetDays]);
   const [activeTab, setActiveTab] = useState<TabId>('A');
+  // 차트 데이터 포인트 클릭 → 우측 drawer 에 노출할 KST 일자. null = drawer 닫힘.
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
   // E 탭(채널별 수집량 + 주가) 감정 토글. 4채널 라인에 동시 적용.
   // is_relevant=true 인 항목만 매트릭스에 들어오므로 관련성 토글은 두지 않는다 (동명 노이즈 자동 차단).
   const [sentimentFilter, setSentimentFilter] = useState<SentimentFilter>('all');
@@ -386,6 +389,30 @@ export default function MonitoringPage() {
             />
           );
 
+          // ── 차트 클릭 → 해당 KST 일자 drawer 오픈 ──
+          // recharts onClick state.activeLabel = dataKey('date') 값. 빈 영역 클릭 시 undefined.
+          // 데이터 포인트 클릭만 drawer 트리거. 같은 일자 재클릭 시 토글 닫기.
+          const handleChartClick = (state: unknown) => {
+            const label = (state as { activeLabel?: string } | null)?.activeLabel;
+            if (!label) return;
+            setSelectedDate((prev) => (prev === label ? null : label));
+          };
+
+          // ── 선택된 일자에 vertical reference line (pin 시각화) ──
+          // ReferenceLine 은 yAxisId 가 필수 (charts 에 정의된 축이어야 함).
+          // 탭마다 존재 축이 다르므로 인자로 받는다 (대부분 'price', F 탭만 'vol').
+          const pinLineFor = (yAxisId: string) =>
+            selectedDate ? (
+              <ReferenceLine
+                yAxisId={yAxisId}
+                x={selectedDate}
+                stroke="#0f172a"
+                strokeDasharray="3 3"
+                strokeWidth={1}
+                ifOverflow="hidden"
+              />
+            ) : null;
+
           return (
             <div className="flex flex-col gap-4">
               {/* ── A. 주가 & 수집량 ─────────────────────── */}
@@ -401,6 +428,8 @@ export default function MonitoringPage() {
                       <ComposedChart
                         data={merged}
                         margin={{ top: 12, right: 24, bottom: 0, left: 0 }}
+                        onClick={handleChartClick}
+                        style={{ cursor: 'pointer' }}
                       >
                         <CartesianGrid
                           strokeDasharray="3 3"
@@ -439,6 +468,7 @@ export default function MonitoringPage() {
                           isAnimationActive={false}
                         />
                         {candleBar}
+                        {pinLineFor('price')}
                       </ComposedChart>
                     </ChartCanvas>
                   </div>
@@ -467,6 +497,8 @@ export default function MonitoringPage() {
                         <ComposedChart
                           data={merged.map((d, i) => ({ ...d, ...sentimentSeries[i] }))}
                           margin={{ top: 12, right: 24, bottom: 0, left: 0 }}
+                          onClick={handleChartClick}
+                          style={{ cursor: 'pointer' }}
                         >
                           <defs>
                             <linearGradient id="gPos3" x1="0" y1="0" x2="0" y2="1">
@@ -565,6 +597,7 @@ export default function MonitoringPage() {
                             isAnimationActive={false}
                           />
                           {candleBar}
+                          {pinLineFor('price')}
                         </ComposedChart>
                       </ChartCanvas>
                     </div>
@@ -594,6 +627,8 @@ export default function MonitoringPage() {
                       <ComposedChart
                         data={merged}
                         margin={{ top: 12, right: 24, bottom: 0, left: 0 }}
+                        onClick={handleChartClick}
+                        style={{ cursor: 'pointer' }}
                       >
                         <CartesianGrid
                           strokeDasharray="3 3"
@@ -645,6 +680,7 @@ export default function MonitoringPage() {
                           connectNulls
                         />
                         {candleBar}
+                        {pinLineFor('price')}
                       </ComposedChart>
                     </ChartCanvas>
                   </div>
@@ -674,6 +710,8 @@ export default function MonitoringPage() {
                         <ComposedChart
                           data={merged}
                           margin={{ top: 12, right: 24, bottom: 0, left: 0 }}
+                          onClick={handleChartClick}
+                          style={{ cursor: 'pointer' }}
                         >
                           <CartesianGrid
                             strokeDasharray="3 3"
@@ -721,6 +759,7 @@ export default function MonitoringPage() {
                             />
                           ))}
                           {candleBar}
+                          {pinLineFor('price')}
                         </ComposedChart>
                       </ChartCanvas>
                     </div>
@@ -795,6 +834,8 @@ export default function MonitoringPage() {
                         <ComposedChart
                           data={channelFiltered}
                           margin={{ top: 12, right: 24, bottom: 0, left: 0 }}
+                          onClick={handleChartClick}
+                          style={{ cursor: 'pointer' }}
                         >
                           <CartesianGrid
                             strokeDasharray="3 3"
@@ -844,6 +885,7 @@ export default function MonitoringPage() {
                             />
                           ))}
                           {candleBar}
+                          {pinLineFor('price')}
                         </ComposedChart>
                       </ChartCanvas>
                     </div>
@@ -876,6 +918,8 @@ export default function MonitoringPage() {
                       <ComposedChart
                         data={merged}
                         margin={{ top: 12, right: 18, bottom: 0, left: 0 }}
+                        onClick={handleChartClick}
+                        style={{ cursor: 'pointer' }}
                       >
                         <defs>
                           <linearGradient id="volBar2" x1="0" y1="0" x2="0" y2="1">
@@ -936,6 +980,7 @@ export default function MonitoringPage() {
                           isAnimationActive={false}
                           connectNulls
                         />
+                        {pinLineFor('vol')}
                       </ComposedChart>
                     </ChartCanvas>
                   </div>
@@ -955,6 +1000,13 @@ export default function MonitoringPage() {
         {/* AI 분석 ─────────────────────────────────────── */}
         <AiAnalysisCard workspaceId={workspaceId} start={start} end={end} presetDays={presetDays} />
       </div>
+
+      {/* 차트 데이터 포인트 클릭 → 그 날(KST) 수집 데이터 상세 drawer */}
+      <DayDetailDrawer
+        workspaceId={workspaceId}
+        date={selectedDate}
+        onClose={() => setSelectedDate(null)}
+      />
     </div>
   );
 }

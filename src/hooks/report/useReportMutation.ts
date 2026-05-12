@@ -9,7 +9,6 @@ import {
   publishReport,
   createReport,
   updateRiskReport,
-  uploadSearchTrend,
 } from '@/lib/api/reportApi';
 import { reportKeys } from '@/hooks/report/useReportQuery';
 import { workspaceKeys } from '@/hooks/workspace/workspaceKeys';
@@ -117,25 +116,6 @@ export function useDeleteRiskReport(workspaceId: string) {
     },
     onError: (err) => {
       toast.error(getErrorMessage(err, '신고 대행 취소에 실패했습니다.'));
-    },
-  });
-}
-
-// ── 검색 트렌드 업로드 (관리자) ──
-
-interface UploadSearchTrendVars {
-  provider: 'google' | 'naver';
-  trendData: { date: string; ratio: number }[];
-}
-
-export function useUploadSearchTrend(workspaceId: string, reportId: string) {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (vars: UploadSearchTrendVars) =>
-      uploadSearchTrend({ workspaceId, reportId, ...vars }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: reportKeys.searchTrend(workspaceId, reportId) });
     },
   });
 }
