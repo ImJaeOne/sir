@@ -186,21 +186,6 @@ export const prevReportSchema = z.object({
 
 export type PrevReport = z.infer<typeof prevReportSchema>;
 
-// ── 검색 트렌드 ──
-
-export const trendPointSchema = z.object({
-  date: z.string(),
-  ratio: z.number(),
-});
-
-export const searchTrendResultSchema = z.object({
-  naver: z.array(trendPointSchema),
-  google: z.array(trendPointSchema),
-});
-
-export type TrendPoint = z.infer<typeof trendPointSchema>;
-export type SearchTrendResult = z.infer<typeof searchTrendResultSchema>;
-
 // ── risk_reports 테이블 ──
 
 export const riskReportSchema = z.object({

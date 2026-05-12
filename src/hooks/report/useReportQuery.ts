@@ -9,7 +9,6 @@ import {
   getNewsClusters,
   getRiskItems,
   getStrategies,
-  getSearchTrend,
   getPrevReport,
   getPrevDailySnapshot,
   getRiskReports,
@@ -29,7 +28,6 @@ export const reportKeys = {
   channelStats: (id: string) => ['report', id, 'channelStats'] as const,
   riskItems: (id: string) => ['report', id, 'riskItems'] as const,
   strategies: (id: string) => ['report', id, 'strategies'] as const,
-  searchTrend: (id: string, reportId?: string) => ['report', id, 'searchTrend', reportId] as const,
   prevReport: (id: string, reportId: string) => ['report', id, 'prevReport', reportId] as const,
   prevDailySnapshot: (id: string, periodEnd?: string) => ['report', id, 'prevDailySnapshot', periodEnd ?? ''] as const,
   riskReports: (id: string, reportId?: string) => ['report', id, 'riskReports', reportId] as const,
@@ -171,15 +169,6 @@ export function usePrevDailySnapshot(workspaceId: string, periodEnd: string | un
   });
 }
 
-export function useSearchTrend(workspaceId: string, reportId?: string) {
-  return useQuery({
-    queryKey: reportKeys.searchTrend(workspaceId, reportId),
-    queryFn: () => getSearchTrend(reportId),
-    enabled: !!workspaceId && !!reportId,
-    ...REPORT_OPTS,
-  });
-}
-
 export function useRiskReports(workspaceId: string, reportId?: string) {
   return useQuery({
     queryKey: reportKeys.riskReports(workspaceId, reportId),
@@ -310,14 +299,6 @@ export function usePrevDailySnapshotSuspense(workspaceId: string, periodEnd: str
     queryFn: shouldFetch
       ? () => getPrevDailySnapshot(workspaceId, periodEnd)
       : () => Promise.resolve(null),
-    ...REPORT_OPTS,
-  });
-}
-
-export function useSearchTrendSuspense(workspaceId: string, reportId: string) {
-  return useSuspenseQuery({
-    queryKey: reportKeys.searchTrend(workspaceId, reportId),
-    queryFn: () => getSearchTrend(reportId),
     ...REPORT_OPTS,
   });
 }

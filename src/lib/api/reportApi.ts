@@ -18,13 +18,11 @@ export type {
   StrategyData,
   StrategyGroup,
   PrevReport,
-  TrendPoint,
-  SearchTrendResult,
   RiskReport,
   NewsClusterResponse as NewsCluster,
 } from '@/types/report';
 
-import { summarySectionSchema, strategyDataSchema, trendPointSchema } from '@/types/report';
+import { summarySectionSchema, strategyDataSchema } from '@/types/report';
 import { calculateSir } from '@/utils/sirChannel';
 import type {
   SummarySection,
@@ -36,7 +34,6 @@ import type {
   StrategyData,
   StrategyGroup,
   PrevReport,
-  SearchTrendResult,
   RiskReport,
   NewsClusterResponse,
 } from '@/types/report';
@@ -1049,26 +1046,6 @@ export async function getPrevDailySnapshot(
   };
 }
 
-// ── 검색 트렌드 ──
-
-export async function getSearchTrend(reportId?: string): Promise<SearchTrendResult> {
-  if (!reportId) return { naver: [], google: [] };
-
-  const { data } = await supabase
-    .from('search_trends')
-    .select('provider, trend_data')
-    .eq('report_id', reportId);
-
-  const result: SearchTrendResult = { naver: [], google: [] };
-  for (const row of data ?? []) {
-    const parsed = trendPointSchema.array().safeParse(row.trend_data);
-    if (!parsed.success) continue;
-    if (row.provider === 'naver') result.naver = parsed.data;
-    if (row.provider === 'google') result.google = parsed.data;
-  }
-  return result;
-}
-
 // ── 신고 대행 요청 ──
 
 // DB 의 requested_at 은 NOT NULL DEFAULT now() 지만 supabase CLI 가 nullable 로 추출 →
@@ -1191,31 +1168,6 @@ export async function submitRiskReport(input: SubmitRiskReportInput): Promise<vo
   if (error) throw error;
 }
 
-// ── 검색 트렌드 업로드 (관리자 전용) ──
-
-export interface UploadSearchTrendInput {
-  workspaceId: string;
-  reportId: string;
-  provider: 'google' | 'naver';
-  trendData: { date: string; ratio: number }[];
-}
-
-export async function uploadSearchTrend(input: UploadSearchTrendInput): Promise<void> {
-  const res = await fetch('/api/admin/upload-search-trend', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      report_id: input.reportId,
-      workspace_id: input.workspaceId,
-      provider: input.provider,
-      trend_data: input.trendData,
-    }),
-  });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.detail ?? '업로드 실패');
-  }
-}
 
 export async function updateRiskReport(
   id: string,
