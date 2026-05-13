@@ -17,6 +17,7 @@ import {
 import type { ChannelItem } from '@/lib/api/reportApi';
 import { workspaceKeys } from '@/hooks/workspace/workspaceKeys';
 import { getWorkspace } from '@/lib/api/workspaceApi';
+import { getMonitoringDaily } from '@/lib/api/monitoringApi';
 
 export const reportKeys = {
   info: (reportId: string) => ['report', reportId, 'info'] as const,
@@ -36,6 +37,7 @@ export const reportKeys = {
   resolvedRiskReports: (id: string, from: string, to: string) => ['report', id, 'resolvedRiskReports', from, to] as const,
   /** 모든 period 변형을 prefix 로 잡는 키 — status 변경 후 일괄 invalidate 용. */
   resolvedRiskReportsAll: (id: string) => ['report', id, 'resolvedRiskReports'] as const,
+  dailyCollection7d: (id: string, periodEnd?: string) => ['report', id, 'dailyCollection7d', periodEnd ?? ''] as const,
 };
 
 // 리포트 데이터는 주간 보고서 — 페이지 내 refetch 불필요, 캐시 공유 극대화
@@ -309,6 +311,28 @@ export function useRiskReportsSuspense(workspaceId: string, reportId?: string) {
     queryFn: () => getRiskReports(workspaceId, reportId),
     staleTime: 30 * 1000,
     gcTime: 5 * 60 * 1000,
+  });
+}
+
+/** Daily Snapshot 의 채널별 7일 평균용. periodEnd 기준 오늘 포함 직전 7일(=오늘 포함). */
+export function useDailyCollectionStatsSuspense(
+  workspaceId: string,
+  periodEnd: string | undefined,
+  enabled: boolean,
+) {
+  const shouldFetch = enabled && !!periodEnd;
+  return useSuspenseQuery({
+    queryKey: reportKeys.dailyCollection7d(workspaceId, periodEnd),
+    queryFn: shouldFetch
+      ? () => {
+          const end = new Date(`${periodEnd}T00:00:00+09:00`);
+          const start = new Date(end);
+          start.setDate(start.getDate() - 6);
+          const startStr = start.toISOString().slice(0, 10);
+          return getMonitoringDaily(workspaceId, startStr, periodEnd);
+        }
+      : () => Promise.resolve([]),
+    ...REPORT_OPTS,
   });
 }
 
