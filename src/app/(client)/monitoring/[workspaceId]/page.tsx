@@ -25,6 +25,7 @@ import {
 import { ChartCanvas } from '@/components/chart/ChartCanvas';
 import { AiAnalysisCard } from '@/components/client/monitoring/AiAnalysisCard';
 import { DayDetailDrawer } from '@/components/client/monitoring/DayDetailDrawer';
+import { ReportDisclaimer } from '@/components/report/ReportDisclaimer';
 
 // ── color tokens ────────────────────────────────────────────────────────
 const CHANNEL_COLOR: Record<Channel, string> = {
@@ -978,6 +979,8 @@ export default function MonitoringPage() {
 
         {/* AI 분석 ─────────────────────────────────────── */}
         <AiAnalysisCard workspaceId={workspaceId} start={start} end={end} presetDays={presetDays} />
+
+        <ReportDisclaimer />
       </div>
 
       {/* 차트 데이터 포인트 클릭 → 그 날(KST) 수집 데이터 상세 drawer */}
