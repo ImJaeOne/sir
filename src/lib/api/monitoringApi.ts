@@ -31,9 +31,9 @@ export type CriticalType = Database['public']['Enums']['critical_type'];
 
 export const CRITICAL_TYPES: { id: CriticalType; label: string }[] = [
   { id: 'defamation', label: '명예훼손' },
-  { id: 'insult', label: '모욕' },
-  { id: 'rumor', label: '허위사실' },
-  { id: 'spam', label: '스팸/광고' },
+  { id: 'insult', label: '욕설/비방' },
+  { id: 'rumor', label: '루머' },
+  { id: 'spam', label: '스팸' },
 ];
 
 // ── 반환 타입 ─────────────────────────────────────────────────────────

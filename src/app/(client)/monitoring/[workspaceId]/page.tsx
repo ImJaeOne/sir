@@ -40,14 +40,17 @@ const CRITICAL_COLOR: Record<CriticalType, string> = {
   spam: '#0ea5e9',
 };
 const SENTIMENT_COLOR = { pos: '#10b981', neu: '#94a3b8', neg: '#ef4444' };
-const PRIMARY = '#2563eb';
-const PRIMARY_SOFT = 'rgba(37, 99, 235, 0.08)';
+// 수집량 의미 색 — 모든 탭에서 일관 사용 (라인/막대/툴팁 dot/hover cursor)
+const PRIMARY = '#10b981';
+const PRIMARY_SOFT = 'rgba(16, 185, 129, 0.08)';
+// F 탭(수집·검색) 전용 — 네이버 검색 그린과 충돌 피하려고 파란색.
+const F_VOLUME = '#2563eb';
+const F_VOLUME_SOFT = 'rgba(37, 99, 235, 0.08)';
 const PRICE_LINE = '#0f172a';
 // 한국 관습: 양봉(상승) red, 음봉(하락) blue
 const CANDLE_UP = '#ef4444';
 const CANDLE_DOWN = '#3b82f6';
 const SEARCH_NAVER = '#03c75a';
-const SEARCH_GOOGLE = '#4285f4';
 
 function priceTickFormatter(v: number): string {
   if (v >= 10000) return `${Math.round(v / 1000)}k`;
@@ -87,7 +90,7 @@ const TABS = [
   { id: 'B', label: '감정' },
   { id: 'D', label: '리스크' },
   { id: 'C', label: '검색' },
-  { id: 'F', label: '수집 vs 검색' },
+  { id: 'F', label: '수집·검색' },
 ] as const;
 type TabId = (typeof TABS)[number]['id'];
 
@@ -368,7 +371,7 @@ export default function MonitoringPage() {
               ? [Math.floor(priceMin * 0.98), Math.ceil(priceMax * 1.02)]
               : ['auto', 'auto'];
           const hasPrice = merged.some((d) => d.close != null);
-          const hasSearch = merged.some((d) => d.searchNaver != null || d.searchGoogle != null);
+          const hasSearch = merged.some((d) => d.searchNaver != null);
 
           // ── 캔들 차트 막대 (각 탭에서 재사용) ──
           const candleBar = (
@@ -418,8 +421,8 @@ export default function MonitoringPage() {
               {/* ── A. 주가 & 수집량 ─────────────────────── */}
               {activeTab === 'A' && (
                 <ChartCard
-                  title="주가 + 수집량 (캔들 · 라인)"
-                  subtitle="OHLC 캔들 + 수집량 라인. 빨강=상승 / 파랑=하락"
+                  title="주가와 일별 수집량"
+                  subtitle="매일 얼마나 많은 평판 데이터가 쌓였는지 주가와 함께 봅니다."
                   loading={isLoading}
                   empty={!hasPrice}
                 >
@@ -487,8 +490,8 @@ export default function MonitoringPage() {
                 <>
                   {/* 감정 분포 + 주가 (캔들) */}
                   <ChartCard
-                    title="감정 분포 + 주가 (캔들)"
-                    subtitle="OHLC 캔들로 주가 일중 변동까지 함께 본다"
+                    title="감정 분포와 주가"
+                    subtitle="긍정·중립·부정 비율이 주가와 어떻게 맞물리는지 확인합니다."
                     loading={isLoading}
                     empty={sentimentSeries.every((d) => d.totalVolume === 0)}
                   >
@@ -617,8 +620,8 @@ export default function MonitoringPage() {
               {/* ── C. 검색 ─────────────────────────────── */}
               {activeTab === 'C' && (
                 <ChartCard
-                  title="주가 + 검색 관심도 (캔들 · 라인)"
-                  subtitle="OHLC 캔들 + 검색 관심도 라인 (0–100 상대지수)"
+                  title="검색 관심도와 주가"
+                  subtitle="네이버 검색량(0–100)이 주가와 어떻게 움직이는지 비교합니다."
                   loading={isLoading}
                   empty={!hasPrice && !hasSearch}
                 >
@@ -668,17 +671,6 @@ export default function MonitoringPage() {
                           isAnimationActive={false}
                           connectNulls
                         />
-                        <Line
-                          yAxisId="srch"
-                          type="monotone"
-                          dataKey="searchGoogle"
-                          name="구글"
-                          stroke={SEARCH_GOOGLE}
-                          strokeWidth={1.8}
-                          dot={false}
-                          isAnimationActive={false}
-                          connectNulls
-                        />
                         {candleBar}
                         {pinLineFor('price')}
                       </ComposedChart>
@@ -687,7 +679,6 @@ export default function MonitoringPage() {
                   <ChartLegend
                     items={[
                       { color: SEARCH_NAVER, label: '네이버 (좌)' },
-                      { color: SEARCH_GOOGLE, label: '구글 (좌)' },
                       { color: CANDLE_UP, label: '주가 상승 (우)' },
                       { color: CANDLE_DOWN, label: '주가 하락 (우)' },
                     ]}
@@ -700,8 +691,8 @@ export default function MonitoringPage() {
                 <>
                   {/* 리스크 발생(스택 라인) + 주가 (캔들) */}
                   <ChartCard
-                    title="리스크 발생(스택 라인) + 주가 (캔들)"
-                    subtitle="critical_type 별 누적 라인으로 리스크 추세 흐름을 본다"
+                    title="리스크 유형과 주가"
+                    subtitle="명예훼손·욕설·루머·스팸 등 유형별 발생량이 주가와 어떻게 맞물리는지 봅니다."
                     loading={isLoading}
                     empty={merged.every((d) => d.riskTotal === 0)}
                   >
@@ -824,8 +815,8 @@ export default function MonitoringPage() {
 
                   {/* 채널별 수집량(스택 라인) + 주가 (캔들) */}
                   <ChartCard
-                    title="채널별 수집량(스택 라인) + 주가 (캔들)"
-                    subtitle="채널별 누적 라인 + OHLC 캔들. 필터에 따라 라인이 갱신된다"
+                    title="채널별 수집량과 주가"
+                    subtitle="뉴스·블로그·유튜브·커뮤니티 중 어디서 많이 언급되는지 주가와 함께 봅니다."
                     loading={isLoading || matrixLoading}
                     empty={channelFiltered.every((d) => d.filteredVolume === 0) && !hasPrice}
                   >
@@ -905,11 +896,11 @@ export default function MonitoringPage() {
                 </>
               )}
 
-              {/* ── F. 수집 vs 검색 (내·외부 신호 비교) ─────── */}
+              {/* ── F. 수집·검색 (내·외부 신호 비교) ─────── */}
               {activeTab === 'F' && (
                 <ChartCard
-                  title="수집 vs 검색"
-                  subtitle="외부 관심도(검색)와 실제 발생량(수집)의 동조·괴리. 이 탭은 유일하게 주가 없이 두 신호를 직접 비교한다."
+                  title="수집량과 검색 관심도"
+                  subtitle="외부 관심(검색)과 실제 언급량(수집)이 함께 움직이는지 비교합니다."
                   loading={isLoading}
                   empty={!hasSearch && merged.every((d) => d.totalVolume === 0)}
                 >
@@ -923,8 +914,8 @@ export default function MonitoringPage() {
                       >
                         <defs>
                           <linearGradient id="volBar2" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor={PRIMARY} stopOpacity={0.5} />
-                            <stop offset="100%" stopColor={PRIMARY} stopOpacity={0.1} />
+                            <stop offset="0%" stopColor={F_VOLUME} stopOpacity={0.5} />
+                            <stop offset="100%" stopColor={F_VOLUME} stopOpacity={0.1} />
                           </linearGradient>
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
@@ -947,7 +938,7 @@ export default function MonitoringPage() {
                           width={36}
                         />
                         <Tooltip
-                          cursor={{ fill: PRIMARY_SOFT }}
+                          cursor={{ fill: F_VOLUME_SOFT }}
                           content={<VolumeSearchTooltip />}
                         />
                         <Bar
@@ -969,26 +960,14 @@ export default function MonitoringPage() {
                           isAnimationActive={false}
                           connectNulls
                         />
-                        <Line
-                          yAxisId="srch"
-                          type="monotone"
-                          dataKey="searchGoogle"
-                          name="구글"
-                          stroke={SEARCH_GOOGLE}
-                          strokeWidth={1.8}
-                          dot={false}
-                          isAnimationActive={false}
-                          connectNulls
-                        />
                         {pinLineFor('vol')}
                       </ComposedChart>
                     </ChartCanvas>
                   </div>
                   <ChartLegend
                     items={[
-                      { color: PRIMARY, label: '수집량 (좌, 건)', soft: true },
+                      { color: F_VOLUME, label: '수집량 (좌, 건)', soft: true },
                       { color: SEARCH_NAVER, label: '네이버 (우)' },
-                      { color: SEARCH_GOOGLE, label: '구글 (우)' },
                     ]}
                   />
                 </ChartCard>
@@ -1469,7 +1448,6 @@ function SearchPriceTooltip({
   if (!active || !payload?.length) return null;
   const d = payload[0]?.payload as TipPayload['payload'] & {
     searchNaver?: number | null;
-    searchGoogle?: number | null;
     open?: number | null;
     close?: number | null;
     high?: number | null;
@@ -1484,11 +1462,6 @@ function SearchPriceTooltip({
         color={SEARCH_NAVER}
         label="네이버"
         value={d.searchNaver != null ? d.searchNaver.toString() : '—'}
-      />
-      <TooltipRow
-        color={SEARCH_GOOGLE}
-        label="구글"
-        value={d.searchGoogle != null ? d.searchGoogle.toString() : '—'}
       />
       <div className="border-t border-slate-100 mt-1.5 pt-1.5">
         {hasOhlc ? (
@@ -1690,13 +1663,12 @@ function VolumeSearchTooltip({
   const d = payload[0]?.payload as TipPayload['payload'] & {
     totalVolume?: number;
     searchNaver?: number | null;
-    searchGoogle?: number | null;
   };
   if (!d) return null;
   return (
     <TooltipShell label={label}>
       <TooltipRow
-        color={PRIMARY}
+        color={F_VOLUME}
         label="수집량"
         value={`${(d.totalVolume ?? 0).toLocaleString()}건`}
         bold
@@ -1706,11 +1678,6 @@ function VolumeSearchTooltip({
           color={SEARCH_NAVER}
           label="네이버"
           value={d.searchNaver != null ? d.searchNaver.toString() : '—'}
-        />
-        <TooltipRow
-          color={SEARCH_GOOGLE}
-          label="구글"
-          value={d.searchGoogle != null ? d.searchGoogle.toString() : '—'}
         />
       </div>
     </TooltipShell>

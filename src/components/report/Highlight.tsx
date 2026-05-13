@@ -11,15 +11,46 @@ import {
   usePrevReportSuspense,
   usePrevDailySnapshotSuspense,
   useReportInfoSuspense,
+  useDailyCollectionStatsSuspense,
 } from '@/hooks/report/useReportQuery';
-import { ReportSection } from '@/components/report/ReportSection';
-import { Snapshot } from '@/components/report/highlight/Snapshot';
+import { ReportSection, ReportSubSection } from '@/components/report/ReportSection';
+import { SirSnapshot } from '@/components/report/highlight/SirSnapshot';
+import { CollectionSnapshot } from '@/components/report/highlight/CollectionSnapshot';
+import { RiskSnapshot } from '@/components/report/highlight/RiskSnapshot';
+// ranking 카드(StatCard 기반)는 weekly/monthly 에서 v37 까지 4번째 카드로 노출.
+// v38 에서 3 카드 새 디자인으로 통일하면서 일단 주석 처리. 필요 시 부활용으로 import 보존.
+// import { Snapshot } from '@/components/report/highlight/Snapshot';
 import { Reputation } from '@/components/report/highlight/Reputation';
 import { EditableReputation } from '@/components/report/highlight/EditableReputation';
 import { SirStockPanel } from '@/components/report/highlight/SirStockPanel';
 import { SirRankingPanel } from '@/components/report/highlight/SirRankingPanel';
 import { WeeklyHighlightIcon } from '@/components/icons/WeeklyHighlightIcon';
 import type { SirRanking } from '@/lib/api/reportApi';
+
+type Channel = 'news' | 'blog' | 'youtube' | 'community';
+type CriticalType = 'defamation' | 'insult' | 'rumor' | 'spam';
+
+const PLATFORM_TO_CHANNEL: Record<string, Channel> = {
+  naver_news: 'news',
+  naver_blog: 'blog',
+  youtube: 'youtube',
+  naver_stock: 'community',
+  dcinside: 'community',
+};
+
+const emptyChannelCount = (): Record<Channel, number> => ({
+  news: 0,
+  blog: 0,
+  youtube: 0,
+  community: 0,
+});
+
+const emptyTypeCount = (): Record<CriticalType, number> => ({
+  defamation: 0,
+  insult: 0,
+  rumor: 0,
+  spam: 0,
+});
 
 export interface SnapshotDiff {
   scoreDiff: number;
@@ -55,6 +86,8 @@ export function Highlight({ workspaceId, reportId, pdfMode = false, editable = f
 
   // daily 는 이전 daily report 가 없어도(첫 daily) daily_snapshots 로 전일 비교
   const { data: prevDaily } = usePrevDailySnapshotSuspense(workspaceId, report?.period_end, isDaily);
+  // daily 의 7일 평균 (오늘 포함). 채널 평균 막대 tick + 평균 대비 % 비교용.
+  const { data: dailyCollection7d } = useDailyCollectionStatsSuspense(workspaceId, report?.period_end, isDaily);
 
   const snapshotDiff = useMemo(() => {
     const getTierIdx = (s: number) => Math.min(Math.floor(s / 100), 9);
@@ -91,10 +124,49 @@ export function Highlight({ workspaceId, reportId, pdfMode = false, editable = f
   const hasPrev = isDaily ? !!prevDaily : !!prevReport;
   const avgScore = workspace?.sir_score ?? 0;
 
-  const snapshotProps = useMemo(
-    () => ({ score: sirScore, totalItems, riskCount, sirRanking: sirRanking ?? defaultRanking, isInitial, prevIsInitial, isDaily, hasPrev, snapshotDiff }),
-    [sirScore, totalItems, riskCount, sirRanking, isInitial, prevIsInitial, isDaily, hasPrev, snapshotDiff],
-  );
+  const period: '일간' | '주간' | '월간' = isDaily ? '일간' : isInitial ? '월간' : '주간';
+  const prefix = !hasPrev
+    ? '기준점 대비 '
+    : isDaily
+      ? '전일 대비 '
+      : prevIsInitial
+        ? '전월 대비 '
+        : '전주 대비 ';
+
+  const channelToday = useMemo(() => {
+    const acc = emptyChannelCount();
+    for (const it of channelItems) {
+      const ch = PLATFORM_TO_CHANNEL[it.platform_id];
+      if (ch) acc[ch] += 1;
+    }
+    return acc;
+  }, [channelItems]);
+
+  const channelAvg = useMemo(() => {
+    if (!isDaily || dailyCollection7d.length === 0) return undefined;
+    const sum = emptyChannelCount();
+    for (const day of dailyCollection7d) {
+      sum.news += day.channelVolume.news;
+      sum.blog += day.channelVolume.blog;
+      sum.youtube += day.channelVolume.youtube;
+      sum.community += day.channelVolume.community;
+    }
+    const n = dailyCollection7d.length;
+    return {
+      news: Math.round(sum.news / n),
+      blog: Math.round(sum.blog / n),
+      youtube: Math.round(sum.youtube / n),
+      community: Math.round(sum.community / n),
+    };
+  }, [isDaily, dailyCollection7d]);
+
+  const typeCounts = useMemo(() => {
+    const acc = emptyTypeCount();
+    for (const it of riskItems) {
+      if (it.critical_type in acc) acc[it.critical_type as CriticalType] += 1;
+    }
+    return acc;
+  }, [riskItems]);
 
   const sirStockProps = useMemo(
     () => ({ pdfMode, sirStockData }),
@@ -121,7 +193,34 @@ export function Highlight({ workspaceId, reportId, pdfMode = false, editable = f
           </div>
         </div>
       )}
-      <div className="print-keep"><Snapshot {...snapshotProps} /></div>
+      <ReportSubSection title="Snapshot">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 lg:gap-5 print-keep">
+          <SirSnapshot
+            score={sirScore}
+            diff={snapshotDiff.scoreDiff}
+            prefix={prefix}
+            period={period}
+            isNoData={isNoData}
+          />
+          <CollectionSnapshot
+            channelToday={channelToday}
+            channelAvg={isDaily ? channelAvg : undefined}
+            total={totalItems}
+            diff={snapshotDiff.itemsDiff}
+            prefix={prefix}
+            period={period}
+            isNoData={isNoData}
+          />
+          <RiskSnapshot
+            typeCounts={typeCounts}
+            total={riskCount}
+            diff={snapshotDiff.riskDiff}
+            prefix={prefix}
+            period={period}
+            isNoData={isNoData}
+          />
+        </div>
+      </ReportSubSection>
       {!isDaily && (
         <>
           {editable ? (
