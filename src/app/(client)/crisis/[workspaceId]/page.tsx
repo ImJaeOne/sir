@@ -15,6 +15,7 @@ import { ReportCalendarSelector } from '@/components/report/ReportCalendarSelect
 import { RiskTable } from '@/components/report/risk-content/RiskTable';
 import { CrisisHeader } from '@/components/crisis/CrisisHeader';
 import { CrisisProcessedReports } from '@/components/crisis/CrisisProcessedReports';
+import { ReportDisclaimer } from '@/components/report/ReportDisclaimer';
 
 const TAB_INFO = {
   detection: {
@@ -201,6 +202,8 @@ export default function CrisisCenterPage() {
             onUpgradeClick={() => setShowUpgrade(true)}
           />
         )}
+
+        <ReportDisclaimer />
       </div>
 
       <ServiceUpgradeModal

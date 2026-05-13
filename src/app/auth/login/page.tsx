@@ -83,6 +83,27 @@ export default function LoginPage() {
             {loading ? '로그인 중...' : '로그인'}
           </button>
         </form>
+
+        {/* 약관 링크 */}
+        <div className="mt-6 flex items-center justify-center gap-3 text-xs text-text-muted">
+          <a
+            href="https://s-ir.kr/privacy-policy/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-text-dark hover:underline transition-colors"
+          >
+            개인정보처리방침
+          </a>
+          <span className="text-border-light">|</span>
+          <a
+            href="https://s-ir.kr/tems-of-use/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-text-dark hover:underline transition-colors"
+          >
+            이용약관
+          </a>
+        </div>
       </div>
     </div>
   );
