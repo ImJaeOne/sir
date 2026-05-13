@@ -59,7 +59,9 @@ export function ChartCanvas({
   return (
     <div
       ref={ref}
-      className={className ?? ''}
+      // onClick 핸들러가 있는 차트는 SVG surface 가 focus 되며 브라우저 기본
+      // outline 이 박스로 표시된다 — 차트는 키보드 focus 의미가 없어 제거.
+      className={`[&_svg:focus]:outline-none ${className ?? ''}`}
       style={{ width: wrapperWidth, height: wrapperHeight, ...style }}
     >
       {size && finalWidth > 0 && finalHeight > 0 && (
