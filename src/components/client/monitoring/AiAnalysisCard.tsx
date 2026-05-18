@@ -45,6 +45,7 @@ export function AiAnalysisCard({ workspaceId }: Props) {
   // 최근 분석 결과가 처음 도착하면 카드 자동 펼침 (1회만 — 사용자가 닫으면 재펼침 X).
   useEffect(() => {
     if (!autoOpenedOnce && latestQ.data) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- 외부 데이터(latestQ) 도착 시 1회 자동 펼침. ref 로 우회하면 의도 불명확.
       setOpen(true);
       setAutoOpenedOnce(true);
     }

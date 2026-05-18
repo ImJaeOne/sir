@@ -56,6 +56,7 @@ export default function InsightsHistoryPage() {
   const filtered = useMemo(() => {
     if (range === 'all') return rows;
     const days = range === '7d' ? 7 : 30;
+    // eslint-disable-next-line react-hooks/purity -- range 변경 시 cutoff 재계산. 매 렌더 정밀 동기화 불필요.
     const cutoff = Date.now() - days * 86400000;
     return rows.filter((r) => new Date(r.created_at).getTime() >= cutoff);
   }, [rows, range]);
