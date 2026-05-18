@@ -95,6 +95,44 @@ export async function getUsersWithDetails(): Promise<UserWithDetails[]> {
   });
 }
 
+// ── 워크스페이스 AI 토큰 (Next route handler 경유) ──
+// /api/admin/create-user 와 동일 패턴 — Next 서버가 service_role 키로 supabase 직접 조작.
+// 062 마이그로 workspaces 에 추가된 token_balance/monthly_quota.
+
+export interface WorkspaceTokens {
+  id: string;
+  company_name: string;
+  token_balance: number;
+  monthly_quota: number;
+  last_charged_at: string | null;
+}
+
+export async function getWorkspaceTokens(): Promise<WorkspaceTokens[]> {
+  const res = await fetch('/api/admin/workspace-tokens', { cache: 'no-store' });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail ?? '토큰 조회 실패');
+  }
+  return res.json();
+}
+
+export async function updateWorkspaceTokens(
+  workspaceId: string,
+  patch: { monthly_quota?: number; add_tokens?: number },
+): Promise<WorkspaceTokens> {
+  const res = await fetch(`/api/admin/workspace-tokens/${workspaceId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(patch),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail ?? '토큰 수정 실패');
+  }
+  return res.json();
+}
+
+
 // ── 유저 생성 (Route Handler 경유) ──
 
 export async function createUser(params: {

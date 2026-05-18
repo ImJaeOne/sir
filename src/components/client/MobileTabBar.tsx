@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { useParams, usePathname, useRouter } from 'next/navigation';
-import { FileText, ShieldAlert, LineChart } from 'lucide-react';
+import { FileText, ShieldAlert, LineChart, History } from 'lucide-react';
 import { useReports } from '@/hooks/workspace/useWorkspaceQuery';
 
 /** 모바일 하단 고정 탭 바 — 보고서 / 모니터링 / 위기 대응 센터 */
@@ -22,6 +22,7 @@ export function MobileTabBar() {
   }, [workspaceId, params?.reportId, reports]);
 
   const monitoringHref = workspaceId ? `/monitoring/${workspaceId}` : '';
+  const historyHref = workspaceId ? `/insights-history/${workspaceId}` : '';
   const crisisHref = workspaceId ? `/crisis/${workspaceId}` : '';
 
   const items: { label: string; Icon: typeof FileText; href: string; active: boolean }[] = [
@@ -31,6 +32,12 @@ export function MobileTabBar() {
       Icon: LineChart,
       href: monitoringHref,
       active: pathname.startsWith('/monitoring/'),
+    },
+    {
+      label: '히스토리',
+      Icon: History,
+      href: historyHref,
+      active: pathname.startsWith('/insights-history/'),
     },
     {
       label: '위기 대응',

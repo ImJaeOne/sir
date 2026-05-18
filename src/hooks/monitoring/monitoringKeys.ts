@@ -10,10 +10,14 @@ export const monitoringKeys = {
     ['monitoring', workspaceId, 'searchLive365'] as const,
   channelMatrix: (workspaceId: string, start: string, end: string) =>
     ['monitoring', workspaceId, 'channelMatrix', start, end] as const,
-  aiAnalysis: (workspaceId: string, start: string, end: string) =>
-    ['monitoring', workspaceId, 'aiAnalysis', start, end] as const,
-  aiAnalysisCached: (workspaceId: string) =>
-    ['monitoring', workspaceId, 'aiAnalysisCached'] as const,
+  aiAnalysisLatest: (workspaceId: string) =>
+    ['monitoring', workspaceId, 'aiAnalysisLatest'] as const,
+  aiAnalysisHistory: (workspaceId: string) =>
+    ['monitoring', workspaceId, 'aiAnalysisHistory'] as const,
+  aiAnalysisEstimate: (workspaceId: string, start: string, end: string) =>
+    ['monitoring', workspaceId, 'aiAnalysisEstimate', start, end] as const,
+  tokenStatus: (workspaceId: string) =>
+    ['monitoring', workspaceId, 'tokenStatus'] as const,
   lifetimeTotals: (workspaceId: string) =>
     ['monitoring', workspaceId, 'lifetimeTotals'] as const,
   dayItems: (workspaceId: string, date: string) =>

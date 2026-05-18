@@ -1,0 +1,120 @@
+'use client';
+
+import { Bar, CartesianGrid, ComposedChart, Line, Tooltip, XAxis, YAxis } from 'recharts';
+import { ChartCanvas } from '@/components/chart/ChartCanvas';
+import {
+  buildPinLine,
+  CandleBar,
+  CANDLE_DOWN,
+  CANDLE_UP,
+  ChartCard,
+  ChartLegend,
+  type MergedPoint,
+  makeChartClickHandler,
+  priceTickFormatter,
+  PRIMARY_SOFT,
+  SEARCH_NAVER,
+  SHARED_X_AXIS_PROPS,
+} from './shared';
+import { SearchPriceTooltip } from './tooltips';
+
+interface Props {
+  merged: MergedPoint[];
+  priceDomain: [number | string, number | string];
+  priceTicks?: number[];
+  selectedDate: string | null;
+  setSelectedDate: (fn: (prev: string | null) => string | null) => void;
+  loading: boolean;
+  barSize: number;
+}
+
+/** 탭 C — 네이버 검색 관심도(라인) + 주가(캔들). */
+export function SearchPriceChart({
+  merged,
+  priceDomain,
+  priceTicks,
+  selectedDate,
+  setSelectedDate,
+  loading,
+  barSize,
+}: Props) {
+  const hasPrice = merged.some((d) => d.close != null);
+  const hasSearch = merged.some((d) => d.searchNaver != null);
+  return (
+    <ChartCard
+      title="검색 관심도와 주가"
+      subtitle="네이버 검색량(0–100)이 주가와 어떻게 움직이는지 비교합니다."
+      loading={loading}
+      empty={!hasPrice && !hasSearch}
+    >
+      <div className="h-[300px]">
+        <ChartCanvas width="100%">
+          <ComposedChart
+            data={merged}
+            margin={{ top: 12, right: 24, bottom: 0, left: 0 }}
+            onClick={makeChartClickHandler(setSelectedDate)}
+            style={{ cursor: 'pointer' }}
+          >
+            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} yAxisId="price" />
+            <XAxis {...SHARED_X_AXIS_PROPS} />
+            <YAxis
+              yAxisId="srch"
+              orientation="left"
+              domain={[0, 100]}
+              tick={{ fontSize: 10, fill: '#94a3b8' }}
+              axisLine={false}
+              tickLine={false}
+              width={32}
+            />
+            <YAxis
+              yAxisId="price"
+              orientation="right"
+              tickFormatter={priceTickFormatter}
+              tick={{ fontSize: 10, fill: '#94a3b8' }}
+              axisLine={false}
+              tickLine={false}
+              width={48}
+              domain={priceDomain}
+              ticks={priceTicks}
+            />
+            <Tooltip cursor={{ fill: PRIMARY_SOFT }} content={<SearchPriceTooltip />} />
+            <Line
+              yAxisId="srch"
+              type="monotone"
+              dataKey="searchNaver"
+              name="네이버"
+              stroke={SEARCH_NAVER}
+              strokeWidth={1.8}
+              dot={false}
+              isAnimationActive={false}
+              connectNulls
+            />
+            <Bar
+              yAxisId="price"
+              dataKey="high"
+              name="주가"
+              fill="transparent"
+              barSize={Math.max(barSize * 1.5, 4)}
+              isAnimationActive={false}
+              shape={(props) => (
+                <CandleBar
+                  {...props}
+                  priceMin={priceDomain[0] as number}
+                  priceMax={priceDomain[1] as number}
+                />
+              )}
+            />
+            {buildPinLine(selectedDate, 'price')}
+          </ComposedChart>
+        </ChartCanvas>
+      </div>
+      <ChartLegend
+        items={[
+          { color: SEARCH_NAVER, label: '네이버 (좌)' },
+          { color: CANDLE_UP, label: '주가 상승 (우)' },
+          { color: CANDLE_DOWN, label: '주가 하락 (우)' },
+        ]}
+      />
+    </ChartCard>
+  );
+}

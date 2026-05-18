@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { ContractPeriodPicker } from '@/components/ui/ContractPeriodPicker';
 import { TierPicker } from '@/components/user/TierPicker';
-import { useUpdateUser } from '@/hooks/user/useUserMutation';
+import { useUpdateUser, useUpdateWorkspaceTokens } from '@/hooks/user/useUserMutation';
 import { useActiveSubscription } from '@/hooks/subscription/useSubscriptionQuery';
 import {
   useChangeSubscriptionTier,
@@ -21,7 +21,7 @@ import {
 } from '@/hooks/subscription/useSubscriptionMutation';
 import { ROLE_LABEL } from '@/constants/role';
 import { TIER_LABELS, type Tier } from '@/types/subscription';
-import type { UserProfile, WorkspaceMember } from '@/lib/api/userApi';
+import type { UserProfile, WorkspaceMember, WorkspaceTokens } from '@/lib/api/userApi';
 import type { Subscription } from '@/lib/api/subscriptionApi';
 import type { ProfileRole } from '@/types/auth';
 
@@ -40,6 +40,8 @@ interface UserDetailModalProps {
   workspaces: { id: string; company_name: string; ticker: string }[];
   members: WorkspaceMember[];
   initialSubscription?: Subscription;
+  /** role='user' 인 경우 해당 워크스페이스의 AI 토큰 현황 */
+  initialTokens?: WorkspaceTokens;
   open: boolean;
   onClose: () => void;
 }
@@ -50,6 +52,7 @@ export function UserDetailModal({
   workspaces,
   members,
   initialSubscription,
+  initialTokens,
   open,
   onClose,
 }: UserDetailModalProps) {
@@ -66,6 +69,19 @@ export function UserDetailModal({
   const [wsSearch, setWsSearch] = useState('');
 
   const updateUser = useUpdateUser();
+  const updateTokens = useUpdateWorkspaceTokens();
+
+  // 토큰 폼 — super_admin 전용. monthly_quota 절대값 + add_tokens delta.
+  const [tokenQuotaInput, setTokenQuotaInput] = useState<string>('');
+  const [tokenAddInput, setTokenAddInput] = useState<string>('');
+  const tokensSig = initialTokens
+    ? `${initialTokens.id}:${initialTokens.monthly_quota}:${initialTokens.token_balance}`
+    : '';
+  useEffect(() => {
+    setTokenQuotaInput(initialTokens ? String(initialTokens.monthly_quota) : '');
+    setTokenAddInput('');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tokensSig]);
   const changeTier = useChangeSubscriptionTier();
   const extendSub = useExtendSubscription();
   const renewSub = useRenewSubscription();
@@ -531,6 +547,91 @@ export function UserDetailModal({
                 )}
               </div>
             )}
+
+            {/* ── AI 분석 토큰 ─────────────────────────── */}
+            <div className="pt-3 mt-1 border-t border-slate-100 flex flex-col gap-2">
+              <span className="text-xs font-semibold text-slate-600">
+                AI 분석 토큰
+              </span>
+              {initialTokens ? (
+                <div className="text-sm text-slate-700 flex items-center gap-4">
+                  <div>
+                    <span className="text-[11px] text-slate-400 mr-1.5">잔여</span>
+                    <span className={`font-semibold tabular-nums ${initialTokens.token_balance <= 0 ? 'text-red-500' : 'text-slate-800'}`}>
+                      {initialTokens.token_balance.toLocaleString()}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[11px] text-slate-400 mr-1.5">월 충전</span>
+                    <span className="font-semibold tabular-nums text-slate-700">
+                      {initialTokens.monthly_quota.toLocaleString()}
+                    </span>
+                  </div>
+                  {initialTokens.last_charged_at && (
+                    <div className="text-[11px] text-slate-400">
+                      최근 충전 {format(parseISO(initialTokens.last_charged_at), 'yyyy-MM-dd')}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="text-xs text-slate-400">워크스페이스 정보가 없습니다.</p>
+              )}
+
+              {isSuperAdmin && initialTokens && (
+                <div className="mt-2 p-3 bg-slate-50 rounded-lg flex flex-col gap-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[11px] text-slate-500 mb-1 block">월 충전량 (절대값)</label>
+                      <input
+                        type="number"
+                        min={0}
+                        value={tokenQuotaInput}
+                        onChange={(e) => setTokenQuotaInput(e.target.value)}
+                        disabled={updateTokens.isPending}
+                        className="w-full text-sm border border-slate-200 rounded-md px-2.5 py-1.5 outline-none focus:border-slate-400 tabular-nums"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] text-slate-500 mb-1 block">잔여 추가 (delta)</label>
+                      <input
+                        type="number"
+                        value={tokenAddInput}
+                        onChange={(e) => setTokenAddInput(e.target.value)}
+                        disabled={updateTokens.isPending}
+                        placeholder="음수 = 차감"
+                        className="w-full text-sm border border-slate-200 rounded-md px-2.5 py-1.5 outline-none focus:border-slate-400 tabular-nums"
+                      />
+                    </div>
+                  </div>
+                  <Button
+                    onClick={async () => {
+                      const quotaNum = tokenQuotaInput === '' ? undefined : Number(tokenQuotaInput);
+                      const addNum = tokenAddInput === '' ? undefined : Number(tokenAddInput);
+                      const quotaChanged = quotaNum !== undefined && quotaNum !== initialTokens.monthly_quota;
+                      const addProvided = addNum !== undefined && addNum !== 0;
+                      if (!quotaChanged && !addProvided) {
+                        toast.info('변경 사항이 없습니다.');
+                        return;
+                      }
+                      try {
+                        await updateTokens.mutateAsync({
+                          workspaceId: initialTokens.id,
+                          monthly_quota: quotaChanged ? quotaNum : undefined,
+                          add_tokens: addProvided ? addNum : undefined,
+                        });
+                        toast.success('토큰 정보가 업데이트되었습니다.');
+                      } catch (e) {
+                        toast.error(`토큰 수정 실패: ${formatErr(e)}`);
+                      }
+                    }}
+                    disabled={updateTokens.isPending}
+                    fullWidth
+                  >
+                    {updateTokens.isPending ? '저장 중...' : '토큰 저장'}
+                  </Button>
+                </div>
+              )}
+            </div>
           </div>
         ) : (
           <div className="flex flex-col gap-3">
