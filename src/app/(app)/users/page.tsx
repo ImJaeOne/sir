@@ -7,6 +7,7 @@ import {
   useUsersWithDetails,
   useMembers,
   useMyRole,
+  useWorkspaceTokens,
 } from '@/hooks/user/useUserQuery';
 import { AdminButton } from '@/components/ui/AdminButton';
 import { CreateUserModal } from '@/components/user/CreateUserModal';
@@ -32,6 +33,7 @@ export default function UsersPage() {
   const { data: myRole = 'user' } = useMyRole();
   const { data: workspaces = [] } = useWorkspaces();
   const { data: members = [] } = useMembers();
+  const { data: tokensList = [] } = useWorkspaceTokens();
   const [showCreate, setShowCreate] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
@@ -91,7 +93,7 @@ export default function UsersPage() {
         {isLoading ? (
           <p className="text-sm text-slate-400 py-8 text-center">불러오는 중...</p>
         ) : currentTab === 'customers' ? (
-          <CustomerTable users={filtered} onSelect={setSelectedUserId} />
+          <CustomerTable users={filtered} tokens={tokensList} onSelect={setSelectedUserId} />
         ) : (
           <StaffTable
             users={filtered}
@@ -111,6 +113,7 @@ export default function UsersPage() {
         workspaces={workspaces}
         members={members}
         initialSubscription={selectedUser?.subscription}
+        initialTokens={tokensList.find((t) => t.id === selectedUser?.workspace?.id)}
         open={!!selectedUser}
         onClose={() => setSelectedUserId(null)}
       />

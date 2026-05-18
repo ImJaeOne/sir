@@ -4,6 +4,7 @@ import {
   updateUserRole,
   assignWorkspace,
   removeWorkspace,
+  updateWorkspaceTokens,
 } from '@/lib/api/userApi';
 import { userKeys } from '@/hooks/user/useUserQuery';
 import { workspaceKeys } from '@/hooks/workspace/workspaceKeys';
@@ -47,6 +48,28 @@ export interface UpdateUserInput {
   wsAdd: string[];
   /** 배정 해제할 워크스페이스 id 목록 */
   wsRemove: string[];
+}
+
+export interface UpdateWorkspaceTokensInput {
+  workspaceId: string;
+  monthly_quota?: number;
+  add_tokens?: number;
+}
+
+/** super_admin 전용 — backend 가 require_super_admin 으로 가드. */
+export function useUpdateWorkspaceTokens() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: UpdateWorkspaceTokensInput) =>
+      updateWorkspaceTokens(input.workspaceId, {
+        monthly_quota: input.monthly_quota,
+        add_tokens: input.add_tokens,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: userKeys.workspaceTokens() });
+    },
+  });
 }
 
 export function useUpdateUser() {

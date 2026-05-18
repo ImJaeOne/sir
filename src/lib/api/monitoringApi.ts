@@ -437,10 +437,22 @@ export interface MonitoringAiAnalysisResult {
     cache_creation_input_tokens: number;
   };
   stop_reason: string;
-  cached: boolean;          // 같은 KST 일자 캐시 hit 여부
-  generated_at: string;     // 최초 생성 시각 (ISO timestamptz)
-  period_start?: string;    // YYYY-MM-DD KST (캐시 SELECT 시 채움)
+  cached: boolean;          // history row 조회면 true, 신규 분석이면 false
+  generated_at: string;     // 생성 시각 (ISO timestamptz)
+  period_start?: string;    // YYYY-MM-DD KST
   period_end?: string;      // YYYY-MM-DD KST
+  used_tokens?: number;     // 신규 분석 시 실제 차감된 토큰 (input + output)
+  token_balance?: number | null; // 신규 분석 후 워크스페이스 잔여 토큰. super_admin = null.
+  unlimited?: boolean;      // super_admin 호출 시 true (차감 skip)
+}
+
+export interface MonitoringAiAnalysisEstimate {
+  estimated_input_tokens: number;
+  estimated_output_tokens: number;
+  estimated_total_tokens: number;
+  token_balance: number;
+  monthly_quota: number;
+  unlimited: boolean;
 }
 
 export async function getMonitoringAiAnalysis(
@@ -472,47 +484,98 @@ export async function getMonitoringAiAnalysis(
   return res.json();
 }
 
-/** 모니터링 AI 분석 — 이번 주(KST 월요일 시작) 캐시 row SELECT. 없으면 null. 신규 분석 호출 X.
- *
- *  AiAnalysisCard 가 mount 시 자동 호출 → DB 에 이미 있는 분석을 페이지 진입 즉시 표시.
- *  스키마: monitoring_ai_analyses (마이그 056). RLS 로 멤버만 SELECT 가능.
- *  column `generated_kst_date` 는 이제 "그 주의 월요일 일자(KST)" 를 저장.
- *  database.types.ts 미생성 → as any cast.
+/** 가장 최근 분석 결과 1건 (캐시 정책 제거 후 — 마이그 062). backend `/api/monitoring/ai-analysis/latest`.
+ *  AiAnalysisCard 가 mount 시 자동 호출 → 페이지 진입 즉시 최신 분석 노출. 없으면 null.
  */
-export async function getMonitoringAiAnalysisCached(
+export async function getMonitoringAiAnalysisLatest(
   workspaceId: string,
 ): Promise<MonitoringAiAnalysisResult | null> {
-  const kstNow = new Date(Date.now() + 9 * 60 * 60 * 1000);
-  // JS getUTCDay(): 0=일, 1=월 ... → 월요일 기준 days-from-monday 계산
-  const daysFromMonday = (kstNow.getUTCDay() + 6) % 7;
-  const monday = new Date(kstNow.getTime() - daysFromMonday * 86400000);
-  const weekStartKst = monday.toISOString().slice(0, 10);
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error('로그인이 필요합니다');
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase as any)
+  const res = await fetch(
+    `/api/monitoring/ai-analysis/latest?workspace_id=${encodeURIComponent(workspaceId)}`,
+    { headers: { Authorization: `Bearer ${session.access_token}` } },
+  );
+  if (!res.ok) {
+    if (res.status === 404) return null;
+    const detail = await res.text().catch(() => '');
+    throw new Error(`최신 분석 조회 실패 (${res.status}): ${detail.slice(0, 100)}`);
+  }
+  const data = await res.json();
+  return data || null;
+}
+
+/** 분석 히스토리 페이지용 — monitoring_ai_analyses 시간순 list.
+ *  RLS(user_has_workspace_access) 로 본인 ws 만 조회. limit 100 (분석 빈도상 충분).
+ */
+export interface MonitoringAiAnalysisHistoryRow {
+  id: string;
+  content: string;
+  model: string;
+  period_start: string;
+  period_end: string;
+  input_tokens: number;
+  output_tokens: number;
+  created_at: string;
+}
+
+export async function getMonitoringAiAnalysisHistory(
+  workspaceId: string,
+): Promise<MonitoringAiAnalysisHistoryRow[]> {
+  const { data, error } = await supabase
     .from('monitoring_ai_analyses')
-    .select('content, model, input_tokens, output_tokens, cache_read_tokens, created_at, period_start, period_end')
+    .select('id, content, model, period_start, period_end, input_tokens, output_tokens, created_at')
     .eq('workspace_id', workspaceId)
-    .eq('generated_kst_date', weekStartKst)
+    .order('created_at', { ascending: false })
+    .limit(100);
+  if (error || !data) return [];
+  return data as MonitoringAiAnalysisHistoryRow[];
+}
+
+/** AI 분석 카드 헤더의 잔여 토큰 칩용 — 모달 거치지 않고 가볍게 표시.
+ *  workspaces SELECT RLS(user_has_workspace_access) 로 본인 ws 의 토큰 컬럼 read 가능. */
+export interface WorkspaceTokenStatus {
+  token_balance: number;
+  monthly_quota: number;
+}
+
+export async function getWorkspaceTokenStatus(workspaceId: string): Promise<WorkspaceTokenStatus | null> {
+  const { data, error } = await supabase
+    .from('workspaces')
+    .select('token_balance, monthly_quota')
+    .eq('id', workspaceId)
     .maybeSingle();
-
   if (error || !data) return null;
+  return { token_balance: data.token_balance, monthly_quota: data.monthly_quota };
+}
 
-  return {
-    content: data.content,
-    model: data.model,
-    usage: {
-      input_tokens: data.input_tokens,
-      output_tokens: data.output_tokens,
-      cache_read_input_tokens: data.cache_read_tokens ?? 0,
-      cache_creation_input_tokens: 0,
+/** 모달 기간 선택 즉시 예상 토큰 + 잔여량 표시용. backend `/api/monitoring/ai-analysis/estimate`. */
+export async function getMonitoringAiAnalysisEstimate(
+  workspaceId: string,
+  periodStart: string,
+  periodEnd: string,
+): Promise<MonitoringAiAnalysisEstimate> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error('로그인이 필요합니다');
+
+  const res = await fetch(`/api/monitoring/ai-analysis/estimate`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${session.access_token}`,
+      'Content-Type': 'application/json',
     },
-    stop_reason: 'end_turn',
-    cached: true,
-    generated_at: data.created_at,
-    period_start: data.period_start,
-    period_end: data.period_end,
-  };
+    body: JSON.stringify({
+      workspace_id: workspaceId,
+      period_start: periodStart,
+      period_end: periodEnd,
+    }),
+  });
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '');
+    throw new Error(`예상 토큰 조회 실패 (${res.status}): ${detail.slice(0, 100)}`);
+  }
+  return res.json();
 }
 
 // ── 일자별 수집 데이터 상세 (차트 클릭 시 drawer 노출용) ───────────────

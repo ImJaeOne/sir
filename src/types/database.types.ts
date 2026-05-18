@@ -330,6 +330,97 @@ export type Database = {
         }
         Relationships: []
       }
+      monitoring_ai_analyses: {
+        Row: {
+          cache_read_tokens: number
+          content: string
+          created_at: string
+          generated_kst_date: string
+          id: string
+          input_tokens: number
+          model: string
+          output_tokens: number
+          period_end: string
+          period_start: string
+          requested_by: string | null
+          workspace_id: string
+        }
+        Insert: {
+          cache_read_tokens?: number
+          content: string
+          created_at?: string
+          generated_kst_date: string
+          id?: string
+          input_tokens?: number
+          model: string
+          output_tokens?: number
+          period_end: string
+          period_start: string
+          requested_by?: string | null
+          workspace_id: string
+        }
+        Update: {
+          cache_read_tokens?: number
+          content?: string
+          created_at?: string
+          generated_kst_date?: string
+          id?: string
+          input_tokens?: number
+          model?: string
+          output_tokens?: number
+          period_end?: string
+          period_start?: string
+          requested_by?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "monitoring_ai_analyses_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      monitoring_search_trends_cache: {
+        Row: {
+          end_date: string
+          generated_kst_date: string
+          keyword: string
+          points: Json
+          start_date: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          end_date: string
+          generated_kst_date: string
+          keyword: string
+          points: Json
+          start_date: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          end_date?: string
+          generated_kst_date?: string
+          keyword?: string
+          points?: Json
+          start_date?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "monitoring_search_trends_cache_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: true
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       news_clusters: {
         Row: {
           article_count: number
@@ -1217,27 +1308,36 @@ export type Database = {
           company_name: string
           created_at: string
           id: string
+          last_charged_at: string | null
+          monthly_quota: number
           shard_id: number | null
           sir_score: number | null
           ticker: string
+          token_balance: number
           updated_at: string
         }
         Insert: {
           company_name: string
           created_at?: string
           id?: string
+          last_charged_at?: string | null
+          monthly_quota?: number
           shard_id?: number | null
           sir_score?: number | null
           ticker: string
+          token_balance?: number
           updated_at?: string
         }
         Update: {
           company_name?: string
           created_at?: string
           id?: string
+          last_charged_at?: string | null
+          monthly_quota?: number
           shard_id?: number | null
           sir_score?: number | null
           ticker?: string
+          token_balance?: number
           updated_at?: string
         }
         Relationships: []
@@ -1277,6 +1377,7 @@ export type Database = {
         }
         Returns: string
       }
+      charge_monthly_ai_tokens: { Args: never; Returns: number }
       cleanup_zombie_pipeline_state: { Args: never; Returns: Json }
       correct_subscription: {
         Args: {
@@ -1301,6 +1402,18 @@ export type Database = {
         Returns: Json
       }
       cron_silent_fail_check: { Args: never; Returns: undefined }
+      daily_sentiment_counts: {
+        Args: { day_end: string; day_start: string; ws_id: string }
+        Returns: {
+          cnt: number
+          platform_id: string
+          sentiment: string
+        }[]
+      }
+      decrement_workspace_tokens: {
+        Args: { p_amount: number; p_workspace_id: string }
+        Returns: number
+      }
       delete_sns_items_by_links: {
         Args: { p_links: string[]; p_session_id: string }
         Returns: number
@@ -1312,6 +1425,14 @@ export type Database = {
       get_sir_ranking: {
         Args: { p_report_id?: string; p_workspace_id: string }
         Returns: Json
+      }
+      get_user_landing: {
+        Args: { p_user_id: string }
+        Returns: {
+          report_id: string
+          role: string
+          workspace_id: string
+        }[]
       }
       is_admin: { Args: never; Returns: boolean }
       is_super_admin: { Args: never; Returns: boolean }

@@ -13,6 +13,9 @@ export interface LatestReport {
   has_failed_session: boolean;
   has_running_session: boolean;
   has_any_session: boolean;
+  // weekly compile 완료 신호 — 일간 구독자의 weekly 는 자체 sessions 가 없어 has_any_session 으로 판별 불가.
+  // session_strategies 4종(news/sns/community/summary) 모두 done 이면 true.
+  is_compiled: boolean;
   // 최근 실패 세션의 메타 — failed=true 일 때만 채움
   last_failed_at: string | null;
   last_failed_message: string | null;
@@ -40,6 +43,7 @@ export async function getWorkspaces(): Promise<(Workspace & { latest_report?: La
       | 'has_failed_session'
       | 'has_running_session'
       | 'has_any_session'
+      | 'is_compiled'
       | 'last_failed_at'
       | 'last_failed_message'
     >
@@ -84,6 +88,31 @@ export async function getWorkspaces(): Promise<(Workspace & { latest_report?: La
     }
   }
 
+  // weekly compile 완료 판별 — 일간 구독자의 weekly 는 자체 sessions 가 없으므로
+  // session_strategies 4종(news/sns/community/summary) 모두 done 인지로 판별
+  const compiledSet = new Set<string>();
+  const weeklyReportIds = Array.from(latestByWs.values())
+    .filter((r) => r.type === 'weekly')
+    .map((r) => r.id);
+  if (weeklyReportIds.length > 0) {
+    const { data: strategies } = await supabase
+      .from('session_strategies')
+      .select('report_id, category, status')
+      .in('report_id', weeklyReportIds)
+      .eq('status', 'done');
+    const doneByReport = new Map<string, Set<string>>();
+    for (const st of strategies ?? []) {
+      if (!st.report_id) continue;
+      if (!doneByReport.has(st.report_id)) doneByReport.set(st.report_id, new Set());
+      doneByReport.get(st.report_id)!.add(st.category as string);
+    }
+    for (const [rid, cats] of doneByReport) {
+      if (WEEKLY_REQUIRED_CATEGORIES.every((c) => cats.has(c))) {
+        compiledSet.add(rid);
+      }
+    }
+  }
+
   return workspaces.map((ws) => {
     const base = latestByWs.get(ws.id);
     const failed = base ? lastFailedByReport.get(base.id) : undefined;
@@ -93,6 +122,7 @@ export async function getWorkspaces(): Promise<(Workspace & { latest_report?: La
           has_failed_session: failedSet.has(base.id),
           has_running_session: runningSet.has(base.id),
           has_any_session: anySessionSet.has(base.id),
+          is_compiled: compiledSet.has(base.id),
           last_failed_at: failed?.at ?? null,
           last_failed_message: failed?.message ?? null,
         }

@@ -4,6 +4,7 @@ import {
   getUsersWithDetails,
   getCurrentRole,
   getWorkspaceMembers,
+  getWorkspaceTokens,
 } from '@/lib/api/userApi';
 
 export const userKeys = {
@@ -12,6 +13,7 @@ export const userKeys = {
   usersDetailed: () => ['admin', 'users', 'detailed'] as const,
   members: () => ['admin', 'workspace_members'] as const,
   currentRole: () => ['admin', 'currentRole'] as const,
+  workspaceTokens: () => ['admin', 'workspace_tokens'] as const,
 };
 
 export function useUsers() {
@@ -31,4 +33,8 @@ export function useMembers() {
 
 export function useMyRole() {
   return useQuery({ queryKey: userKeys.currentRole(), queryFn: getCurrentRole });
+}
+
+export function useWorkspaceTokens() {
+  return useQuery({ queryKey: userKeys.workspaceTokens(), queryFn: getWorkspaceTokens });
 }

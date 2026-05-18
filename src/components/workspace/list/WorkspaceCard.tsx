@@ -23,7 +23,8 @@ export function getReportHealth(latest: LatestReport | undefined): ReportHealth 
   if (latest.has_running_session) return 'running';
   if (latest.status === 'published') return 'published';
   // 보고서는 만들어졌지만 세션이 1건도 없으면 분석 전 상태 — review 와 구분
-  if (!latest.has_any_session) return 'pending';
+  // (단 일간 구독자의 weekly compile 은 자체 sessions 가 없어 is_compiled 로 review 판별)
+  if (!latest.has_any_session && !latest.is_compiled) return 'pending';
   return 'review';
 }
 

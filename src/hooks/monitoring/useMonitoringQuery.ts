@@ -4,7 +4,10 @@ import {
   getMonitoringStock,
   getMonitoringRisks,
   getMonitoringChannelMatrix,
-  getMonitoringAiAnalysisCached,
+  getMonitoringAiAnalysisLatest,
+  getMonitoringAiAnalysisEstimate,
+  getMonitoringAiAnalysisHistory,
+  getWorkspaceTokenStatus,
   getMonitoringLifetimeTotals,
   getMonitoringDayItems,
 } from '@/lib/api/monitoringApi';
@@ -53,14 +56,47 @@ export function useMonitoringChannelMatrix(workspaceId: string, start: string, e
   });
 }
 
-/** 오늘(KST) 기준으로 DB 에 저장된 AI 분석 캐시 row. 없으면 null.
- *  AiAnalysisCard 가 mount 시 자동 호출 → 이미 분석된 결과를 페이지 진입 즉시 노출. */
-export function useMonitoringAiAnalysisCached(workspaceId: string) {
+/** 가장 최근 AI 분석 결과 1건. 없으면 null.
+ *  AiAnalysisCard 가 mount 시 자동 호출 → 이미 분석된 최신 결과를 페이지 진입 즉시 노출.
+ *  마이그 062 이후 캐시 정책 제거 — history 의 head 만 가져옴. */
+export function useMonitoringAiAnalysisLatest(workspaceId: string) {
   return useQuery({
-    queryKey: monitoringKeys.aiAnalysisCached(workspaceId),
-    queryFn: () => getMonitoringAiAnalysisCached(workspaceId),
+    queryKey: monitoringKeys.aiAnalysisLatest(workspaceId),
+    queryFn: () => getMonitoringAiAnalysisLatest(workspaceId),
     enabled: !!workspaceId,
     staleTime: ONE_HOUR,
+  });
+}
+
+/** 분석 히스토리 페이지 — monitoring_ai_analyses 시간순 list. */
+export function useMonitoringAiAnalysisHistory(workspaceId: string) {
+  return useQuery({
+    queryKey: monitoringKeys.aiAnalysisHistory(workspaceId),
+    queryFn: () => getMonitoringAiAnalysisHistory(workspaceId),
+    enabled: !!workspaceId,
+    staleTime: FIVE_MIN,
+  });
+}
+
+/** AI 분석 카드 헤더 잔여량 칩 — 가볍게 workspaces.token_balance + monthly_quota 만 fetch. */
+export function useMonitoringTokenStatus(workspaceId: string) {
+  return useQuery({
+    queryKey: monitoringKeys.tokenStatus(workspaceId),
+    queryFn: () => getWorkspaceTokenStatus(workspaceId),
+    enabled: !!workspaceId,
+    staleTime: FIVE_MIN,
+  });
+}
+
+/** 모달에서 기간 선택 시 예상 토큰 + 잔여량 조회. 기간이 비어있으면 비활성.
+ *  enabled 토글로 동작 — 프리셋 클릭 / 직접 선택 시 start/end 가 채워지면 즉시 호출. */
+export function useMonitoringAiAnalysisEstimate(workspaceId: string, start: string, end: string) {
+  return useQuery({
+    queryKey: monitoringKeys.aiAnalysisEstimate(workspaceId, start, end),
+    queryFn: () => getMonitoringAiAnalysisEstimate(workspaceId, start, end),
+    enabled: !!workspaceId && !!start && !!end,
+    staleTime: FIVE_MIN,
+    retry: false,
   });
 }
 
