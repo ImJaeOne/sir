@@ -64,11 +64,10 @@ function resolveSource(channel: CrawlHistoryChannel): {
   return { table: 'community_items', platformIds: null };
 }
 
-const SELECT_NEWS_SNS =
+// 3 테이블(news_items/sns_items/community_items) 모두 동일 컬럼 보유.
+// community_items.summary 는 마이그 065 에서 추가됨 (종토방 AI 요약).
+const SELECT_COLS =
   'id,workspace_id,session_id,platform_id,title,link,content,summary,is_relevant,critical_type,critical_reason,sentiment,published_at,created_at';
-// community_items 는 summary 컬럼이 없어 select 에서 제외 (응답에 null 채워줌)
-const SELECT_COMMUNITY =
-  'id,workspace_id,session_id,platform_id,title,link,content,is_relevant,critical_type,critical_reason,sentiment,published_at,created_at';
 
 export async function getCrawlHistory(
   filters: CrawlHistoryFilters,
@@ -76,11 +75,10 @@ export async function getCrawlHistory(
   pageSize: number,
 ): Promise<CrawlHistoryPage> {
   const { table, platformIds } = resolveSource(filters.channel);
-  const selectCols = table === 'community_items' ? SELECT_COMMUNITY : SELECT_NEWS_SNS;
 
   let q = supabase
     .from(table)
-    .select(selectCols, { count: 'exact' })
+    .select(SELECT_COLS, { count: 'exact' })
     .eq('workspace_id', filters.workspaceId);
 
   if (platformIds && platformIds.length === 1) q = q.eq('platform_id', platformIds[0]);
