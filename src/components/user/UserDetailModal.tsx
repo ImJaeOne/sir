@@ -7,10 +7,11 @@ import { X, Plus } from 'lucide-react';
 import { AdminButton } from '@/components/ui/AdminButton';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { ContractPeriodPicker } from '@/components/ui/ContractPeriodPicker';
 import { TierPicker } from '@/components/user/TierPicker';
 import { useUpdateUser, useUpdateWorkspaceTokens } from '@/hooks/user/useUserMutation';
-import { useActiveSubscription } from '@/hooks/subscription/useSubscriptionQuery';
+import { useCurrentOrUpcomingSubscription } from '@/hooks/subscription/useSubscriptionQuery';
 import {
   useChangeSubscriptionTier,
   useExtendSubscription,
@@ -18,11 +19,12 @@ import {
   usePauseSubscription,
   useCancelSubscription,
   useCorrectSubscription,
+  useDeleteScheduledSubscription,
 } from '@/hooks/subscription/useSubscriptionMutation';
 import { ROLE_LABEL } from '@/constants/role';
 import { TIER_LABELS, type Tier } from '@/types/subscription';
 import type { UserProfile, WorkspaceMember, WorkspaceTokens } from '@/lib/api/userApi';
-import type { Subscription } from '@/lib/api/subscriptionApi';
+import type { Subscription, SubscriptionStatus } from '@/lib/api/subscriptionApi';
 import type { ProfileRole } from '@/types/auth';
 
 type SubMode =
@@ -93,13 +95,22 @@ export function UserDetailModal({
       ? members.find((m) => m.profile_id === user.id)?.workspace_id
       : undefined;
 
-  const { data: fetchedSub } = useActiveSubscription(userWorkspaceId);
-  const activeSub: Subscription | null =
+  const { data: fetchedSub } = useCurrentOrUpcomingSubscription(userWorkspaceId);
+  // 현재 또는 예약 구독. 로딩 중엔 부모가 넘긴 활성 구독으로 fallback.
+  const sub: Subscription | null =
     fetchedSub !== undefined
-      ? (fetchedSub ?? null)
+      ? (fetchedSub?.subscription ?? null)
       : (initialSubscription ?? null);
+  const subStatus: SubscriptionStatus | null =
+    fetchedSub !== undefined
+      ? (fetchedSub?.status ?? null)
+      : (initialSubscription ? 'active' : null);
+  // 활성일 때만 활성 전용 액션(연장/정지/해지/티어변경) 노출
+  const activeSub: Subscription | null = subStatus === 'active' ? sub : null;
 
   const correctSub = useCorrectSubscription(userWorkspaceId);
+  const deleteScheduled = useDeleteScheduledSubscription(userWorkspaceId);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -121,14 +132,14 @@ export function UserDetailModal({
   };
 
   const enterMode = (mode: SubMode) => {
-    if (mode === 'change_tier' && activeSub) {
-      setFormTier(activeSub.tier);
-    } else if (mode === 'extend' && activeSub) {
-      setFormEnd(parseISO(activeSub.ended_at));
-    } else if (mode === 'correct' && activeSub) {
-      setFormTier(activeSub.tier);
-      setFormStart(parseISO(activeSub.started_at));
-      setFormEnd(parseISO(activeSub.ended_at));
+    if (mode === 'change_tier' && sub) {
+      setFormTier(sub.tier);
+    } else if (mode === 'extend' && sub) {
+      setFormEnd(parseISO(sub.ended_at));
+    } else if (mode === 'correct' && sub) {
+      setFormTier(sub.tier);
+      setFormStart(parseISO(sub.started_at));
+      setFormEnd(parseISO(sub.ended_at));
     } else if (mode === 'new') {
       const today = new Date();
       const oneYearLater = new Date(today);
@@ -174,7 +185,8 @@ export function UserDetailModal({
     renewSub.isPending ||
     pauseSub.isPending ||
     cancelSub.isPending ||
-    correctSub.isPending;
+    correctSub.isPending ||
+    deleteScheduled.isPending;
   const saving = updateUser.isPending || subBusy;
 
   // 사용자 역할은 sub 작업이 별도 흐름이므로, 메인 저장은 role 변경만 다룸
@@ -293,10 +305,10 @@ export function UserDetailModal({
   };
 
   const submitCorrect = async () => {
-    if (!activeSub || !formTier || !formStart || !formEnd) return;
+    if (!sub || !formTier || !formStart || !formEnd) return;
     try {
       await correctSub.mutateAsync({
-        subscriptionId: activeSub.id,
+        subscriptionId: sub.id,
         tier: formTier,
         startedAt: formStart.toISOString(),
         endedAt: formEnd.toISOString(),
@@ -308,10 +320,23 @@ export function UserDetailModal({
     }
   };
 
+  const submitDeleteScheduled = async () => {
+    if (!sub) return;
+    try {
+      await deleteScheduled.mutateAsync({ subscriptionId: sub.id });
+      toast.success('예약 구독이 취소되었습니다.');
+      setConfirmDeleteOpen(false);
+      resetSubForm();
+    } catch (e) {
+      toast.error(`예약 취소 실패: ${formatErr(e)}`);
+    }
+  };
+
   const assignedWs = filteredWs.filter((ws) => pendingWs.includes(ws.id));
   const unassignedWs = filteredWs.filter((ws) => !pendingWs.includes(ws.id));
 
   return (
+    <>
     <Modal
       open={open}
       onClose={onClose}
@@ -367,20 +392,25 @@ export function UserDetailModal({
               <span className="text-xs font-semibold text-slate-600 mb-1 block">
                 현재 계약
               </span>
-              {activeSub ? (
+              {sub ? (
                 <p className="text-sm text-slate-700">
-                  <span className="font-semibold">{TIER_LABELS[activeSub.tier]}</span>
+                  <span className="font-semibold">{TIER_LABELS[sub.tier]}</span>
                   {' · '}
-                  {format(parseISO(activeSub.started_at), 'yyyy-MM-dd')}
+                  {format(parseISO(sub.started_at), 'yyyy-MM-dd')}
                   {' ~ '}
-                  {format(parseISO(activeSub.ended_at), 'yyyy-MM-dd')}
+                  {format(parseISO(sub.ended_at), 'yyyy-MM-dd')}
+                  {subStatus === 'scheduled' && (
+                    <span className="ml-2 inline-block rounded-full bg-amber-100 text-amber-700 text-[11px] px-2 py-0.5 font-medium align-middle">
+                      {format(parseISO(sub.started_at), 'M월 d일')} 시작 예정
+                    </span>
+                  )}
                 </p>
               ) : (
-                <p className="text-sm text-slate-400">활성 구독이 없습니다.</p>
+                <p className="text-sm text-slate-400">구독이 없습니다.</p>
               )}
             </div>
 
-            {canEditSub && subMode === 'idle' && activeSub && (
+            {canEditSub && subMode === 'idle' && subStatus === 'active' && (
               <div className="flex flex-col gap-2">
                 <div className="grid grid-cols-2 gap-2">
                   <AdminButton size="sm" variant="primary" onClick={() => enterMode('change_tier')}>
@@ -406,7 +436,27 @@ export function UserDetailModal({
               </div>
             )}
 
-            {canEditSub && subMode === 'idle' && !activeSub && (
+            {canEditSub && subMode === 'idle' && subStatus === 'scheduled' && (
+              <div className="flex flex-col gap-2">
+                <p className="text-xs text-slate-500">
+                  아직 시작 전인 예약 구독입니다. 시작일·티어를 정정하거나 예약을 취소할 수 있습니다.
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  <AdminButton size="sm" variant="primary" onClick={() => enterMode('correct')}>
+                    정보 정정
+                  </AdminButton>
+                  <AdminButton
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => setConfirmDeleteOpen(true)}
+                  >
+                    예약 취소
+                  </AdminButton>
+                </div>
+              </div>
+            )}
+
+            {canEditSub && subMode === 'idle' && !sub && (
               <AdminButton size="sm" variant="primary" onClick={() => enterMode('new')}>
                 새 구독 시작
               </AdminButton>
@@ -719,6 +769,21 @@ export function UserDetailModal({
         )}
       </div>
     </Modal>
+    <ConfirmModal
+      open={confirmDeleteOpen}
+      onClose={() => setConfirmDeleteOpen(false)}
+      onConfirm={submitDeleteScheduled}
+      title="예약 구독 취소"
+      message={
+        sub
+          ? `${TIER_LABELS[sub.tier]} · ${format(parseISO(sub.started_at), 'yyyy-MM-dd')} 시작 예약을 취소(삭제)합니다. 되돌릴 수 없습니다.`
+          : ''
+      }
+      confirmLabel="예약 취소"
+      confirmVariant="danger"
+      loading={deleteScheduled.isPending}
+    />
+    </>
   );
 }
 

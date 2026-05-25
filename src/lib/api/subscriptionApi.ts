@@ -32,6 +32,42 @@ export async function getActiveSubscription(
   return (data as Subscription | null) ?? null;
 }
 
+export type SubscriptionStatus = 'active' | 'scheduled';
+
+export interface CurrentOrUpcomingSubscription {
+  subscription: Subscription;
+  /** active = 지금 진행 중 / scheduled = 미래 시작 예약 */
+  status: SubscriptionStatus;
+}
+
+/**
+ * 현재 또는 다가오는 구독 1건 조회.
+ * 아직 안 끝난(ended_at > NOW) segment 중 started_at 이 가장 이른 것을 고른다.
+ * - 활성(started_at <= NOW) segment 가 있으면 그게 먼저 잡혀 status='active'
+ * - 없고 미래 시작 segment 만 있으면 status='scheduled'
+ * 관리자 모달에서 예약 구독도 인식·관리하기 위한 조회.
+ */
+export async function getCurrentOrUpcomingSubscription(
+  workspaceId: string,
+): Promise<CurrentOrUpcomingSubscription | null> {
+  const nowIso = new Date().toISOString();
+  const { data } = await supabase
+    .from('subscriptions')
+    .select('*')
+    .eq('workspace_id', workspaceId)
+    .gt('ended_at', nowIso)
+    .order('started_at', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  const sub = (data as Subscription | null) ?? null;
+  if (!sub) return null;
+  return {
+    subscription: sub,
+    status: new Date(sub.started_at).getTime() <= Date.now() ? 'active' : 'scheduled',
+  };
+}
+
 /** 중간 구독제 변경: 활성 row 자르고 새 tier 로 새 row INSERT (DB transaction). */
 export async function changeSubscriptionTier(input: {
   workspaceId: string;
@@ -98,6 +134,17 @@ export async function cancelSubscription(input: {
   const { data, error } = await supabase.rpc('cancel_subscription', {
     p_workspace_id: input.workspaceId,
     p_cancel_at: input.cancelAt ?? new Date().toISOString(),
+  });
+  if (error) throw error;
+  return data as string;
+}
+
+/** 예약(미시작) 구독 취소 — started_at > NOW 인 row 만 삭제 (RPC 가드). */
+export async function deleteScheduledSubscription(input: {
+  subscriptionId: string;
+}): Promise<string> {
+  const { data, error } = await supabase.rpc('delete_scheduled_subscription', {
+    p_subscription_id: input.subscriptionId,
   });
   if (error) throw error;
   return data as string;
