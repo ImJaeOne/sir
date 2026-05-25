@@ -6,6 +6,7 @@ import {
   pauseSubscription,
   cancelSubscription,
   correctSubscription,
+  deleteScheduledSubscription,
 } from '@/lib/api/subscriptionApi';
 import { subscriptionKeys } from '@/hooks/subscription/useSubscriptionQuery';
 import { userKeys } from '@/hooks/user/useUserQuery';
@@ -13,7 +14,8 @@ import { userKeys } from '@/hooks/user/useUserQuery';
 function useInvalidateOnSuccess() {
   const queryClient = useQueryClient();
   return (workspaceId: string) => {
-    queryClient.invalidateQueries({ queryKey: subscriptionKeys.active(workspaceId) });
+    // workspace prefix → active/current 구독 쿼리 모두 무효화
+    queryClient.invalidateQueries({ queryKey: subscriptionKeys.workspace(workspaceId) });
     queryClient.invalidateQueries({ queryKey: userKeys.usersDetailed() });
   };
 }
@@ -62,6 +64,16 @@ export function useCorrectSubscription(workspaceId: string | undefined) {
   const invalidate = useInvalidateOnSuccess();
   return useMutation({
     mutationFn: correctSubscription,
+    onSuccess: () => {
+      if (workspaceId) invalidate(workspaceId);
+    },
+  });
+}
+
+export function useDeleteScheduledSubscription(workspaceId: string | undefined) {
+  const invalidate = useInvalidateOnSuccess();
+  return useMutation({
+    mutationFn: deleteScheduledSubscription,
     onSuccess: () => {
       if (workspaceId) invalidate(workspaceId);
     },

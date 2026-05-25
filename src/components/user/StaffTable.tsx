@@ -20,14 +20,14 @@ export function StaffTable({ users, onSelect }: StaffTableProps) {
 
   return (
     <div className="flex-1 flex flex-col bg-white rounded-xl border border-slate-100 overflow-hidden">
-      {/* 데스크톱 헤더 */}
-      <div className="hidden lg:grid grid-cols-[1.2fr_1.8fr_0.8fr_1fr] border-b border-slate-100 py-3 px-4 text-xs font-semibold text-slate-500">
-        <div>회사명</div>
-        <div>이메일</div>
-        <div className="text-center">권한</div>
-        <div className="text-center">가입일</div>
-      </div>
       <div className="flex-1 overflow-y-auto">
+        {/* 데스크톱 헤더 — 스크롤 컨테이너 안 sticky. 행과 같은 폭(스크롤바 제외)을 공유해 칸 어긋남 방지 */}
+        <div className="hidden lg:grid grid-cols-[1.2fr_1.8fr_0.8fr_1fr] sticky top-0 z-10 bg-white border-b border-slate-100 py-3 px-4 text-xs font-semibold text-slate-500">
+          <div>회사명</div>
+          <div>이메일</div>
+          <div className="text-center">권한</div>
+          <div className="text-center">가입일</div>
+        </div>
         {sorted.length === 0 && (
           <p className="text-sm text-slate-400 py-8 text-center">등록된 관리자가 없습니다.</p>
         )}

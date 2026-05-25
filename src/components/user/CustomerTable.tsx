@@ -31,17 +31,17 @@ export function CustomerTable({ users, tokens, onSelect }: CustomerTableProps) {
 
   return (
     <div className="flex-1 flex flex-col bg-white rounded-xl border border-slate-100 overflow-hidden">
-      {/* 데스크톱 테이블 헤더 */}
-      <div className="hidden lg:grid grid-cols-[1.2fr_1.6fr_0.7fr_1.3fr_0.6fr_0.9fr_0.7fr] border-b border-slate-100 py-3 px-4 text-xs font-semibold text-slate-500">
-        <div>회사명</div>
-        <div>이메일</div>
-        <div className="text-center">티어</div>
-        <div className="text-center">계약 기간</div>
-        <div className="text-center">남은</div>
-        <div className="text-center">AI 토큰 (잔여 / 월충전)</div>
-        <div className="text-center">상태</div>
-      </div>
       <div className="flex-1 overflow-y-auto">
+        {/* 데스크톱 헤더 — 스크롤 컨테이너 안 sticky. 행과 같은 폭(스크롤바 제외)을 공유해 칸 어긋남 방지 */}
+        <div className="hidden lg:grid grid-cols-[1.2fr_1.6fr_0.7fr_1.3fr_0.6fr_0.9fr_0.7fr] sticky top-0 z-10 bg-white border-b border-slate-100 py-3 px-4 text-xs font-semibold text-slate-500">
+          <div>회사명</div>
+          <div>이메일</div>
+          <div className="text-center">티어</div>
+          <div className="text-center">계약 기간</div>
+          <div className="text-center">남은</div>
+          <div className="text-center">AI 토큰 (잔여 / 월충전)</div>
+          <div className="text-center">상태</div>
+        </div>
         {sorted.length === 0 && (
           <p className="text-sm text-slate-400 py-8 text-center">등록된 사용자가 없습니다.</p>
         )}
@@ -53,11 +53,13 @@ export function CustomerTable({ users, tokens, onSelect }: CustomerTableProps) {
             ? `${format(parseISO(sub.started_at), 'yy.MM.dd')} ~ ${format(parseISO(sub.ended_at), 'yy.MM.dd')}`
             : '-';
           const remainLabel =
-            summary.daysUntilExpiry === null
-              ? '-'
-              : summary.daysUntilExpiry < 0
-                ? `${summary.daysUntilExpiry}일`
-                : `D-${summary.daysUntilExpiry}`;
+            summary.status === 'scheduled' && summary.daysUntilStart !== null
+              ? `D-${summary.daysUntilStart} 시작`
+              : summary.daysUntilExpiry === null
+                ? '-'
+                : summary.daysUntilExpiry < 0
+                  ? `${summary.daysUntilExpiry}일`
+                  : `D-${summary.daysUntilExpiry}`;
           const tierLabel = sub ? TIER_LABELS[sub.tier] : '-';
           const tk = u.workspace ? tokensByWs.get(u.workspace.id) : undefined;
           // 잔여 토큰이 월 충전량의 20% 미만이면 경고색, 0 이하면 빨간색

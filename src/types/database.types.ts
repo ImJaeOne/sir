@@ -1418,6 +1418,10 @@ export type Database = {
         Args: { p_links: string[]; p_session_id: string }
         Returns: number
       }
+      delete_scheduled_subscription: {
+        Args: { p_subscription_id: string }
+        Returns: string
+      }
       extend_subscription: {
         Args: { p_new_ended_at: string; p_workspace_id: string }
         Returns: string

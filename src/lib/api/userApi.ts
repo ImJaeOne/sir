@@ -34,7 +34,7 @@ export interface UserWorkspace {
 export interface UserWithDetails extends UserProfile {
   /** role='user' 인 경우 배정된 단일 워크스페이스 */
   workspace?: UserWorkspace;
-  /** role='user' 인 경우 해당 워크스페이스의 활성 구독 */
+  /** role='user' 인 경우 해당 워크스페이스의 활성 또는 예약(미래 시작) 구독 */
   subscription?: Subscription;
   /** 배정된 워크스페이스 id 목록 (admin/super_admin 은 복수 가능) */
   workspaceIds: string[];
@@ -56,12 +56,13 @@ export async function getUsersWithDetails(): Promise<UserWithDetails[]> {
       .order('created_at', { ascending: false }),
     supabase.from('workspace_members').select('workspace_id, profile_id'),
     supabase.from('workspaces').select('id, company_name, ticker'),
+    // 활성(started<=now<ended) + 예약(started>now) 모두. ended<=now(만료)만 제외.
+    // started_at 오름차순 → 워크스페이스별 첫 row = 활성(있으면) 또는 가장 이른 예약.
     supabase
       .from('subscriptions')
       .select('*')
-      .lte('started_at', nowIso)
       .gt('ended_at', nowIso)
-      .order('started_at', { ascending: false }),
+      .order('started_at', { ascending: true }),
   ]);
 
   const users = (usersR.data ?? []) as UserProfile[];
