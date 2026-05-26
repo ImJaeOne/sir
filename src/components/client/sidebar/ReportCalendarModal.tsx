@@ -59,11 +59,13 @@ export function ReportCalendarModal({
   onSelect,
   onClose,
 }: ReportCalendarModalProps) {
-  // 현재 보고 있는 보고서 type 에 따라 초기 모드 결정
+  // 현재 보고 있는 보고서 type 에 따라 초기 모드 결정.
+  // 전체 보기(currentReportId 없음) 진입 시 — 가장 넓은 기간을 다루는 초기 종합으로.
   const [mode, setMode] = useState<Mode>(() => {
     const current = reports.find((r) => r.id === currentReportId);
     if (current?.type === 'daily') return 'daily';
     if (current?.type === 'initial') return 'monthly';
+    if (!currentReportId) return 'monthly';
     return 'weekly';
   });
 
@@ -74,9 +76,18 @@ export function ReportCalendarModal({
   );
 
   const [selectedReportId, setSelectedReportId] = useState<string | undefined>(currentReportId);
+  // 달력 시점 — 현재 보고서 있으면 그 period_end, 없으면 최신 보고서의 period_end 로 폴백.
+  // 폴백 없으면 month 가 undefined 라 nnnn년 n월 라벨이 비어 보이는 버그 발생.
   const [month, setMonth] = useState<Date | undefined>(() => {
     const current = reports.find((r) => r.id === currentReportId);
-    return current?.period_end ? (parseDate(current.period_end) ?? undefined) : undefined;
+    if (current?.period_end) return parseDate(current.period_end) ?? undefined;
+    const latestEnd = reports
+      .map((r) => r.period_end)
+      .filter((d): d is string => !!d)
+      .sort()
+      .pop();
+    if (latestEnd) return parseDate(latestEnd) ?? undefined;
+    return new Date();
   });
 
   // 날짜 → 보고서 매핑 (현재 모드 내에서만)

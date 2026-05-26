@@ -35,34 +35,30 @@ export function CrisisProcessedReports({
   onUpgradeClick,
 }: CrisisProcessedReportsProps) {
   return (
-    <div className="flex flex-col flex-1 min-h-0">
-      <ReportCard
-        px={20}
-        py={!hasArmor ? 32 : 10}
-        className="flex-1 min-h-0 flex flex-col"
-      >
+    <div>
+      <ReportCard px={20} py={!hasArmor ? 32 : 10}>
         {!hasArmor ? (
-          <div className="flex-1 min-h-0 flex items-center justify-center">
+          <div className="flex items-center justify-center py-10">
             <UpgradePrompt onClick={onUpgradeClick} />
           </div>
         ) : reports.length === 0 ? (
-          <div className="flex-1 min-h-0 flex flex-col">
-            <div className="flex-1 min-h-0 flex items-center justify-center">
+          <>
+            <div className="flex items-center justify-center py-10">
               <EmptyState message="처리된 내역이 없습니다." />
             </div>
-            <p className="text-xs text-text-muted text-center py-2 shrink-0">총 0건</p>
-          </div>
+            <p className="text-xs text-text-muted text-center py-2">총 0건</p>
+          </>
         ) : (
-          <div className="flex-1 min-h-0 flex flex-col">
+          <>
             <DesktopTable reports={reports} />
             <MobileList reports={reports} />
-            <p className="text-xs text-text-muted text-center py-2 shrink-0">
+            <p className="text-xs text-text-muted text-center py-2">
               총 {reports.length}건
             </p>
-          </div>
+          </>
         )}
       </ReportCard>
-      <p className="text-xs text-text-muted mt-3 leading-relaxed shrink-0">
+      <p className="text-xs text-text-muted mt-3 leading-relaxed">
         공휴일에는 신고 처리가 불가합니다. 공휴일에 신고를 요청하시는 경우, 공휴일 다음 영업일부터 순차적으로 신고 처리를 진행합니다.
       </p>
     </div>
@@ -86,9 +82,9 @@ function UpgradePrompt({ onClick }: { onClick: () => void }) {
 
 function DesktopTable({ reports }: { reports: RiskReport[] }) {
   return (
-    <div className="hidden lg:flex flex-col flex-1 min-h-0">
+    <div className="hidden lg:block">
       <div
-        className="grid border-b border-border-light py-3 px-3 text-xs font-semibold text-text-muted text-center shrink-0"
+        className="grid border-b border-border-light py-3 px-3 text-xs font-semibold text-text-muted text-center"
         style={{ gridTemplateColumns: COL_TEMPLATE }}
       >
         <div>신고일</div>
@@ -97,7 +93,7 @@ function DesktopTable({ reports }: { reports: RiskReport[] }) {
         <div>신고 게시물</div>
         <div>처리 결과</div>
       </div>
-      <div className="flex-1 min-h-0 overflow-y-auto">
+      <div className="max-h-[600px] overflow-y-auto">
         {reports.map((rr) => {
           const statusCfg = STATUS_STYLES[rr.status] ?? { label: rr.status, className: 'bg-slate-100 text-slate-600' };
           return (
@@ -144,7 +140,7 @@ function DesktopTable({ reports }: { reports: RiskReport[] }) {
 
 function MobileList({ reports }: { reports: RiskReport[] }) {
   return (
-    <div className="lg:hidden flex flex-col gap-3 py-3 flex-1 min-h-0 overflow-y-auto">
+    <div className="lg:hidden flex flex-col gap-3 py-3 max-h-[400px] overflow-y-auto">
       {reports.map((rr) => {
         const statusCfg = STATUS_STYLES[rr.status] ?? { label: rr.status, className: 'bg-slate-100 text-slate-600' };
         return (

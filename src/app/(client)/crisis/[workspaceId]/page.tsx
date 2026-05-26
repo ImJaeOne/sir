@@ -129,8 +129,8 @@ export default function CrisisCenterPage() {
   const loading = itemsLoading || reportsLoading;
 
   return (
-    <div className="h-full bg-white flex flex-col">
-      <div className="mx-auto w-full lg:w-[1200px] px-4 lg:px-10 py-6 lg:py-10 flex flex-col gap-6 flex-1 min-h-0">
+    <div className="bg-white">
+      <div className="mx-auto w-full lg:w-[1200px] px-4 lg:px-10 py-6 lg:py-10 flex flex-col gap-6">
         <CrisisHeader companyName={workspace?.company_name} />
 
         {/* 탭 + 기간 필터 — 콘텐츠 컨트롤 한 줄 */}
@@ -176,11 +176,7 @@ export default function CrisisCenterPage() {
         {!armorReady || loading ? (
           <Loading />
         ) : activeTab === 'detection' ? (
-          <ReportCard
-            px={20}
-            py={10}
-            className="flex-1 min-h-0 flex flex-col"
-          >
+          <ReportCard px={20} py={10}>
             <RiskTable
               riskItems={riskItems ?? []}
               workspaceId={workspaceId}
@@ -192,7 +188,6 @@ export default function CrisisCenterPage() {
               allowReport={hasArmor}
               sessionToReportMap={sessionToReportMap ?? undefined}
               reportTypeMap={reportTypeMap}
-              fillHeight
             />
           </ReportCard>
         ) : (
