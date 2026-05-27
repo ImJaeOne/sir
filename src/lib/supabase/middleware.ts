@@ -5,8 +5,6 @@ import type { Database } from '@/types/database.types';
 import { resolveUserReportPath } from '@/lib/auth/resolveLandingPath';
 
 export async function updateSession(request: NextRequest) {
-  const _navT0 = Date.now();
-  const _navPath = request.nextUrl.pathname;
   // /report-pdf — Playwright headless 가 URL 토큰(?at/?rt) 으로 자체 setSession 하므로
   // middleware 의 cookie 기반 인증 검사를 통째로 우회. (matcher negative lookahead 가
   // 일부 환경에서 안 먹어 코드 레벨 early return 으로 처리)
@@ -37,29 +35,16 @@ export async function updateSession(request: NextRequest) {
     },
   );
 
-  const _authT0 = Date.now();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const _authMs = Date.now() - _authT0;
 
   const pathname = request.nextUrl.pathname;
   const isAuthPage = pathname.startsWith('/auth/login') || pathname.startsWith('/auth/signup');
   const isCallback = pathname.startsWith('/auth/callback');
 
-  let _roleMs = 0;
-  let _roleCalls = 0;
-  const _measuredGetRole = async () => {
-    const t = Date.now();
-    const r = await getUserRole(supabase, user!.id);
-    _roleMs += Date.now() - t;
-    _roleCalls += 1;
-    return r;
-  };
-
   // 미인증 사용자 → 로그인 페이지로 리다이렉트
   if (!user && !isAuthPage && !isCallback) {
-    console.log(`[NAV] middleware ${_navPath}: ${Date.now() - _navT0}ms (auth=${_authMs}ms, redirect=login)`);
     const url = request.nextUrl.clone();
     url.pathname = '/auth/login';
     return NextResponse.redirect(url);
@@ -69,8 +54,7 @@ export async function updateSession(request: NextRequest) {
   if (user) {
     // auth 페이지 접근 → 역할에 따라 리다이렉트
     if (isAuthPage) {
-      const role = await _measuredGetRole();
-      console.log(`[NAV] middleware ${_navPath}: ${Date.now() - _navT0}ms (auth=${_authMs}ms, role×${_roleCalls}=${_roleMs}ms, redirect=auth-page)`);
+      const role = await getUserRole(supabase, user.id);
       const url = request.nextUrl.clone();
       url.pathname = role === 'user' ? '/' : '/workspace';
       return NextResponse.redirect(url);
@@ -85,15 +69,13 @@ export async function updateSession(request: NextRequest) {
       pathname.startsWith('/crawl-history');
     const isSuperAdminRoute = pathname.startsWith('/users') || pathname.startsWith('/crawl-history');
     if (isAdminRoute) {
-      const role = await _measuredGetRole();
+      const role = await getUserRole(supabase, user.id);
       if (role === 'user') {
-        console.log(`[NAV] middleware ${_navPath}: ${Date.now() - _navT0}ms (auth=${_authMs}ms, role×${_roleCalls}=${_roleMs}ms, redirect=admin-block)`);
         const url = request.nextUrl.clone();
         url.pathname = '/';
         return NextResponse.redirect(url);
       }
       if (isSuperAdminRoute && role !== 'super_admin') {
-        console.log(`[NAV] middleware ${_navPath}: ${Date.now() - _navT0}ms (auth=${_authMs}ms, role×${_roleCalls}=${_roleMs}ms, redirect=super-admin-block)`);
         const url = request.nextUrl.clone();
         url.pathname = '/';
         return NextResponse.redirect(url);
@@ -103,10 +85,9 @@ export async function updateSession(request: NextRequest) {
     // / (홈) — user 역할은 (app) 레이아웃(관리자 사이드바) 진입 자체를 막고
     // 본인 최신 published report 로 직접 이동. admin/super_admin 은 (app)/page.tsx 가 홈 대시보드 렌더.
     if (pathname === '/') {
-      const role = await _measuredGetRole();
+      const role = await getUserRole(supabase, user.id);
       if (role === 'user') {
         const target = (await resolveUserReportPath(supabase, user.id)) ?? '/no-report';
-        console.log(`[NAV] middleware ${_navPath}: ${Date.now() - _navT0}ms (auth=${_authMs}ms, role×${_roleCalls}=${_roleMs}ms, redirect=user-report)`);
         const url = request.nextUrl.clone();
         url.pathname = target;
         return NextResponse.redirect(url);
@@ -114,7 +95,6 @@ export async function updateSession(request: NextRequest) {
     }
   }
 
-  console.log(`[NAV] middleware ${_navPath}: ${Date.now() - _navT0}ms (auth=${_authMs}ms, role×${_roleCalls}=${_roleMs}ms)`);
   return supabaseResponse;
 }
 

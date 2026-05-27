@@ -59,11 +59,8 @@ export async function loadAdminHome(
   userId: string,
   windowHours: AdminHomeWindowHours = 24,
 ): Promise<AdminHomeData> {
-  const _t0 = Date.now();
   const supabase = await createClient();
-  const _tScope = Date.now();
   const assignedIds = await resolveScope(role, userId);
-  const _scopeMs = Date.now() - _tScope;
   const scope: 'all' | 'assigned' = assignedIds === null ? 'all' : 'assigned';
   const generatedAt = new Date().toISOString();
   const since = new Date(Date.now() - windowHours * 60 * 60 * 1000).toISOString();
@@ -131,7 +128,6 @@ export async function loadAdminHome(
     .gte('updated_at', since);
   if (assignedIds) sessionQuery.in('workspace_id', assignedIds);
 
-  const _tAll = Date.now();
   const [
     { data: pipelineRows },
     { data: riskRows, count: riskCount },
@@ -147,7 +143,6 @@ export async function loadAdminHome(
     snsCritQuery,
     sessionQuery,
   ]);
-  const _allMs = Date.now() - _tAll;
 
   const failedPipelines: FailedPipelineRun[] = (pipelineRows ?? []).map((r) => ({
     id: r.id as string,
@@ -169,11 +164,6 @@ export async function loadAdminHome(
   }));
 
   const newCriticalCount = (newsCrit.count ?? 0) + (commCrit.count ?? 0) + (snsCrit.count ?? 0);
-
-  console.log(
-    `[NAV] loadAdminHome: ${Date.now() - _t0}ms ` +
-    `(scope=${_scopeMs}ms, parallel6=${_allMs}ms)`,
-  );
 
   const alertMap = new Map<string, WorkspaceAlert>();
   for (const row of failedSessions ?? []) {
