@@ -13,17 +13,13 @@ export default async function HomePage({
 }: {
   searchParams: Promise<{ window?: string }>;
 }) {
-  const _t0 = Date.now();
   const user = await getCurrentUser();
   if (!user) redirect('/auth/login');
   // user 역할 분기는 (app)/layout.tsx 에서 처리되므로 여기선 admin/super_admin 만 도달.
 
   const sp = await searchParams;
   const windowHours = parseAdminHomeWindow(sp.window);
-  const _tHome0 = Date.now();
   const data = await loadAdminHome(user.role, user.id, windowHours);
-  const _homeMs = Date.now() - _tHome0;
-  console.log(`[NAV] page / : ${Date.now() - _t0}ms (loadAdminHome=${_homeMs}ms)`);
   const greetingName = user.companyName || user.email.split('@')[0];
   const roleLabel = user.role === 'super_admin' ? '최고 관리자' : '관리자';
 
