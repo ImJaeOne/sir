@@ -59,8 +59,11 @@ export async function loadAdminHome(
   userId: string,
   windowHours: AdminHomeWindowHours = 24,
 ): Promise<AdminHomeData> {
+  const _t0 = Date.now();
   const supabase = await createClient();
+  const _tScope = Date.now();
   const assignedIds = await resolveScope(role, userId);
+  const _scopeMs = Date.now() - _tScope;
   const scope: 'all' | 'assigned' = assignedIds === null ? 'all' : 'assigned';
   const generatedAt = new Date().toISOString();
   const since = new Date(Date.now() - windowHours * 60 * 60 * 1000).toISOString();
@@ -79,7 +82,8 @@ export async function loadAdminHome(
     };
   }
 
-  // A. 최근 24h 실패 pipeline_runs
+  // 6개 쿼리 빌더를 모두 만들어 두고 Promise.all 로 한 번에 발사.
+  // (기존: scope → A → B1 → B2(병렬 3개) → C 가 직렬이라 가장 느린 쿼리의 합으로 1초+)
   const pipelineQuery = supabase
     .from('pipeline_runs')
     .select('id, workspace_id, report_type, started_at, error_stage, error_message, workspaces!inner(company_name)')
@@ -88,7 +92,63 @@ export async function loadAdminHome(
     .order('started_at', { ascending: false })
     .limit(10);
   if (assignedIds) pipelineQuery.in('workspace_id', assignedIds);
-  const { data: pipelineRows } = await pipelineQuery;
+
+  const riskQuery = supabase
+    .from('risk_reports')
+    .select('id, workspace_id, title, critical_type, requested_at, workspaces!inner(company_name)', {
+      count: 'exact',
+    })
+    .not('status', 'in', '("resolved","rejected")')
+    .order('requested_at', { ascending: false })
+    .limit(5);
+  if (assignedIds) riskQuery.in('workspace_id', assignedIds);
+
+  const newsCritQuery = supabase
+    .from('news_items')
+    .select('id', { count: 'exact', head: true })
+    .not('critical_type', 'is', null)
+    .gte('created_at', since);
+  if (assignedIds) newsCritQuery.in('workspace_id', assignedIds);
+
+  const commCritQuery = supabase
+    .from('community_items')
+    .select('id', { count: 'exact', head: true })
+    .not('critical_type', 'is', null)
+    .gte('created_at', since);
+  if (assignedIds) commCritQuery.in('workspace_id', assignedIds);
+
+  const snsCritQuery = supabase
+    .from('sns_items')
+    .select('id', { count: 'exact', head: true })
+    .not('critical_type', 'is', null)
+    .gte('created_at', since);
+  if (assignedIds) snsCritQuery.in('workspace_id', assignedIds);
+
+  const sessionQuery = supabase
+    .from('sessions')
+    .select('workspace_id, report_id, workspaces!inner(company_name)')
+    .eq('status', 'failed')
+    .gte('updated_at', since);
+  if (assignedIds) sessionQuery.in('workspace_id', assignedIds);
+
+  const _tAll = Date.now();
+  const [
+    { data: pipelineRows },
+    { data: riskRows, count: riskCount },
+    newsCrit,
+    commCrit,
+    snsCrit,
+    { data: failedSessions },
+  ] = await Promise.all([
+    pipelineQuery,
+    riskQuery,
+    newsCritQuery,
+    commCritQuery,
+    snsCritQuery,
+    sessionQuery,
+  ]);
+  const _allMs = Date.now() - _tAll;
+
   const failedPipelines: FailedPipelineRun[] = (pipelineRows ?? []).map((r) => ({
     id: r.id as string,
     workspace_id: r.workspace_id as string,
@@ -99,17 +159,6 @@ export async function loadAdminHome(
     error_message: (r.error_message as string | null) ?? null,
   }));
 
-  // B-1. 신고 대행 대기 (status NOT IN resolved/rejected)
-  const riskQuery = supabase
-    .from('risk_reports')
-    .select('id, workspace_id, title, critical_type, requested_at, workspaces!inner(company_name)', {
-      count: 'exact',
-    })
-    .not('status', 'in', '("resolved","rejected")')
-    .order('requested_at', { ascending: false })
-    .limit(5);
-  if (assignedIds) riskQuery.in('workspace_id', assignedIds);
-  const { data: riskRows, count: riskCount } = await riskQuery;
   const pendingRiskReports: PendingRiskReport[] = (riskRows ?? []).map((r) => ({
     id: r.id as string,
     workspace_id: r.workspace_id as string,
@@ -119,46 +168,12 @@ export async function loadAdminHome(
     requested_at: r.requested_at as string,
   }));
 
-  // B-2. 최근 24h 내 등록된 critical 콘텐츠 총합 (news + community + sns)
-  const [newsCrit, commCrit, snsCrit] = await Promise.all([
-    (() => {
-      const q = supabase
-        .from('news_items')
-        .select('id', { count: 'exact', head: true })
-        .not('critical_type', 'is', null)
-        .gte('created_at', since);
-      if (assignedIds) q.in('workspace_id', assignedIds);
-      return q;
-    })(),
-    (() => {
-      const q = supabase
-        .from('community_items')
-        .select('id', { count: 'exact', head: true })
-        .not('critical_type', 'is', null)
-        .gte('created_at', since);
-      if (assignedIds) q.in('workspace_id', assignedIds);
-      return q;
-    })(),
-    (() => {
-      const q = supabase
-        .from('sns_items')
-        .select('id', { count: 'exact', head: true })
-        .not('critical_type', 'is', null)
-        .gte('created_at', since);
-      if (assignedIds) q.in('workspace_id', assignedIds);
-      return q;
-    })(),
-  ]);
   const newCriticalCount = (newsCrit.count ?? 0) + (commCrit.count ?? 0) + (snsCrit.count ?? 0);
 
-  // C. 이상 ws — 최근 24h 에 failed 세션이 있는 ws
-  const sessionQuery = supabase
-    .from('sessions')
-    .select('workspace_id, report_id, workspaces!inner(company_name)')
-    .eq('status', 'failed')
-    .gte('updated_at', since);
-  if (assignedIds) sessionQuery.in('workspace_id', assignedIds);
-  const { data: failedSessions } = await sessionQuery;
+  console.log(
+    `[NAV] loadAdminHome: ${Date.now() - _t0}ms ` +
+    `(scope=${_scopeMs}ms, parallel6=${_allMs}ms)`,
+  );
 
   const alertMap = new Map<string, WorkspaceAlert>();
   for (const row of failedSessions ?? []) {
