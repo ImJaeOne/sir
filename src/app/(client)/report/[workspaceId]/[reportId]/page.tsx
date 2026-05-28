@@ -94,11 +94,9 @@ function ClientReportContent() {
   if (pdfMode && !isDaily) {
     return (
       <div className="lg:min-w-fit">
+        <ReportHeader workspaceId={workspaceId} reportId={reportId} showPdfButton={false} fullWidth />
         <SectionBg color="bg-light" id="section-highlight">
-          <div className="flex flex-col lg:gap-10">
-            <ReportHeader workspaceId={workspaceId} reportId={reportId} showPdfButton={false} />
-            <Highlight workspaceId={workspaceId} reportId={reportId} pdfMode />
-          </div>
+          <Highlight workspaceId={workspaceId} reportId={reportId} pdfMode />
         </SectionBg>
         <SectionBg color="bg-light" id="section-reputation">
           <OnlineReputation workspaceId={workspaceId} reportId={reportId} pdfMode />
@@ -144,9 +142,10 @@ function ClientReportContent() {
   // 탭 모드: ReportHeader 고정 + 선택 섹션만 렌더 (weekly / initial)
   return (
     <div className="lg:min-w-fit">
-      <SectionBg color="bg-light">
-        <ReportHeader workspaceId={workspaceId} reportId={reportId} showPdfButton={false} />
-      </SectionBg>
+      <ReportHeader workspaceId={workspaceId} reportId={reportId} showPdfButton={false} fullWidth />
+
+      {/* 헤더와 탭 사이 여백 — 풀폭 accent 헤더와 시각적 분리 */}
+      <div className="hidden lg:block h-8" style={{ backgroundColor: 'var(--color-bg-light)' }} />
 
       {/* 섹션 탭 — 모든 SectionBg 바깥에 두어 스크롤 전 구간에서 sticky 유효.
           모바일은 MobileFab(ClientShell) 이 섹션 이동을 담당하므로 lg 이상에서만 노출. */}
@@ -163,14 +162,20 @@ function ClientReportContent() {
                   key={s.id}
                   type="button"
                   onClick={() => handleTabClick(s.id)}
-                  className={`lg:flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold border-b-2 -mb-px transition-colors cursor-pointer whitespace-nowrap ${
+                  className={`group relative lg:flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold cursor-pointer whitespace-nowrap transition-colors ${
                     active
-                      ? 'border-slate-700 text-slate-800'
-                      : 'border-transparent text-slate-400 hover:text-slate-600'
+                      ? 'text-bg-accent'
+                      : 'text-slate-400 hover:text-bg-accent'
                   }`}
                 >
-                  <s.Icon size={16} color={active ? '#1E293B' : '#828EA6'} />
+                  <s.Icon size={16} color="currentColor" />
                   {s.label}
+                  <span
+                    aria-hidden
+                    className={`pointer-events-none absolute left-0 right-0 -bottom-px h-0.5 bg-bg-accent origin-center transition-transform duration-300 ease-out ${
+                      active ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'
+                    }`}
+                  />
                 </button>
               );
             })}
