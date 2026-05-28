@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { History, ChevronDown, ChevronUp, Sparkles } from 'lucide-react';
+import { ChevronDown, ChevronUp, History, Sparkles } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
 import { useWorkspace } from '@/hooks/workspace/useWorkspaceQuery';
@@ -72,20 +72,19 @@ export default function InsightsHistoryPage() {
 
   return (
     <div className="h-full bg-white overflow-y-auto">
-      <div className="mx-auto w-full max-w-[1080px] px-4 lg:px-10 py-7 lg:py-10 flex flex-col gap-6">
+      <div className="mx-auto w-full max-w-[1240px] px-4 lg:px-10 py-7 lg:py-10 flex flex-col gap-6">
         {/* 헤더 ─────────────────────────────────── */}
-        <header className="flex flex-col gap-1.5">
-          <div className="flex items-center gap-2 text-xs text-slate-400 font-medium">
-            <History size={13} className="text-slate-300" />
-            <span>SIR · Insights History</span>
+        <div className="flex flex-col gap-3 bg-bg-dark px-5 py-5 lg:px-10 lg:py-8 rounded-xl">
+          <div className="flex items-center gap-2.5">
+            <History size={24} className="text-violet-400" />
+            <h1 className="text-xl lg:text-2xl font-bold text-white">
+              {workspace?.company_name ?? '워크스페이스'} 분석 히스토리
+            </h1>
           </div>
-          <h1 className="text-[26px] lg:text-[28px] font-bold tracking-[-0.02em] text-slate-900 leading-[1.2]">
-            {workspace?.company_name ?? '워크스페이스'} 분석 히스토리
-          </h1>
-          <p className="text-[13px] text-slate-500 leading-[1.6] max-w-[860px]">
+          <p className="text-xs lg:text-sm text-text-muted">
             인사이트에서 실행한 AI 분석 기록을 시간순으로 모아 봅니다. 각 항목을 클릭하면 본문이 펼쳐집니다.
           </p>
-        </header>
+        </div>
 
         {/* 필터 ─────────────────────────────────── */}
         <div className="rounded-2xl bg-slate-50/70 border border-slate-200/80 px-4 lg:px-5 py-3.5 flex items-center gap-3 flex-wrap">

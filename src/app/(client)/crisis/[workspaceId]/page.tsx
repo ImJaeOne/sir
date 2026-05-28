@@ -130,7 +130,7 @@ export default function CrisisCenterPage() {
 
   return (
     <div className="bg-white">
-      <div className="mx-auto w-full lg:w-[1200px] px-4 lg:px-10 py-6 lg:py-10 flex flex-col gap-6">
+      <div className="mx-auto w-full max-w-[1240px] px-4 lg:px-10 py-6 lg:py-10 flex flex-col gap-6">
         <CrisisHeader companyName={workspace?.company_name} />
 
         {/* 탭 + 기간 필터 — 콘텐츠 컨트롤 한 줄 */}

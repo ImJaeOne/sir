@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { TrendingDown, Activity, MessageSquare, Calendar } from 'lucide-react';
+import { TrendingDown, Activity, MessageSquare, Calendar, LineChart } from 'lucide-react';
 import { useWorkspace } from '@/hooks/workspace/useWorkspaceQuery';
 import {
   useMonitoringDaily,
@@ -240,19 +240,18 @@ export default function MonitoringPage() {
     <div className="h-full bg-white overflow-y-auto">
       <div className="mx-auto w-full max-w-[1240px] px-4 lg:px-10 py-7 lg:py-10 flex flex-col gap-7">
         {/* 헤더 ─────────────────────────────────────────── */}
-        <header className="flex flex-col gap-1.5">
-          <div className="flex items-center gap-2 text-xs text-slate-400 font-medium">
-            <Activity size={13} className="text-slate-300" />
-            <span>SIR · Insight</span>
+        <div className="flex flex-col gap-3 bg-bg-dark px-5 py-5 lg:px-10 lg:py-8 rounded-xl">
+          <div className="flex items-center gap-2.5">
+            <LineChart size={24} className="text-blue-400" />
+            <h1 className="text-xl lg:text-2xl font-bold text-white">
+              {workspace?.company_name ?? '워크스페이스'} 인사이트
+            </h1>
           </div>
-          <h1 className="text-[26px] lg:text-[28px] font-bold tracking-[-0.02em] text-slate-900 leading-[1.2]">
-            {workspace?.company_name ?? '워크스페이스'} 인사이트
-          </h1>
-          <p className="text-[13px] text-slate-500 leading-[1.6] max-w-[860px]">
-            워크스페이스 전체 누적 수치와 최신 주가를 상단에 고정 표시합니다. 아래 프리셋으로 차트의
-            기간 범위를 조정할 수 있습니다.
+          <p className="text-xs lg:text-sm text-text-muted">
+            수집된 온라인 평판 데이터와 주가 간 상관관계를 분석해 효과적인 기업가치 관리를 위한
+            인사이트를 얻을 수 있습니다.
           </p>
-        </header>
+        </div>
 
         {/* KPI (기간 무관) ──────────────────────────────── */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3.5">
