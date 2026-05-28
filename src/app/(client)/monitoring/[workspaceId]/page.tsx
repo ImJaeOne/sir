@@ -247,7 +247,7 @@ export default function MonitoringPage() {
               {workspace?.company_name ?? '워크스페이스'} 인사이트
             </h1>
           </div>
-          <p className="text-xs lg:text-sm text-text-muted">
+          <p className="text-xs lg:text-sm font-medium text-slate-300">
             수집된 온라인 평판 데이터와 주가 간 상관관계를 분석해 효과적인 기업가치 관리를 위한
             인사이트를 얻을 수 있습니다.
           </p>
