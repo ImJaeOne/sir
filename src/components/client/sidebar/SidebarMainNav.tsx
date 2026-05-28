@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import { useParams, usePathname, useRouter } from 'next/navigation';
 import { FileText, ShieldAlert, LineChart, History } from 'lucide-react';
 import { useReports } from '@/hooks/workspace/useWorkspaceQuery';
+import { useLastReportStore } from '@/store/lastReport';
 
 interface SidebarMainNavProps {
   isOpen: boolean;
@@ -17,14 +18,17 @@ export function SidebarMainNav({ isOpen }: SidebarMainNavProps) {
 
   const workspaceId = (params?.workspaceId as string | undefined) ?? '';
   const { data: reports } = useReports(workspaceId);
+  const lastReportId = useLastReportStore((s) => s.lastReportByWorkspace[workspaceId]);
 
-  // 보고서 클릭 시 이동할 URL — 현재 URL 에 reportId 있으면 유지, 없으면 최신 report
+  // 보고서 클릭 시 이동할 URL — 현재 URL reportId 있으면 유지 → 마지막으로 본 보고서(존재 검증) → 최신
   const reportHref = useMemo(() => {
     if (!workspaceId) return '';
     const currentReportId = params?.reportId as string | undefined;
-    const targetId = currentReportId ?? reports?.[0]?.id;
+    const savedId =
+      lastReportId && reports?.some((r) => r.id === lastReportId) ? lastReportId : undefined;
+    const targetId = currentReportId ?? savedId ?? reports?.[0]?.id;
     return targetId ? `/report/${workspaceId}/${targetId}` : '';
-  }, [workspaceId, params?.reportId, reports]);
+  }, [workspaceId, params?.reportId, reports, lastReportId]);
 
   const crisisHref = workspaceId ? `/crisis/${workspaceId}` : '';
   const monitoringHref = workspaceId ? `/monitoring/${workspaceId}` : '';

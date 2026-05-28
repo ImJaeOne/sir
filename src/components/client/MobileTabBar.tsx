@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import { useParams, usePathname, useRouter } from 'next/navigation';
 import { FileText, ShieldAlert, LineChart, History } from 'lucide-react';
 import { useReports } from '@/hooks/workspace/useWorkspaceQuery';
+import { useLastReportStore } from '@/store/lastReport';
 
 /** 모바일 하단 고정 탭 바 — 보고서 / 모니터링 / 위기 대응 센터 */
 export function MobileTabBar() {
@@ -13,13 +14,17 @@ export function MobileTabBar() {
 
   const workspaceId = (params?.workspaceId as string | undefined) ?? '';
   const { data: reports } = useReports(workspaceId);
+  const lastReportId = useLastReportStore((s) => s.lastReportByWorkspace[workspaceId]);
 
+  // 우선순위: 현재 URL reportId → 마지막으로 본 보고서(존재 검증) → 최신 보고서
   const reportHref = useMemo(() => {
     if (!workspaceId) return '';
     const currentReportId = params?.reportId as string | undefined;
-    const targetId = currentReportId ?? reports?.[0]?.id;
+    const savedId =
+      lastReportId && reports?.some((r) => r.id === lastReportId) ? lastReportId : undefined;
+    const targetId = currentReportId ?? savedId ?? reports?.[0]?.id;
     return targetId ? `/report/${workspaceId}/${targetId}` : '';
-  }, [workspaceId, params?.reportId, reports]);
+  }, [workspaceId, params?.reportId, reports, lastReportId]);
 
   const monitoringHref = workspaceId ? `/monitoring/${workspaceId}` : '';
   const historyHref = workspaceId ? `/insights-history/${workspaceId}` : '';
