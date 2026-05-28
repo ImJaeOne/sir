@@ -162,7 +162,7 @@ function ClientReportContent() {
                   key={s.id}
                   type="button"
                   onClick={() => handleTabClick(s.id)}
-                  className={`group relative lg:flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold cursor-pointer whitespace-nowrap transition-colors ${
+                  className={`group relative lg:flex-1 flex items-center justify-center gap-2 px-4 py-3 text-base font-semibold cursor-pointer whitespace-nowrap transition-colors ${
                     active
                       ? 'text-bg-accent'
                       : 'text-slate-400 hover:text-bg-accent'
