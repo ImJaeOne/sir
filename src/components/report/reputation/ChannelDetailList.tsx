@@ -27,6 +27,23 @@ function getTrendLabel(positive: number, neutral: number, negative: number): str
   return '부정 우세';
 }
 
+// 뉴스 채널 "우세" 는 클러스터 단위 sentiment(×기사수) + 미클러스터 기사 로 집계한다.
+// 채널 stat 의 개별 기사 sentiment 로 세면, 같은 패널의 클러스터 배지/필터칩(cluster.sentiment 기준)과
+// 어긋난다. (예: AI 가 positive 로 묶은 클러스터 안에 개별 neutral 기사가 섞이면 pos==neu 동점 → 중립 우세)
+function getNewsTrend(clusters: NewsCluster[], unclustered: ChannelItem[]): string {
+  let positive = 0;
+  let neutral = 0;
+  let negative = 0;
+  const add = (sentiment: string | null | undefined, count: number) => {
+    if (sentiment === 'positive') positive += count;
+    else if (sentiment === 'negative') negative += count;
+    else neutral += count; // null/neutral/미상 — 클러스터 배지의 `?? 'neutral'` 과 동일
+  };
+  for (const c of clusters) add(c.sentiment, c.items.length);
+  for (const i of unclustered) add(i.sentiment, 1);
+  return getTrendLabel(positive, neutral, negative);
+}
+
 export function ChannelDetailList({ channelStats, channelItems, newsClusters }: ChannelDetailListProps) {
   const itemsByChannel = new Map<string, ChannelItem[]>();
   for (const item of channelItems) {
@@ -42,8 +59,9 @@ export function ChannelDetailList({ channelStats, channelItems, newsClusters }: 
 
         if (ch.id === 'news') {
           const unclustered = (itemsByChannel.get('news') ?? []).filter((i) => !i.cluster_id);
+          const newsTrend = getNewsTrend(newsClusters, unclustered);
           return (
-            <ChannelAccordion key={ch.id} name={ch.label} total={ch.value} trend={trend}>
+            <ChannelAccordion key={ch.id} name={ch.label} total={ch.value} trend={newsTrend}>
               <NewsClusterContent clusters={newsClusters} unclustered={unclustered} />
             </ChannelAccordion>
           );
