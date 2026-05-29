@@ -13,6 +13,7 @@ import { ReportDisclaimer } from '@/components/report/ReportDisclaimer';
 import { Loading } from '@/components/ui/Loading';
 import { useReportInfoSuspense } from '@/hooks/report/useReportQuery';
 import { getClientReportSections } from '@/components/client/sidebar/sections';
+import { useLastReportStore } from '@/store/lastReport';
 
 const BG_COLORS = {
   'bg-light': 'var(--color-bg-light)',
@@ -75,6 +76,13 @@ function ClientReportContent() {
   const { data: report } = useReportInfoSuspense(reportId);
   const isDaily = report?.type === 'daily';
   const pdfMode = searchParams?.get('pdf') === '1';
+
+  // 마지막으로 본 보고서 기록 — 다른 페이지 갔다가 "보고서" 로 돌아올 때 복귀 지점.
+  // PDF 내보내기 렌더는 제외 (사용자가 실제로 본 보고서가 아님).
+  const setLastReport = useLastReportStore((s) => s.setLastReport);
+  useEffect(() => {
+    if (!pdfMode && workspaceId && reportId) setLastReport(workspaceId, reportId);
+  }, [pdfMode, workspaceId, reportId, setLastReport]);
 
   const sections = getClientReportSections(report?.type);
   const allowedIds = new Set(sections.map((s) => s.id));

@@ -81,7 +81,7 @@ export default function InsightsHistoryPage() {
               {workspace?.company_name ?? '워크스페이스'} 분석 히스토리
             </h1>
           </div>
-          <p className="text-xs lg:text-sm text-text-muted">
+          <p className="text-xs lg:text-sm font-medium text-slate-300">
             인사이트에서 실행한 AI 분석 기록을 시간순으로 모아 봅니다. 각 항목을 클릭하면 본문이 펼쳐집니다.
           </p>
         </div>

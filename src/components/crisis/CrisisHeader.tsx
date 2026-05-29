@@ -13,7 +13,7 @@ export function CrisisHeader({ companyName }: CrisisHeaderProps) {
         <ShieldAlert size={24} className="text-red-400" />
         <h1 className="text-xl lg:text-2xl font-bold text-white">위기 대응 센터</h1>
       </div>
-      <p className="text-xs lg:text-sm text-text-muted">
+      <p className="text-xs lg:text-sm font-medium text-slate-300">
         {companyName ? `${companyName} · ` : ''}
         리스크 콘텐츠를 확인하고 신고 대행을 요청할 수 있습니다.
       </p>
