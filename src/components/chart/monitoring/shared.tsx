@@ -2,6 +2,15 @@
 
 import type { ReactNode } from 'react';
 import { ReferenceLine } from 'recharts';
+import {
+  BarChart3,
+  Network,
+  Smile,
+  ShieldAlert,
+  Search,
+  Activity,
+  type LucideIcon,
+} from 'lucide-react';
 import type { Channel, CriticalType, MonitoringDayPoint } from '@/lib/api/monitoringApi';
 
 // ── 차트 공용 데이터 타입 ─────────────────────────────────────────────────
@@ -202,25 +211,54 @@ export function CandleBar(props: CandleBarProps) {
 }
 
 // ── 차트 카드 wrapper ─────────────────────────────────────────────────────
+export type ChartKind =
+  | 'volume'
+  | 'channel'
+  | 'sentiment'
+  | 'risk'
+  | 'search'
+  | 'volumeSearch';
+
+// 탭별 의미 아이콘 + 액센트 컬러 — 헤더 칩에 사용. (accent 뒤 '14' = 8% 소프트 배경)
+const CHART_BADGE: Record<ChartKind, { icon: LucideIcon; accent: string }> = {
+  volume: { icon: BarChart3, accent: '#10b981' },
+  channel: { icon: Network, accent: '#6366f1' },
+  sentiment: { icon: Smile, accent: '#8b5cf6' },
+  risk: { icon: ShieldAlert, accent: '#f43f5e' },
+  search: { icon: Search, accent: '#f59e0b' },
+  volumeSearch: { icon: Activity, accent: '#0ea5e9' },
+};
+
 export function ChartCard({
-  title,
+  kind,
   subtitle,
   children,
   loading,
   empty,
 }: {
-  title: string;
+  kind?: ChartKind;
   subtitle?: string;
   children: ReactNode;
   loading?: boolean;
   empty?: boolean;
 }) {
+  const badge = kind ? CHART_BADGE[kind] : null;
+  const BadgeIcon = badge?.icon;
   return (
     <div className="rounded-2xl bg-white border border-slate-200/80 p-5 lg:p-6 flex flex-col gap-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-      <div className="flex flex-col gap-0.5">
-        <h3 className="text-[14px] font-bold text-slate-900 tracking-[-0.005em] m-0">{title}</h3>
-        {subtitle && <p className="text-[11px] text-slate-400 m-0 leading-[1.55]">{subtitle}</p>}
-      </div>
+      {subtitle && (
+        <div className="flex items-center gap-2.5">
+          {badge && BadgeIcon && (
+            <span
+              className="shrink-0 w-9 h-9 rounded-xl flex items-center justify-center"
+              style={{ background: `${badge.accent}14`, color: badge.accent }}
+            >
+              <BadgeIcon size={17} />
+            </span>
+          )}
+          <p className="text-xs lg:text-sm font-normal text-text-muted leading-[1.5] m-0">{subtitle}</p>
+        </div>
+      )}
       {loading ? (
         <div className="h-[260px] rounded-xl bg-slate-50 animate-pulse" />
       ) : empty ? (

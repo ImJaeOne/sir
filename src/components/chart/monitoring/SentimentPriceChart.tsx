@@ -46,7 +46,7 @@ export function SentimentPriceChart({
   const data = merged.map((d, i) => ({ ...d, ...sentimentSeries[i] }));
   return (
     <ChartCard
-      title="감정 분포와 주가"
+      kind="sentiment"
       subtitle="긍정·중립·부정 비율이 주가와 어떻게 맞물리는지 확인합니다."
       loading={loading}
       empty={empty}

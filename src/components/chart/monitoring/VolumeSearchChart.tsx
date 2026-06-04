@@ -29,7 +29,7 @@ export function VolumeSearchChart({ merged, selectedDate, setSelectedDate, loadi
   const empty = !hasSearch && merged.every((d) => d.totalVolume === 0);
   return (
     <ChartCard
-      title="수집량과 검색 관심도"
+      kind="volumeSearch"
       subtitle="외부 관심(검색)과 실제 언급량(수집)이 함께 움직이는지 비교합니다."
       loading={loading}
       empty={empty}
