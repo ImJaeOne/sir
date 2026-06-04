@@ -8,7 +8,7 @@ import {
   getMonitoringAiAnalysisEstimate,
   getMonitoringAiAnalysisHistory,
   getWorkspaceTokenStatus,
-  getMonitoringLifetimeTotals,
+  getMonitoringLatestClose,
   getMonitoringDayItems,
 } from '@/lib/api/monitoringApi';
 import { monitoringKeys } from './monitoringKeys';
@@ -100,11 +100,11 @@ export function useMonitoringAiAnalysisEstimate(workspaceId: string, start: stri
   });
 }
 
-/** 라이프타임 KPI — 기간 탭과 무관한 누적/최신 수치. 상단 카드 3장 전용. */
-export function useMonitoringLifetimeTotals(workspaceId: string) {
+/** 최신 종가 — 기간 탭과 무관. 상단 "현재 주가" 카드 전용. */
+export function useMonitoringLatestClose(workspaceId: string) {
   return useQuery({
-    queryKey: monitoringKeys.lifetimeTotals(workspaceId),
-    queryFn: () => getMonitoringLifetimeTotals(workspaceId),
+    queryKey: monitoringKeys.latestClose(workspaceId),
+    queryFn: () => getMonitoringLatestClose(workspaceId),
     enabled: !!workspaceId,
     staleTime: FIVE_MIN,
   });
