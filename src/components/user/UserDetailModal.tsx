@@ -10,6 +10,7 @@ import { Modal } from '@/components/ui/Modal';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { ContractPeriodPicker } from '@/components/ui/ContractPeriodPicker';
 import { TierPicker } from '@/components/user/TierPicker';
+import { PasswordResetSection } from '@/components/user/PasswordResetSection';
 import { useUpdateUser, useUpdateWorkspaceTokens } from '@/hooks/user/useUserMutation';
 import { useCurrentOrUpcomingSubscription } from '@/hooks/subscription/useSubscriptionQuery';
 import {
@@ -766,6 +767,10 @@ export function UserDetailModal({
               </div>
             )}
           </div>
+        )}
+
+        {isSuperAdmin && (
+          <PasswordResetSection userId={user.id} userEmail={user.email} />
         )}
       </div>
     </Modal>

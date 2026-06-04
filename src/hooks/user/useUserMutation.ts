@@ -5,6 +5,7 @@ import {
   assignWorkspace,
   removeWorkspace,
   updateWorkspaceTokens,
+  resetUserPassword,
 } from '@/lib/api/userApi';
 import { userKeys } from '@/hooks/user/useUserQuery';
 import { workspaceKeys } from '@/hooks/workspace/workspaceKeys';
@@ -69,6 +70,20 @@ export function useUpdateWorkspaceTokens() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: userKeys.workspaceTokens() });
     },
+  });
+}
+
+export interface ResetPasswordInput {
+  userId: string;
+  password: string;
+}
+
+/** super_admin 전용 — 원래 비밀번호 없이 강제 재설정. 서버 route 가 권한 가드.
+ *  비밀번호 변경은 캐시된 쿼리에 영향이 없으므로 invalidate 불필요. */
+export function useResetUserPassword() {
+  return useMutation({
+    mutationFn: (input: ResetPasswordInput) =>
+      resetUserPassword(input.userId, input.password),
   });
 }
 

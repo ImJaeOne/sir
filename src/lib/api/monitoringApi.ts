@@ -354,26 +354,13 @@ export async function getMonitoringChannelMatrix(
     .map(([date, byChannel]) => ({ date, byChannel }));
 }
 
-// ── 라이프타임 KPI (기간 무관, 누적 + 최신) ─────────────────────────
+// ── 최신 종가 — 상단 "현재 주가" 카드 전용 (기간 무관) ─────────────
+// 수집량/리스크 KPI 는 페이지에서 선택 기간 daily/risks 합산으로 산정하므로
+// 여기서는 가장 최근 종가만 단일 쿼리로 가져온다.
 
-export interface MonitoringLifetimeTotals {
-  totalVolume: number;         // 워크스페이스 누적 수집량 (news + sns + community raw rows)
-  lastClose: number | null;    // 가장 최근 종가
-  totalRisk: number;           // 누적 critical_type IS NOT NULL 건수
-}
-
-export async function getMonitoringLifetimeTotals(
+export async function getMonitoringLatestClose(
   workspaceId: string,
-): Promise<MonitoringLifetimeTotals> {
-  const itemTables = ['news_items', 'sns_items', 'community_items'] as const;
-
-  const volCounts = await Promise.all(
-    itemTables.map((t) =>
-      supabase.from(t).select('id', { count: 'exact', head: true }).eq('workspace_id', workspaceId),
-    ),
-  );
-  const totalVolume = volCounts.reduce((s, r) => s + (r.count ?? 0), 0);
-
+): Promise<number | null> {
   const { data: stockRow } = await supabase
     .from('stock_prices')
     .select('close_price')
@@ -381,20 +368,7 @@ export async function getMonitoringLifetimeTotals(
     .order('date', { ascending: false })
     .limit(1)
     .maybeSingle();
-  const lastClose = stockRow?.close_price ?? null;
-
-  const riskCounts = await Promise.all(
-    itemTables.map((t) =>
-      supabase
-        .from(t)
-        .select('id', { count: 'exact', head: true })
-        .eq('workspace_id', workspaceId)
-        .not('critical_type', 'is', null),
-    ),
-  );
-  const totalRisk = riskCounts.reduce((s, r) => s + (r.count ?? 0), 0);
-
-  return { totalVolume, lastClose, totalRisk };
+  return stockRow?.close_price ?? null;
 }
 
 // ── 네이버 데이터랩 라이브 검색 트렌드 ─────────────────────────────

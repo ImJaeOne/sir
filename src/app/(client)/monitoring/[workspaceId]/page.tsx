@@ -9,7 +9,7 @@ import {
   useMonitoringStock,
   useMonitoringRisks,
   useMonitoringChannelMatrix,
-  useMonitoringLifetimeTotals,
+  useMonitoringLatestClose,
 } from '@/hooks/monitoring/useMonitoringQuery';
 import { useMonitoringSearchLive } from '@/hooks/monitoring/useMonitoringSearchLive';
 import {
@@ -55,12 +55,12 @@ const PRESETS = [
 ] as const;
 
 const TABS = [
-  { id: 'A', label: '수집량' },
-  { id: 'E', label: '채널' },
-  { id: 'B', label: '감정' },
-  { id: 'D', label: '리스크' },
-  { id: 'C', label: '검색' },
-  { id: 'F', label: '수집·검색' },
+  { id: 'A', label: '데이터 수집량과 주가 관계' },
+  { id: 'E', label: '채널별 여론과 주가 관계' },
+  { id: 'B', label: '감정 분포와 주가 관계' },
+  { id: 'D', label: '리스크 유형과 주가 관계' },
+  { id: 'C', label: '검색량과 주가 관계' },
+  { id: 'F', label: '데이터 수집량과 검색량 관계' },
 ] as const;
 type TabId = (typeof TABS)[number]['id'];
 
@@ -154,8 +154,12 @@ export default function MonitoringPage() {
       });
   }, [daily, stock, risks, search]);
 
-  // ── KPI (기간 무관 — 누적 수집량 / 최신 종가 / 누적 리스크) ──────
-  const { data: lifetime, isPending: lifetimeLoading } = useMonitoringLifetimeTotals(workspaceId);
+  // ── 현재 주가(최신 종가) — 기간 무관 ──
+  const { data: lastClose, isPending: lastCloseLoading } = useMonitoringLatestClose(workspaceId);
+
+  // ── 선택 기간 KPI — 차트와 동일 소스(merged=daily/risks)로 합산해 카드=차트 일치 보장 ──
+  const periodVolume = useMemo(() => merged.reduce((s, d) => s + d.totalVolume, 0), [merged]);
+  const periodRisk = useMemo(() => merged.reduce((s, d) => s + d.riskTotal, 0), [merged]);
 
   // ── 감정 비율 시계열 (스택 area 용) ────────────────────────────────
   // pos/neg 를 독립 반올림하면 합이 99~101 이 될 수 있어 Y축이 101% 까지 늘어나므로,
@@ -253,31 +257,6 @@ export default function MonitoringPage() {
           </p>
         </div>
 
-        {/* KPI (기간 무관) ──────────────────────────────── */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3.5">
-          <KpiCard
-            icon={<MessageSquare size={14} />}
-            label="총 수집량"
-            value={lifetime ? lifetime.totalVolume.toLocaleString() : '—'}
-            unit="건"
-            loading={lifetimeLoading}
-          />
-          <KpiCard
-            icon={<Activity size={14} />}
-            label="현재 주가"
-            value={lifetime?.lastClose != null ? lifetime.lastClose.toLocaleString() : '—'}
-            unit="원"
-            loading={lifetimeLoading}
-          />
-          <KpiCard
-            icon={<TrendingDown size={14} />}
-            label="총 리스크 건수"
-            value={lifetime ? lifetime.totalRisk.toLocaleString() : '—'}
-            unit="건"
-            loading={lifetimeLoading}
-          />
-        </div>
-
         {/* 기간 프리셋 ───────────────────────────────── */}
         {/* 모바일: 2줄 (1줄=라벨+날짜, 2줄=프리셋) / 데스크톱: 1줄 */}
         <div className="rounded-2xl bg-slate-50/70 border border-slate-200/80 px-4 lg:px-5 py-3.5 flex flex-col gap-2.5 lg:flex-row lg:items-center lg:gap-5">
@@ -310,6 +289,31 @@ export default function MonitoringPage() {
           <span className="hidden lg:inline text-[11px] text-slate-400 tabular-nums ml-auto">
             {start} ~ {end}
           </span>
+        </div>
+
+        {/* KPI — 선택 기간 기준 (현재 주가만 최신 종가) ──────────── */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3.5">
+          <KpiCard
+            icon={<MessageSquare size={14} />}
+            label="수집량"
+            value={periodVolume.toLocaleString()}
+            unit="건"
+            loading={dailyLoading}
+          />
+          <KpiCard
+            icon={<Activity size={14} />}
+            label="현재 주가"
+            value={lastClose != null ? lastClose.toLocaleString() : '—'}
+            unit="원"
+            loading={lastCloseLoading}
+          />
+          <KpiCard
+            icon={<TrendingDown size={14} />}
+            label="리스크 건수"
+            value={periodRisk.toLocaleString()}
+            unit="건"
+            loading={risksLoading}
+          />
         </div>
 
         {/* 탭 ───────────────────────────────────────────── */}
@@ -452,8 +456,12 @@ function KpiCard({
 }
 
 function TabBar({ activeTab, onChange }: { activeTab: TabId; onChange: (id: TabId) => void }) {
+  // 라벨이 길어 가로 스크롤 대신 반응형 그리드로 줄바꿈 처리.
+  // 모바일 2열(3줄) · 태블릿~노트북 3열(2줄) · 와이드(xl) 6열(1줄).
+  // 셀 stretch(grid 기본) + min-h-[44px] 로 버튼 높이 균일 + 터치 타깃 확보.
+  // break-keep: 한국어를 단어(어절) 단위로만 줄바꿈해 "데이터 수집량과 / 주가 관계" 처럼 자연스럽게.
   return (
-    <div className="flex items-center gap-1 overflow-x-auto -mx-1 px-1 pb-1 scrollbar-thin">
+    <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-1.5 lg:gap-2">
       {TABS.map((t) => {
         const active = t.id === activeTab;
         return (
@@ -461,7 +469,7 @@ function TabBar({ activeTab, onChange }: { activeTab: TabId; onChange: (id: TabI
             key={t.id}
             type="button"
             onClick={() => onChange(t.id)}
-            className={`text-[12.5px] font-bold px-3.5 py-2 rounded-lg whitespace-nowrap transition-colors cursor-pointer tracking-[-0.005em] ${
+            className={`min-h-[44px] flex items-center justify-center text-center break-keep leading-tight text-[11.5px] lg:text-[12px] font-bold px-2.5 py-2 rounded-lg transition-colors cursor-pointer tracking-[-0.01em] ${
               active
                 ? 'bg-slate-900 text-white shadow-[0_2px_6px_rgba(15,23,42,0.18)]'
                 : 'bg-white text-slate-500 hover:text-slate-800 border border-slate-200/80 hover:border-slate-300'

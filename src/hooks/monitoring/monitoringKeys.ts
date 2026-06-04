@@ -18,8 +18,8 @@ export const monitoringKeys = {
     ['monitoring', workspaceId, 'aiAnalysisEstimate', start, end] as const,
   tokenStatus: (workspaceId: string) =>
     ['monitoring', workspaceId, 'tokenStatus'] as const,
-  lifetimeTotals: (workspaceId: string) =>
-    ['monitoring', workspaceId, 'lifetimeTotals'] as const,
+  latestClose: (workspaceId: string) =>
+    ['monitoring', workspaceId, 'latestClose'] as const,
   dayItems: (workspaceId: string, date: string) =>
     ['monitoring', workspaceId, 'dayItems', date] as const,
 };
