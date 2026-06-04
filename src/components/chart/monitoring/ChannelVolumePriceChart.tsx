@@ -100,7 +100,7 @@ export function ChannelVolumePriceChart({
       </div>
 
       <ChartCard
-        title="채널별 수집량과 주가"
+        kind="channel"
         subtitle="뉴스·블로그·유튜브·커뮤니티 중 어디서 많이 언급되는지 주가와 함께 봅니다."
         loading={loading}
         empty={empty}

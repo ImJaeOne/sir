@@ -42,7 +42,7 @@ export function SearchPriceChart({
   const hasSearch = merged.some((d) => d.searchNaver != null);
   return (
     <ChartCard
-      title="검색 관심도와 주가"
+      kind="search"
       subtitle="네이버 검색량(0–100)이 주가와 어떻게 움직이는지 비교합니다."
       loading={loading}
       empty={!hasPrice && !hasSearch}

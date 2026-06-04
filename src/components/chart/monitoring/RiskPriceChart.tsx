@@ -41,7 +41,7 @@ export function RiskPriceChart({
   const empty = merged.every((d) => d.riskTotal === 0);
   return (
     <ChartCard
-      title="리스크 유형과 주가"
+      kind="risk"
       subtitle="명예훼손·욕설·루머·스팸 등 유형별 발생량이 주가와 어떻게 맞물리는지 봅니다."
       loading={loading}
       empty={empty}

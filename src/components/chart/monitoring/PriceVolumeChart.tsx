@@ -41,7 +41,7 @@ export function PriceVolumeChart({
   const hasPrice = merged.some((d) => d.close != null);
   return (
     <ChartCard
-      title="주가와 일별 수집량"
+      kind="volume"
       subtitle="매일 얼마나 많은 평판 데이터가 쌓였는지 주가와 함께 봅니다."
       loading={loading}
       empty={!hasPrice}
