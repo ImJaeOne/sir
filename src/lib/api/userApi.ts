@@ -158,6 +158,24 @@ export async function createUser(params: {
   return res.json();
 }
 
+// ── 비밀번호 재설정 (Route Handler 경유, super_admin 전용) ──
+// 원래 비밀번호 없이 service_role 키로 강제 변경. 서버 route 가 super_admin 가드.
+
+export async function resetUserPassword(
+  userId: string,
+  password: string,
+): Promise<void> {
+  const res = await fetch('/api/admin/reset-password', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId, password }),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.detail ?? '비밀번호 재설정 실패');
+  }
+}
+
 // ── 현재 유저 역할 ──
 
 export async function getCurrentRole(): Promise<ProfileRole> {
