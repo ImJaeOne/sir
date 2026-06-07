@@ -173,8 +173,10 @@ export async function getReports(workspaceId: string): Promise<Report[]> {
     // 보고서 목록은 생성시각이 아니라 보고 기간(날짜) 순으로 정렬.
     // created_at 순이면 과거 기간을 나중에 백필한 보고서가 목록 상단으로 튀고,
     // reports[0] 를 기본 보고서로 쓰는 모바일/사이드바가 옛 기간을 가리키게 된다.
+    // 2차 키는 period_start 오름차순: 같은 종료일이면 주간(6/1~6/7)이 그 주
+    // 일간(6/7)보다 위에 와서, 주간이 해당 주 일간 블록의 맨 위에 그룹된다.
     .order('period_end', { ascending: false })
-    .order('period_start', { ascending: false });
+    .order('period_start', { ascending: true });
 
   if (error) throw error;
   return (data ?? []).map((r) => ({
