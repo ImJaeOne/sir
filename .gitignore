@@ -33,3 +33,6 @@ scripts/test-*.mjs
 
 # 백엔드 마이그 (sir-backend/supabase 가 정본)
 supabase/
+
+# Vercel CLI 로컬 링크
+.vercel
