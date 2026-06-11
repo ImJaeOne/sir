@@ -1,7 +1,6 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import dynamic from 'next/dynamic';
 import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { useDeleteRiskReport } from '@/hooks/report/useReportMutation';
@@ -16,6 +15,7 @@ import { RiskTable } from '@/components/report/risk-content/RiskTable';
 import { CrisisHeader } from '@/components/crisis/CrisisHeader';
 import { CrisisProcessedReports } from '@/components/crisis/CrisisProcessedReports';
 import { ReportDisclaimer } from '@/components/report/ReportDisclaimer';
+import { openContactPage } from '@/lib/contact';
 
 const TAB_INFO = {
   detection: {
@@ -32,16 +32,6 @@ const TAB_INFO = {
   },
 } as const;
 type Tab = keyof typeof TAB_INFO;
-
-const ServiceUpgradeModal = dynamic(
-  () =>
-    import('@/components/client/sidebar/ServiceUpgradeModal').then((m) => m.ServiceUpgradeModal),
-  { ssr: false }
-);
-
-const ARMOR_UPGRADE_TITLE = '아머 서비스 신청';
-const ARMOR_UPGRADE_DESCRIPTION = '리스크 콘텐츠 신고 대행 서비스(아머)는 별도 구독이 필요합니다.';
-const ARMOR_UPGRADE_SUB = '아래 양식에 맞춰 접수하시면 신속하게 연락드리겠습니다.';
 
 /** sessions 테이블에서 workspace 의 session→report_id 매핑 조회 */
 function useSessionToReportMap(workspaceId: string) {
@@ -101,7 +91,6 @@ export default function CrisisCenterPage() {
   }, [reportsList]);
   const deleteMutation = useDeleteRiskReport(workspaceId);
 
-  const [showUpgrade, setShowUpgrade] = useState(false);
 
   // requested = 사용자가 요청만 한 상태(취소 가능). 그 외(pending/resolved/rejected) = admin 처리 시작 → 취소 불가.
   const { reportedSourceIds, riskReportBySourceId, processedSourceIds } = useMemo(() => {
@@ -194,20 +183,12 @@ export default function CrisisCenterPage() {
           <CrisisProcessedReports
             reports={processedReports}
             hasArmor={hasArmor}
-            onUpgradeClick={() => setShowUpgrade(true)}
+            onUpgradeClick={openContactPage}
           />
         )}
 
         <ReportDisclaimer />
       </div>
-
-      <ServiceUpgradeModal
-        open={showUpgrade}
-        onClose={() => setShowUpgrade(false)}
-        title={ARMOR_UPGRADE_TITLE}
-        description={ARMOR_UPGRADE_DESCRIPTION}
-        subDescription={ARMOR_UPGRADE_SUB}
-      />
     </div>
   );
 }

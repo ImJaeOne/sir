@@ -1,7 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import dynamic from 'next/dynamic';
+import { useMemo } from 'react';
 import { ShieldAlert } from 'lucide-react';
 import { useRiskItemsSuspense, useRiskReportsSuspense, useReportInfoSuspense, useChannelItemsSuspense } from '@/hooks/report/useReportQuery';
 import { useDeleteRiskReport } from '@/hooks/report/useReportMutation';
@@ -12,12 +11,7 @@ import { Button } from '@/components/ui/Button';
 import { RiskDetectionTable } from '@/components/report/risk-content/RiskDetectionTable';
 import { RiskResultTable } from '@/components/report/risk-content/RiskResultTable';
 import { LiskContentIcon } from '@/components/icons/LiskContentIcon';
-
-const ServiceUpgradeModal = dynamic(
-  () =>
-    import('@/components/client/sidebar/ServiceUpgradeModal').then((m) => m.ServiceUpgradeModal),
-  { ssr: false },
-);
+import { openContactPage } from '@/lib/contact';
 
 interface RiskContentProps {
   workspaceId: string;
@@ -35,7 +29,6 @@ export function RiskContent({ workspaceId, reportId, editable = false, allowRepo
   const { data: channelItems } = useChannelItemsSuspense(workspaceId, reportId);
   const { data: subscription } = useWorkspaceSubscription(workspaceId);
   const deleteMutation = useDeleteRiskReport(workspaceId);
-  const [showUpgrade, setShowUpgrade] = useState(false);
 
   // 그 기간 수집된 콘텐츠가 0건이면 "리스크 0건" vs "데이터 부족" 의미 혼동.
   // 0건이면 분석 불가 안내, 그 외엔 RiskDetectionTable 의 기존 empty state ("리스크 없음") 유지.
@@ -101,7 +94,7 @@ export function RiskContent({ workspaceId, reportId, editable = false, allowRepo
                   <Button
                     variant="outlineAccent"
                     size="lg"
-                    onClick={() => setShowUpgrade(true)}
+                    onClick={openContactPage}
                     className="mt-2"
                   >
                     서비스 신청하기
@@ -124,15 +117,6 @@ export function RiskContent({ workspaceId, reportId, editable = false, allowRepo
           )
         )}
       </ReportSection>
-
-      {!pdfMode && (
-        <ServiceUpgradeModal
-          open={showUpgrade}
-          onClose={() => setShowUpgrade(false)}
-          title="아머 서비스 신청"
-          description="리스크 콘텐츠 신고 대행 서비스(아머)는 별도 구독이 필요합니다."
-        />
-      )}
     </div>
   );
 }
