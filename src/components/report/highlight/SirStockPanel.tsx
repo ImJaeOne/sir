@@ -30,7 +30,7 @@ export function SirStockPanel({ pdfMode, sirStockData }: SirStockPanelProps) {
 
   return (
     <ReportSubSection
-      title="지수 비교(주가 지수 & SIR 지수)"
+      title="주가와 SIR 지수 비교"
       description="주가 지수와 SIR 지수를 이중축으로 배치해 평판 변화가 주가 변화에 미치는 상관관계를 직관적으로 확인할 수 있습니다."
     >
       <ReportCard px={20} py={20}>
