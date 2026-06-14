@@ -17,7 +17,7 @@ import type { SummarySection } from '@/lib/api/reportApi';
 
 const SUMMARY_SECTIONS = [
   {
-    label: '평판 분석',
+    label: '평판 변화 분석',
     icon: ReputationIcon,
     bg: 'bg-bg-blue',
     borderColor: 'border-blue-400',
@@ -49,7 +49,12 @@ interface EditableReputationProps {
   isInitial?: boolean;
 }
 
-export function EditableReputation({ summary, workspaceId, reportId, isInitial = false }: EditableReputationProps) {
+export function EditableReputation({
+  summary,
+  workspaceId,
+  reportId,
+  isInitial = false,
+}: EditableReputationProps) {
   const title = isInitial ? '월간 총평' : '주간 총평';
   const [editing, setEditing] = useState(false);
   const [sections, setSections] = useState<SummarySection[]>(summary);
@@ -302,7 +307,6 @@ export function EditableReputation({ summary, workspaceId, reportId, isInitial =
               ))}
             </div>
           </div>
-
         </div>
       </ReportCard>
     </ReportSubSection>
