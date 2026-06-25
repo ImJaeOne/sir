@@ -1,39 +1,22 @@
 'use client';
 
-import { useMemo } from 'react';
-import { useParams, usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   FileText,
   ShieldAlert,
   LineChart,
   // History,
 } from 'lucide-react';
-import { useReports } from '@/hooks/workspace/useWorkspaceQuery';
-import { useLastReportStore } from '@/store/lastReport';
-
 interface SidebarMainNavProps {
   isOpen: boolean;
+  workspaceId: string;
+  reportHref: string;
 }
 
 /** client 사이드바 상위 2 메뉴 — 보고서 / 위기 대응 센터 */
-export function SidebarMainNav({ isOpen }: SidebarMainNavProps) {
-  const params = useParams();
+export function SidebarMainNav({ isOpen, workspaceId, reportHref }: SidebarMainNavProps) {
   const pathname = usePathname() ?? '';
   const router = useRouter();
-
-  const workspaceId = (params?.workspaceId as string | undefined) ?? '';
-  const { data: reports } = useReports(workspaceId);
-  const lastReportId = useLastReportStore((s) => s.lastReportByWorkspace[workspaceId]);
-
-  // 보고서 클릭 시 이동할 URL — 현재 URL reportId 있으면 유지 → 마지막으로 본 보고서(존재 검증) → 최신
-  const reportHref = useMemo(() => {
-    if (!workspaceId) return '';
-    const currentReportId = params?.reportId as string | undefined;
-    const savedId =
-      lastReportId && reports?.some((r) => r.id === lastReportId) ? lastReportId : undefined;
-    const targetId = currentReportId ?? savedId ?? reports?.[0]?.id;
-    return targetId ? `/report/${workspaceId}/${targetId}` : '';
-  }, [workspaceId, params?.reportId, reports, lastReportId]);
 
   const crisisHref = workspaceId ? `/crisis/${workspaceId}` : '';
   const monitoringHref = workspaceId ? `/monitoring/${workspaceId}` : '';
