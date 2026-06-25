@@ -1,21 +1,16 @@
-type Channel = 'news' | 'blog' | 'youtube' | 'community';
-
-const CHANNELS: { name: string; key: Channel; color: string }[] = [
-  { name: '뉴스', key: 'news', color: '#362cff' },
-  { name: '블로그', key: 'blog', color: '#9747ff' },
-  { name: '유튜브', key: 'youtube', color: '#ff0000' },
-  { name: '커뮤니티', key: 'community', color: '#17d82d' },
-];
+import { cn } from '@/lib/utils';
+import { REPORT_CHANNELS, type ReportChannel } from './channelMeta';
 
 interface CollectionSnapshotProps {
-  channelToday: Record<Channel, number>;
+  channelToday: Record<ReportChannel, number>;
   /** Daily 일 때만 — 평균 막대 tick + 평균 비교 텍스트 활성화. */
-  channelAvg?: Record<Channel, number>;
+  channelAvg?: Record<ReportChannel, number>;
   total: number;
   diff?: number;
   prefix: string;
   period: '일간' | '주간' | '월간';
   isNoData?: boolean;
+  onChannelClick?: (channel: ReportChannel) => void;
 }
 
 export function CollectionSnapshot({
@@ -26,6 +21,7 @@ export function CollectionSnapshot({
   prefix,
   period,
   isNoData,
+  onChannelClick,
 }: CollectionSnapshotProps) {
   const totalAvg = channelAvg
     ? Object.values(channelAvg).reduce((s, v) => s + v, 0)
@@ -36,7 +32,7 @@ export function CollectionSnapshot({
 
   const maxVal = Math.max(
     1,
-    ...CHANNELS.flatMap((c) => [
+    ...REPORT_CHANNELS.flatMap((c) => [
       channelToday[c.key],
       channelAvg ? channelAvg[c.key] : 0,
     ]),
@@ -81,32 +77,65 @@ export function CollectionSnapshot({
         ) : null}
       </div>
 
-      <div className="mt-auto space-y-3 pt-4 h-[172px]">
-        {CHANNELS.map((c) => {
+      <div className="mt-auto space-y-3 pt-4 h-[172px] overflow-visible">
+        {REPORT_CHANNELS.map((c) => {
           const todayVal = channelToday[c.key];
           const avgVal = channelAvg?.[c.key];
-          return (
-            <div key={c.key}>
+          const hasContent = todayVal > 0;
+          const interactive = !!onChannelClick && hasContent;
+          const content = (
+            <>
               <div className="flex items-center gap-2 text-xs mb-1.5">
-                <span className="font-bold text-text-dark">{c.name}</span>
+                <span
+                  className={cn(
+                    'font-bold inline-block origin-left transition-all duration-150',
+                    hasContent ? 'text-text-dark' : 'text-text-muted/60',
+                    interactive && 'group-hover:scale-110',
+                  )}
+                >
+                  {c.name}
+                </span>
                 {avgVal !== undefined && (
                   <span className="ml-auto tabular-nums text-text-muted text-[11px]">
                     평균 {avgVal}
                   </span>
                 )}
                 <span
-                  className={`tabular-nums font-extrabold text-text-dark w-8 text-right ${avgVal === undefined ? 'ml-auto' : ''}`}
+                  className={cn(
+                    'tabular-nums font-extrabold w-8 text-right',
+                    hasContent ? 'text-text-dark' : 'text-text-muted/60',
+                    avgVal === undefined && 'ml-auto',
+                  )}
                 >
                   {todayVal}
                 </span>
               </div>
-              <div className="relative h-2 bg-bg-light rounded-full">
+              <div className="relative h-2 bg-bg-light rounded-full overflow-hidden">
                 <div
-                  className="absolute top-0 left-0 h-full rounded-full"
+                  className="absolute top-0 left-0 h-full rounded-full transition-[width] duration-200"
                   style={{ width: `${(todayVal / maxVal) * 100}%`, backgroundColor: c.color }}
                 />
               </div>
-            </div>
+            </>
+          );
+          return (
+            <button
+              key={c.key}
+              type="button"
+              disabled={!interactive}
+              onClick={() => {
+                if (hasContent) onChannelClick?.(c.key);
+              }}
+              aria-label={`${c.name} 수집 데이터 보기`}
+              className={cn(
+                'group relative z-0 block w-full rounded-md text-left transition-transform duration-150',
+                interactive
+                  ? 'cursor-pointer hover:z-10 hover:-translate-y-0.5 hover:drop-shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300'
+                  : 'cursor-default',
+              )}
+            >
+              {content}
+            </button>
           );
         })}
       </div>
