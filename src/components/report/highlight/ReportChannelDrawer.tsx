@@ -6,7 +6,6 @@ import { cn } from '@/lib/utils';
 import type { ChannelItem } from '@/types/report';
 import {
   PLATFORM_TO_REPORT_CHANNEL,
-  REPORT_CHANNEL_COLOR,
   REPORT_CHANNEL_LABEL,
   type ReportChannel,
 } from './channelMeta';
@@ -144,13 +143,6 @@ function ItemCard({ item, channel }: { item: ChannelItem; channel: ReportChannel
     <>
       <div className="flex items-center gap-1.5">
         <SentimentBadge sentiment={item.sentiment} />
-        <span
-          className="h-2 w-2 rounded-full"
-          style={{ backgroundColor: REPORT_CHANNEL_COLOR[channel] }}
-        />
-        <span className="text-[10.5px] font-semibold text-slate-400">
-          {REPORT_CHANNEL_LABEL[channel]}
-        </span>
       </div>
       <p className="mt-1.5 text-[13px] font-semibold leading-relaxed text-slate-900">
         {item.title}
@@ -236,23 +228,6 @@ export function ReportChannelDrawer({ channel, items, onClose }: ReportChannelDr
     >
       {!channel ? null : (
         <>
-          <div className="px-5 pt-4 shrink-0">
-            <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3">
-              <div className="flex items-center gap-2">
-                <span
-                  className="h-2.5 w-2.5 rounded-full"
-                  style={{ backgroundColor: REPORT_CHANNEL_COLOR[channel] }}
-                />
-                <span className="text-[13px] font-bold text-slate-900">
-                  {REPORT_CHANNEL_LABEL[channel]}
-                </span>
-              </div>
-              <span className="text-[12px] font-semibold tabular-nums text-slate-500">
-                {channelItems.length.toLocaleString()}건
-              </span>
-            </div>
-          </div>
-
           <SentimentTabBar
             value={sentimentTab}
             onChange={setSentimentTab}

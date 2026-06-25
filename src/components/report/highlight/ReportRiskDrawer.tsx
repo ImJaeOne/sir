@@ -4,11 +4,7 @@ import { SideDrawer } from '@/components/ui/SideDrawer';
 import { cn } from '@/lib/utils';
 import type { CriticalType } from '@/types/common';
 import type { RiskItem } from '@/types/report';
-import {
-  REPORT_RISK_COLOR,
-  REPORT_RISK_DESCRIPTION,
-  REPORT_RISK_LABEL,
-} from './riskMeta';
+import { REPORT_RISK_LABEL } from './riskMeta';
 
 interface ReportRiskDrawerProps {
   type: CriticalType | null;
@@ -44,17 +40,11 @@ function formatDate(value?: string | null) {
   }).format(date);
 }
 
-function RiskItemCard({ item, type }: { item: RiskItem; type: CriticalType }) {
+function RiskItemCard({ item }: { item: RiskItem }) {
   const date = formatDate(item.published_at);
   const body = (
     <>
       <div className="flex items-center gap-1.5 flex-wrap">
-        <span
-          className="inline-flex shrink-0 items-center rounded px-1.5 py-0.5 text-[10.5px] font-semibold text-white"
-          style={{ backgroundColor: REPORT_RISK_COLOR[type] }}
-        >
-          {REPORT_RISK_LABEL[type]}
-        </span>
         <span
           className={cn(
             'inline-flex shrink-0 items-center rounded px-1.5 py-0.5 text-[10.5px] font-semibold',
@@ -71,9 +61,6 @@ function RiskItemCard({ item, type }: { item: RiskItem; type: CriticalType }) {
       </div>
       <p className="mt-1.5 text-[13px] font-semibold leading-relaxed text-slate-900">
         {item.title}
-      </p>
-      <p className="mt-1 text-[11.5px] leading-relaxed text-slate-400">
-        {REPORT_RISK_DESCRIPTION[type]}
       </p>
       {item.critical_reason && (
         <p className="mt-1.5 rounded-lg bg-slate-50 px-2.5 py-2 text-[12px] leading-relaxed text-slate-600">
@@ -134,28 +121,6 @@ export function ReportRiskDrawer({ type, items, onClose }: ReportRiskDrawerProps
     >
       {!type ? null : (
         <>
-          <div className="px-5 pt-4 shrink-0">
-            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3">
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2 min-w-0">
-                  <span
-                    className="h-2.5 w-2.5 rounded-full shrink-0"
-                    style={{ backgroundColor: REPORT_RISK_COLOR[type] }}
-                  />
-                  <span className="text-[13px] font-bold text-slate-900 truncate">
-                    {REPORT_RISK_LABEL[type]}
-                  </span>
-                </div>
-                <span className="text-[12px] font-semibold tabular-nums text-slate-500 shrink-0">
-                  {typeItems.length.toLocaleString()}건
-                </span>
-              </div>
-              <p className="mt-1.5 text-[12px] leading-relaxed text-slate-500">
-                {REPORT_RISK_DESCRIPTION[type]}
-              </p>
-            </div>
-          </div>
-
           <div className="flex-1 min-h-0 overflow-y-auto px-5 py-4">
             {typeItems.length === 0 ? (
               <div className="py-10 text-center text-[12px] text-slate-400">
@@ -164,7 +129,7 @@ export function ReportRiskDrawer({ type, items, onClose }: ReportRiskDrawerProps
             ) : (
               <div className="flex flex-col gap-2.5">
                 {typeItems.map((item) => (
-                  <RiskItemCard key={item.id} item={item} type={type} />
+                  <RiskItemCard key={item.id} item={item} />
                 ))}
               </div>
             )}
