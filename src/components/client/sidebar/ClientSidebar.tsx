@@ -44,7 +44,12 @@ export function ClientSidebar({ user = null }: ClientSidebarProps) {
         reportHref={reportHref}
         onToggle={() => setIsOpen((v) => !v)}
       />
-      <SidebarMainNav isOpen={isOpen} workspaceId={workspaceId} reportHref={reportHref} />
+      <SidebarMainNav
+        isOpen={isOpen}
+        workspaceId={workspaceId}
+        reportHref={reportHref}
+        isClientUser={user?.role === 'user'}
+      />
       {isOpen && (
         <div className="flex flex-col gap-2 w-full items-center mb-6">
           {/* PDF 다운로드 / 지난 보고서 — 보고서 메뉴에서만 노출 */}

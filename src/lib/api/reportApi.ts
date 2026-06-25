@@ -802,6 +802,139 @@ export async function getRiskItems(workspaceId: string, reportId?: string): Prom
     .sort((a, b) => (b.published_at ?? '').localeCompare(a.published_at ?? ''));
 }
 
+export interface RiskItemSummary {
+  count: number;
+  latestRiskAt: string | null;
+}
+
+export async function getRiskItemSummary(workspaceId: string): Promise<RiskItemSummary> {
+  const buildCountQuery = (table: 'community_items' | 'sns_items') =>
+    supabase
+      .from(table)
+      .select('id', { count: 'exact', head: true })
+      .eq('workspace_id', workspaceId)
+      .eq('is_relevant', true)
+      .not('critical_type', 'is', null);
+
+  const buildLatestQuery = (table: 'community_items' | 'sns_items') =>
+    supabase
+      .from(table)
+      .select('created_at')
+      .eq('workspace_id', workspaceId)
+      .eq('is_relevant', true)
+      .not('critical_type', 'is', null)
+      .order('created_at', { ascending: false, nullsFirst: false })
+      .limit(1)
+      .maybeSingle();
+
+  const [community, sns, latestCommunity, latestSns] = await Promise.all([
+    buildCountQuery('community_items'),
+    buildCountQuery('sns_items'),
+    buildLatestQuery('community_items'),
+    buildLatestQuery('sns_items'),
+  ]);
+
+  if (community.error) throw community.error;
+  if (sns.error) throw sns.error;
+  if (latestCommunity.error) throw latestCommunity.error;
+  if (latestSns.error) throw latestSns.error;
+
+  const latestRiskAt = [latestCommunity.data?.created_at, latestSns.data?.created_at]
+    .filter((v): v is string => !!v)
+    .sort((a, b) => b.localeCompare(a))[0] ?? null;
+
+  return {
+    count: (community.count ?? 0) + (sns.count ?? 0),
+    latestRiskAt,
+  };
+}
+
+export interface RiskNoticeRead {
+  latestSeenRiskAt: string | null;
+}
+
+async function getAuthenticatedRestHeaders(): Promise<HeadersInit | null> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return null;
+
+  return {
+    apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    Authorization: `Bearer ${session.access_token}`,
+    'Content-Type': 'application/json',
+  };
+}
+
+function buildRestUrl(path: string, params?: URLSearchParams): string {
+  const base = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const query = params?.toString();
+  return `${base}/rest/v1/${path}${query ? `?${query}` : ''}`;
+}
+
+export async function getRiskNoticeRead(workspaceId: string): Promise<RiskNoticeRead> {
+  const headers = await getAuthenticatedRestHeaders();
+  if (!headers) return { latestSeenRiskAt: null };
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { latestSeenRiskAt: null };
+
+  const params = new URLSearchParams({
+    select: 'latest_seen_risk_at',
+    profile_id: `eq.${user.id}`,
+    workspace_id: `eq.${workspaceId}`,
+    limit: '1',
+  });
+
+  const res = await fetch(buildRestUrl('risk_notice_reads', params), {
+    method: 'GET',
+    headers,
+  });
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '');
+    throw new Error(`리스크 알림 확인 상태 조회 실패 (${res.status}): ${detail.slice(0, 120)}`);
+  }
+
+  const rows = (await res.json()) as { latest_seen_risk_at: string | null }[];
+  return { latestSeenRiskAt: rows[0]?.latest_seen_risk_at ?? null };
+}
+
+export async function markRiskNoticeRead(
+  workspaceId: string,
+  latestRiskAt: string
+): Promise<void> {
+  const headers = await getAuthenticatedRestHeaders();
+  if (!headers) return;
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const { data: profile } = await supabase
+    .from('user_profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+  if (profile?.role !== 'user') return;
+
+  const params = new URLSearchParams({ on_conflict: 'profile_id,workspace_id' });
+  const res = await fetch(buildRestUrl('risk_notice_reads', params), {
+    method: 'POST',
+    headers: {
+      ...headers,
+      Prefer: 'resolution=merge-duplicates',
+    },
+    body: JSON.stringify({
+      profile_id: user.id,
+      workspace_id: workspaceId,
+      latest_seen_risk_at: latestRiskAt,
+      seen_at: new Date().toISOString(),
+    }),
+  });
+
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '');
+    throw new Error(`리스크 알림 확인 상태 저장 실패 (${res.status}): ${detail.slice(0, 120)}`);
+  }
+}
+
 // ── 대응 전략 ──
 
 const CATEGORY_LABELS: Record<string, string> = {

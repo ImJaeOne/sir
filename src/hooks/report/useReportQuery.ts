@@ -13,6 +13,8 @@ import {
   getPrevDailySnapshot,
   getRiskReports,
   getResolvedRiskReports,
+  getRiskItemSummary,
+  getRiskNoticeRead,
 } from '@/lib/api/reportApi';
 import type { ChannelItem } from '@/lib/api/reportApi';
 import { workspaceKeys } from '@/hooks/workspace/workspaceKeys';
@@ -28,6 +30,8 @@ export const reportKeys = {
   newsClusters: (id: string) => ['report', id, 'newsClusters'] as const,
   channelStats: (id: string) => ['report', id, 'channelStats'] as const,
   riskItems: (id: string) => ['report', id, 'riskItems'] as const,
+  riskItemSummary: (id: string) => ['report', id, 'riskItemSummary'] as const,
+  riskNoticeRead: (id: string) => ['report', id, 'riskNoticeRead'] as const,
   strategies: (id: string) => ['report', id, 'strategies'] as const,
   prevReport: (id: string, reportId: string) => ['report', id, 'prevReport', reportId] as const,
   prevDailySnapshot: (id: string, periodEnd?: string) => ['report', id, 'prevDailySnapshot', periodEnd ?? ''] as const,
@@ -140,6 +144,26 @@ export function useRiskItems(workspaceId: string, reportId?: string) {
     queryFn: () => getRiskItems(workspaceId, reportId),
     enabled: !!workspaceId,
     ...REPORT_OPTS,
+  });
+}
+
+export function useRiskItemSummary(workspaceId: string, enabled = true) {
+  return useQuery({
+    queryKey: reportKeys.riskItemSummary(workspaceId),
+    queryFn: () => getRiskItemSummary(workspaceId),
+    enabled: enabled && !!workspaceId,
+    staleTime: 30 * 1000,
+    gcTime: 5 * 60 * 1000,
+  });
+}
+
+export function useRiskNoticeRead(workspaceId: string, enabled = true) {
+  return useQuery({
+    queryKey: reportKeys.riskNoticeRead(workspaceId),
+    queryFn: () => getRiskNoticeRead(workspaceId),
+    enabled: enabled && !!workspaceId,
+    staleTime: 30 * 1000,
+    gcTime: 5 * 60 * 1000,
   });
 }
 
