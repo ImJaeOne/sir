@@ -1,14 +1,6 @@
-type CriticalType = 'defamation' | 'insult' | 'rumor' | 'spam';
-
-// 색은 CollectionSnapshot 의 4 채널 팔레트(#362cff/#9747ff/#ff0000/#17d82d) 를
-// risk type 4종에 1:1 매핑. 의미 매칭은 명예훼손=빨강(심각), 욕설=보라(자극),
-// 루머=진파랑(불확실), 스팸=초록(노이즈).
-const RISK_TYPES: { key: CriticalType; label: string; color: string }[] = [
-  { key: 'defamation', label: '명예훼손', color: '#ff0000' },
-  { key: 'insult', label: '욕설/비방', color: '#9747ff' },
-  { key: 'rumor', label: '루머', color: '#362cff' },
-  { key: 'spam', label: '스팸', color: '#17d82d' },
-];
+import { cn } from '@/lib/utils';
+import type { CriticalType } from '@/types/common';
+import { REPORT_RISK_TYPES } from './riskMeta';
 
 // 4 분면 중심 — pill 이 가로로 길어 가로 분리 넓힘, 세로는 cluster 느낌으로 좁힘.
 const QUADRANTS: { x: number; y: number }[] = [
@@ -45,9 +37,18 @@ interface RiskSnapshotProps {
   prefix: string;
   period: '일간' | '주간' | '월간';
   isNoData?: boolean;
+  onRiskTypeClick?: (type: CriticalType) => void;
 }
 
-export function RiskSnapshot({ typeCounts, total, diff, prefix, period, isNoData }: RiskSnapshotProps) {
+export function RiskSnapshot({
+  typeCounts,
+  total,
+  diff,
+  prefix,
+  period,
+  isNoData,
+  onRiskTypeClick,
+}: RiskSnapshotProps) {
   const maxCount = Math.max(1, ...Object.values(typeCounts));
   const d = diff ?? 0;
   const arrow = d > 0 ? '▲' : d < 0 ? '▼' : '─';
@@ -64,7 +65,7 @@ export function RiskSnapshot({ typeCounts, total, diff, prefix, period, isNoData
   const rand = mulberry32(seed || 1);
   const quadrantOrder = shuffle([0, 1, 2, 3], rand);
   // pill 폭 ~25% 라 가로 jitter 작게 ±4%, 세로 ±8%.
-  const positions = RISK_TYPES.map((_, i) => {
+  const positions = REPORT_RISK_TYPES.map((_, i) => {
     const q = QUADRANTS[quadrantOrder[i]];
     const jx = (rand() - 0.5) * 8;
     const jy = (rand() - 0.5) * 16;
@@ -95,23 +96,49 @@ export function RiskSnapshot({ typeCounts, total, diff, prefix, period, isNoData
       </p>
 
       <div className="mt-auto pt-4 relative w-full h-[172px]">
-        {RISK_TYPES.map((t, i) => {
+        {REPORT_RISK_TYPES.map((t, i) => {
           const count = typeCounts[t.key];
+          const hasContent = count > 0;
+          const interactive = !!onRiskTypeClick && hasContent;
           const ratio = count / maxCount;
           return (
             <div
               key={t.key}
-              className="absolute rounded-full text-white shadow-card whitespace-nowrap px-3.5 py-1.5 flex items-baseline gap-1.5"
+              className="absolute"
               style={{
-                backgroundColor: t.color,
                 left: `${positions[i].x}%`,
                 top: `${positions[i].y}%`,
                 transform: 'translate(-50%, -50%)',
-                fontSize: `${13 + ratio * 2}px`,
               }}
             >
-              <span className="font-bold">{t.label}</span>
-              <span className="font-extrabold tabular-nums">{count}건</span>
+              <button
+                type="button"
+                disabled={!interactive}
+                onClick={() => {
+                  if (hasContent) onRiskTypeClick?.(t.key);
+                }}
+                aria-label={`${t.label} 리스크 콘텐츠 보기`}
+                className={cn(
+                  'group relative z-0 rounded-full text-white shadow-card whitespace-nowrap px-3.5 py-1.5 flex items-baseline gap-1.5 transition-transform duration-150',
+                  interactive
+                    ? 'cursor-pointer hover:z-10 hover:-translate-y-0.5 hover:scale-[1.03] hover:drop-shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300'
+                    : 'cursor-default opacity-55',
+                )}
+                style={{
+                  backgroundColor: t.color,
+                  fontSize: `${13 + ratio * 2}px`,
+                }}
+              >
+                <span
+                  className={cn(
+                    'font-bold transition-transform duration-150',
+                    interactive && 'group-hover:scale-105',
+                  )}
+                >
+                  {t.label}
+                </span>
+                <span className="font-extrabold tabular-nums">{count}건</span>
+              </button>
             </div>
           );
         })}

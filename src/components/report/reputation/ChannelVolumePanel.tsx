@@ -6,13 +6,15 @@ import { ChannelDonutChart } from '@/components/chart/ChannelDonutChart';
 import { MobileChannelDonutChart } from '@/components/chart/MobileChannelDonutChart';
 import { ChannelCard } from '@/components/report/reputation/ChannelCard';
 import type { ChannelStat } from '@/lib/api/reportApi';
+import type { ReportChannel } from '@/components/report/highlight/channelMeta';
 
 interface ChannelVolumePanelProps {
   channelStats: ChannelStat[];
   pdfMode: boolean;
+  onChannelClick?: (channel: ReportChannel) => void;
 }
 
-export function ChannelVolumePanel({ channelStats, pdfMode }: ChannelVolumePanelProps) {
+export function ChannelVolumePanel({ channelStats, pdfMode, onChannelClick }: ChannelVolumePanelProps) {
   const total = channelStats.reduce((s, c) => s + c.value, 0);
 
   return (
@@ -47,6 +49,11 @@ export function ChannelVolumePanel({ channelStats, pdfMode }: ChannelVolumePanel
               label={ch.label}
               value={ch.value}
               ratio={total > 0 ? ((ch.value / total) * 100).toFixed(1) : '0'}
+              onClick={
+                !pdfMode && ch.value > 0 && onChannelClick
+                  ? () => onChannelClick?.(ch.id as ReportChannel)
+                  : undefined
+              }
             />
           ))}
         </div>

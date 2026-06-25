@@ -7,7 +7,7 @@ import { ChevronRight, ExternalLink, Check, AlertCircle } from 'lucide-react';
 import { ReportHeader } from '@/components/report/ReportHeader';
 import { Highlight } from '@/components/report/Highlight';
 import { OnlineReputation } from '@/components/report/OnlineReputation';
-import { RiskContent } from '@/components/report/RiskContent';
+// import { RiskContent } from '@/components/report/RiskContent';
 import { Strategy } from '@/components/report/Strategy';
 import { Loading } from '@/components/ui/Loading';
 import { AdminButton } from '@/components/ui/AdminButton';
@@ -199,11 +199,13 @@ function ReportPageContent() {
               <OnlineReputation workspaceId={workspaceId} reportId={reportId} />
             </SectionBg>
           )}
+          {/* 리스크 콘텐츠 관리 섹션 임시 비노출.
           {activeSection === 'section-risk' && (
             <SectionBg color="blue" gradient={isDaily ? undefined : 'from-light'}>
               <RiskContent workspaceId={workspaceId} reportId={reportId} editable />
             </SectionBg>
           )}
+          */}
           {activeSection === 'section-strategy' && !isDaily && (
             <SectionBg color="bg-light" gradient="from-blue">
               <Strategy workspaceId={workspaceId} reportId={reportId} editable />
@@ -284,7 +286,7 @@ function ReportPageContent() {
             </p>
             <p className="text-text-muted text-xs">
               발행 후에는 모든 고객이 즉시 이 보고서를 열람할 수 있으며, 되돌리려면 별도
-              조치가 필요합니다. 본문/리스크/전략을 모두 검토했는지 다시 한번 확인해 주세요.
+              조치가 필요합니다. 본문/전략을 모두 검토했는지 다시 한번 확인해 주세요.
             </p>
           </div>
         }

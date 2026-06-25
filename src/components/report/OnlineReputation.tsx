@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
   useChannelItemsSuspense,
   useChannelStatsSuspense,
@@ -15,6 +15,8 @@ import { ChannelSirPanel } from '@/components/report/reputation/ChannelSirPanel'
 import { SentimentPanel } from '@/components/report/reputation/SentimentPanel';
 import { ChannelDetailPanel } from '@/components/report/reputation/ChannelDetailPanel';
 import { OnlineReputationIcon } from '@/components/icons/OnlineReputationIcon';
+import { ReportChannelDrawer } from '@/components/report/highlight/ReportChannelDrawer';
+import type { ReportChannel } from '@/components/report/highlight/channelMeta';
 
 interface OnlineReputationProps {
   workspaceId: string;
@@ -23,6 +25,7 @@ interface OnlineReputationProps {
 }
 
 export function OnlineReputation({ workspaceId, reportId, pdfMode = false }: OnlineReputationProps) {
+  const [selectedChannel, setSelectedChannel] = useState<ReportChannel | null>(null);
   const { data: report } = useReportInfoSuspense(reportId);
   const { data: channelItems } = useChannelItemsSuspense(workspaceId, reportId);
   const { data: channelStats } = useChannelStatsSuspense(
@@ -46,7 +49,11 @@ export function OnlineReputation({ workspaceId, reportId, pdfMode = false }: Onl
     : (prevReport?.channelSirMap ?? {});
 
   const channelVolumeProps = useMemo(
-    () => ({ channelStats, pdfMode }),
+    () => ({
+      channelStats,
+      pdfMode,
+      onChannelClick: pdfMode ? undefined : setSelectedChannel,
+    }),
     [channelStats, pdfMode],
   );
 
@@ -64,11 +71,18 @@ export function OnlineReputation({ workspaceId, reportId, pdfMode = false }: Onl
     <div className="print-break">
       <ReportSection id="section-reputation" icon={<OnlineReputationIcon size={36} />} title="기업 평판 분석">
         <div className="print-keep"><ChannelVolumePanel {...channelVolumeProps} /></div>
-        <div className="print-keep"><SentimentPanel {...sentimentProps} /></div>
         <div className="print-keep">
           <ChannelSirPanel channelStats={channelStats} isInitial={isInitial} prevIsInitial={prevIsInitial} isDaily={isDaily} prevChannelSirMap={prevChannelSirMap} />
         </div>
+        <div className="print-keep"><SentimentPanel {...sentimentProps} /></div>
         <div className="print-keep"><ChannelDetailPanel {...channelDetailProps} /></div>
+        {!pdfMode && (
+          <ReportChannelDrawer
+            channel={selectedChannel}
+            items={channelItems}
+            onClose={() => setSelectedChannel(null)}
+          />
+        )}
       </ReportSection>
     </div>
   );

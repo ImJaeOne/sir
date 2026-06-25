@@ -9,6 +9,7 @@ import {
   publishReport,
   createReport,
   updateRiskReport,
+  markRiskNoticeRead,
 } from '@/lib/api/reportApi';
 import { reportKeys } from '@/hooks/report/useReportQuery';
 import { workspaceKeys } from '@/hooks/workspace/workspaceKeys';
@@ -94,10 +95,24 @@ export function useClearCriticalType(workspaceId: string) {
     mutationFn: (item: RiskItem) => clearCriticalType(item.platform_id, item.id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: reportKeys.riskItems(workspaceId) });
+      queryClient.invalidateQueries({ queryKey: reportKeys.riskItemSummary(workspaceId) });
       toast.success('리스크 분류를 해제했습니다.');
     },
     onError: (err) => {
       toast.error(getErrorMessage(err, '리스크 해제에 실패했습니다.'));
+    },
+  });
+}
+
+// ── 클라이언트 리스크 NEW 확인 상태 ──
+
+export function useMarkRiskNoticeRead(workspaceId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (latestRiskAt: string) => markRiskNoticeRead(workspaceId, latestRiskAt),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: reportKeys.riskNoticeRead(workspaceId) });
     },
   });
 }

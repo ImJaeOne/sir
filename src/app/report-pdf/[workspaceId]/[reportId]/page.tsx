@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation';
 import { ReportHeader } from '@/components/report/ReportHeader';
 import { Highlight } from '@/components/report/Highlight';
 import { OnlineReputation } from '@/components/report/OnlineReputation';
-import { RiskContent } from '@/components/report/RiskContent';
+// import { RiskContent } from '@/components/report/RiskContent';
 import { Strategy } from '@/components/report/Strategy';
 import { Loading } from '@/components/ui/Loading';
 import { useReportInfoSuspense } from '@/hooks/report/useReportQuery';
@@ -61,7 +61,9 @@ function ReportPdfContent() {
         <ReportHeader workspaceId={workspaceId} reportId={reportId} showPdfButton={false} />
         <Highlight workspaceId={workspaceId} reportId={reportId} pdfMode />
         <OnlineReputation workspaceId={workspaceId} reportId={reportId} pdfMode />
+        {/* 리스크 콘텐츠 관리 섹션 임시 비노출.
         <RiskContent workspaceId={workspaceId} reportId={reportId} pdfMode />
+        */}
         {!isDaily && <Strategy workspaceId={workspaceId} reportId={reportId} pdfMode />}
         <PdfReadyMarker />
       </div>

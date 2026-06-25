@@ -1,10 +1,10 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { useDeleteRiskReport } from '@/hooks/report/useReportMutation';
-import { useRiskItems, useRiskReports } from '@/hooks/report/useReportQuery';
+import { useDeleteRiskReport, useMarkRiskNoticeRead } from '@/hooks/report/useReportMutation';
+import { useRiskItemSummary, useRiskItems, useRiskReports } from '@/hooks/report/useReportQuery';
 import { useReports, useWorkspace, useWorkspaceSubscription } from '@/hooks/workspace/useWorkspaceQuery';
 import { createClient } from '@/lib/supabase/client';
 import { Loading } from '@/components/ui/Loading';
@@ -82,8 +82,19 @@ export default function CrisisCenterPage() {
     workspaceId,
     reportFilter
   );
+  const { data: riskItemSummary } = useRiskItemSummary(workspaceId);
   const { data: sessionToReportMap } = useSessionToReportMap(workspaceId);
   const { data: reportsList } = useReports(workspaceId);
+  const markRiskNoticeRead = useMarkRiskNoticeRead(workspaceId);
+
+  useEffect(() => {
+    if (workspaceId && riskItemSummary?.latestRiskAt) {
+      markRiskNoticeRead.mutate(riskItemSummary.latestRiskAt);
+    }
+    // 위기 대응 센터 방문 시 현재 최신 리스크를 확인 완료로 기록.
+    // API 내부에서 role='user' 인 client 사용자만 upsert 하므로 admin 방문은 read-state 를 바꾸지 않는다.
+  }, [workspaceId, riskItemSummary?.latestRiskAt]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const reportTypeMap = useMemo(() => {
     const m = new Map<string, string>();
     for (const r of reportsList ?? []) m.set(r.id, r.type);

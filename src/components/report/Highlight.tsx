@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
   useWorkspaceSirSuspense,
   useWeeklySummarySuspense,
@@ -16,6 +16,8 @@ import {
 import { ReportSection, ReportSubSection } from '@/components/report/ReportSection';
 import { SirSnapshot } from '@/components/report/highlight/SirSnapshot';
 import { CollectionSnapshot } from '@/components/report/highlight/CollectionSnapshot';
+import { ReportChannelDrawer } from '@/components/report/highlight/ReportChannelDrawer';
+import { ReportRiskDrawer } from '@/components/report/highlight/ReportRiskDrawer';
 import { RiskSnapshot } from '@/components/report/highlight/RiskSnapshot';
 // ranking 카드(StatCard 기반)는 weekly/monthly 에서 v37 까지 4번째 카드로 노출.
 // v38 에서 3 카드 새 디자인으로 통일하면서 일단 주석 처리. 필요 시 부활용으로 import 보존.
@@ -26,19 +28,13 @@ import { SirStockPanel } from '@/components/report/highlight/SirStockPanel';
 import { SirRankingPanel } from '@/components/report/highlight/SirRankingPanel';
 import { WeeklyHighlightIcon } from '@/components/icons/WeeklyHighlightIcon';
 import type { SirRanking } from '@/lib/api/reportApi';
+import {
+  PLATFORM_TO_REPORT_CHANNEL,
+  type ReportChannel,
+} from '@/components/report/highlight/channelMeta';
+import type { CriticalType } from '@/types/common';
 
-type Channel = 'news' | 'blog' | 'youtube' | 'community';
-type CriticalType = 'defamation' | 'insult' | 'rumor' | 'spam';
-
-const PLATFORM_TO_CHANNEL: Record<string, Channel> = {
-  naver_news: 'news',
-  naver_blog: 'blog',
-  youtube: 'youtube',
-  naver_stock: 'community',
-  dcinside: 'community',
-};
-
-const emptyChannelCount = (): Record<Channel, number> => ({
+const emptyChannelCount = (): Record<ReportChannel, number> => ({
   news: 0,
   blog: 0,
   youtube: 0,
@@ -69,6 +65,8 @@ interface HighlightProps {
 const defaultRanking: SirRanking = { tiers: [], rank: 0, total: 0, average: 0 };
 
 export function Highlight({ workspaceId, reportId, pdfMode = false, editable = false }: HighlightProps) {
+  const [selectedChannel, setSelectedChannel] = useState<ReportChannel | null>(null);
+  const [selectedRiskType, setSelectedRiskType] = useState<CriticalType | null>(null);
   const { data: workspace } = useWorkspaceSirSuspense(workspaceId);
   const { data: report } = useReportInfoSuspense(reportId);
   const { data: summary } = useWeeklySummarySuspense(workspaceId, reportId);
@@ -136,7 +134,7 @@ export function Highlight({ workspaceId, reportId, pdfMode = false, editable = f
   const channelToday = useMemo(() => {
     const acc = emptyChannelCount();
     for (const it of channelItems) {
-      const ch = PLATFORM_TO_CHANNEL[it.platform_id];
+      const ch = PLATFORM_TO_REPORT_CHANNEL[it.platform_id];
       if (ch) acc[ch] += 1;
     }
     return acc;
@@ -179,6 +177,12 @@ export function Highlight({ workspaceId, reportId, pdfMode = false, editable = f
   );
 
   const isNoData = totalItems === 0;
+  const handleChannelClick = (channel: ReportChannel) => {
+    if (channelToday[channel] > 0) setSelectedChannel(channel);
+  };
+  const handleRiskTypeClick = (type: CriticalType) => {
+    if (typeCounts[type] > 0) setSelectedRiskType(type);
+  };
 
   return (
     <ReportSection icon={<WeeklyHighlightIcon size={36} />} title={isDaily ? '일간 하이라이트' : isInitial ? '월간 하이라이트' : '주간 하이라이트'}>
@@ -210,6 +214,7 @@ export function Highlight({ workspaceId, reportId, pdfMode = false, editable = f
             prefix={prefix}
             period={period}
             isNoData={isNoData}
+            onChannelClick={pdfMode ? undefined : handleChannelClick}
           />
           <RiskSnapshot
             typeCounts={typeCounts}
@@ -218,6 +223,7 @@ export function Highlight({ workspaceId, reportId, pdfMode = false, editable = f
             prefix={prefix}
             period={period}
             isNoData={isNoData}
+            onRiskTypeClick={pdfMode ? undefined : handleRiskTypeClick}
           />
         </div>
       </ReportSubSection>
@@ -230,6 +236,20 @@ export function Highlight({ workspaceId, reportId, pdfMode = false, editable = f
           )}
           <div className="print-keep"><SirStockPanel {...sirStockProps} /></div>
           <div className="print-keep"><SirRankingPanel {...sirRankingProps} /></div>
+        </>
+      )}
+      {!pdfMode && (
+        <>
+          <ReportChannelDrawer
+            channel={selectedChannel}
+            items={channelItems}
+            onClose={() => setSelectedChannel(null)}
+          />
+          <ReportRiskDrawer
+            type={selectedRiskType}
+            items={riskItems}
+            onClose={() => setSelectedRiskType(null)}
+          />
         </>
       )}
     </ReportSection>
