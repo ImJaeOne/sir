@@ -11,13 +11,13 @@ import {
   useMonitoringChannelMatrix,
   useMonitoringLatestClose,
 } from '@/hooks/monitoring/useMonitoringQuery';
-import { useMonitoringSearchLive } from '@/hooks/monitoring/useMonitoringSearchLive';
+// import { useMonitoringSearchLive } from '@/hooks/monitoring/useMonitoringSearchLive';
 import {
   pickMatrixCount,
   type Channel,
   type SentimentFilter,
 } from '@/lib/api/monitoringApi';
-import { AiAnalysisCard } from '@/components/client/monitoring/AiAnalysisCard';
+// import { AiAnalysisCard } from '@/components/client/monitoring/AiAnalysisCard';
 import { DayDetailDrawer } from '@/components/client/monitoring/DayDetailDrawer';
 import { ReportDisclaimer } from '@/components/report/ReportDisclaimer';
 import {
@@ -28,10 +28,10 @@ import {
 } from '@/components/chart/monitoring/shared';
 import { PriceVolumeChart } from '@/components/chart/monitoring/PriceVolumeChart';
 import { SentimentPriceChart } from '@/components/chart/monitoring/SentimentPriceChart';
-import { SearchPriceChart } from '@/components/chart/monitoring/SearchPriceChart';
-import { RiskPriceChart } from '@/components/chart/monitoring/RiskPriceChart';
+// import { SearchPriceChart } from '@/components/chart/monitoring/SearchPriceChart';
+// import { RiskPriceChart } from '@/components/chart/monitoring/RiskPriceChart';
 import { ChannelVolumePriceChart } from '@/components/chart/monitoring/ChannelVolumePriceChart';
-import { VolumeSearchChart } from '@/components/chart/monitoring/VolumeSearchChart';
+// import { VolumeSearchChart } from '@/components/chart/monitoring/VolumeSearchChart';
 
 // ── date utils (KST 기준) ──────────────────────────────────────────────
 function kstTodayStr(): string {
@@ -58,9 +58,9 @@ const TABS = [
   { id: 'A', label: '데이터 수집량과 주가 관계' },
   { id: 'E', label: '채널별 여론과 주가 관계' },
   { id: 'B', label: '감정 분포와 주가 관계' },
-  { id: 'D', label: '리스크 유형과 주가 관계' },
-  { id: 'C', label: '검색량과 주가 관계' },
-  { id: 'F', label: '데이터 수집량과 검색량 관계' },
+  // { id: 'D', label: '리스크 유형과 주가 관계' },
+  // { id: 'C', label: '검색량과 주가 관계' },
+  // { id: 'F', label: '데이터 수집량과 검색량 관계' },
 ] as const;
 type TabId = (typeof TABS)[number]['id'];
 
@@ -100,12 +100,12 @@ export default function MonitoringPage() {
   const { data: daily = [], isPending: dailyLoading } = useMonitoringDaily(workspaceId, start, end);
   const { data: stock = [], isPending: stockLoading } = useMonitoringStock(workspaceId, start, end);
   const { data: risks = [], isPending: risksLoading } = useMonitoringRisks(workspaceId, start, end);
-  // 검색 관심도 — 네이버 데이터랩 365일치 1회 호출 후 클라가 슬라이스/재정규화 (탭 전환·기간 변경 시 추가 호출 X)
-  const { data: search = [], isPending: searchLoading } = useMonitoringSearchLive(
-    workspaceId,
-    start,
-    end,
-  );
+  // 검색량 기반 탭(C/F)은 임시 비노출하므로 live search fetch도 중지.
+  // const { data: search = [], isPending: searchLoading } = useMonitoringSearchLive(
+  //   workspaceId,
+  //   start,
+  //   end,
+  // );
   // E 탭(필터 토글) 전용 raw 매트릭스. E 탭 활성화 시에만 가져온다.
   const { data: matrix = [], isPending: matrixLoading } = useMonitoringChannelMatrix(
     activeTab === 'E' ? workspaceId : '',
@@ -113,19 +113,19 @@ export default function MonitoringPage() {
     end,
   );
 
-  const isLoading = dailyLoading || stockLoading || risksLoading || searchLoading;
+  const isLoading = dailyLoading || stockLoading || risksLoading;
 
   // ── 머지: 전체 일자 축 (수집/주가/리스크/검색 모두 한 series 안에 두면 차트 정렬 안정) ──
   const merged: MergedPoint[] = useMemo(() => {
     const dailyMap = new Map(daily.map((d) => [d.date, d]));
     const stockMap = new Map(stock.map((d) => [d.date, d]));
     const riskMap = new Map(risks.map((d) => [d.date, d]));
-    const searchMap = new Map(search.map((d) => [d.date, d]));
+    // const searchMap = new Map(search.map((d) => [d.date, d]));
     const allDates = new Set<string>([
       ...daily.map((d) => d.date),
       ...stock.map((d) => d.date),
       ...risks.map((d) => d.date),
-      ...search.map((d) => d.date),
+      // ...search.map((d) => d.date),
     ]);
     return Array.from(allDates)
       .sort()
@@ -133,7 +133,7 @@ export default function MonitoringPage() {
         const d = dailyMap.get(date);
         const s = stockMap.get(date);
         const r = riskMap.get(date);
-        const sr = searchMap.get(date);
+        // const sr = searchMap.get(date);
         return {
           date,
           isCarried: d?.isCarried ?? false,
@@ -148,11 +148,11 @@ export default function MonitoringPage() {
           close: s?.close ?? null,
           risks: r?.byType ?? { defamation: 0, insult: 0, rumor: 0, spam: 0 },
           riskTotal: r?.total ?? 0,
-          searchNaver: sr?.naver ?? null,
-          searchGoogle: sr?.google ?? null,
+          searchNaver: null,
+          searchGoogle: null,
         };
       });
-  }, [daily, stock, risks, search]);
+  }, [daily, stock, risks]);
 
   // ── 현재 주가(최신 종가) — 기간 무관 ──
   const { data: lastClose, isPending: lastCloseLoading } = useMonitoringLatestClose(workspaceId);
@@ -344,6 +344,7 @@ export default function MonitoringPage() {
               barSize={barSize}
             />
           )}
+          {/* 임시 비노출 탭: 리스크 유형과 주가 관계 / 검색량과 주가 관계 / 데이터 수집량과 검색량 관계
           {activeTab === 'C' && (
             <SearchPriceChart
               merged={merged}
@@ -366,6 +367,7 @@ export default function MonitoringPage() {
               barSize={barSize}
             />
           )}
+          */}
           {activeTab === 'E' && (
             <ChannelVolumePriceChart
               channelFiltered={channelFiltered}
@@ -382,6 +384,7 @@ export default function MonitoringPage() {
               hasPrice={hasPrice}
             />
           )}
+          {/* 임시 비노출 탭: 데이터 수집량과 검색량 관계
           {activeTab === 'F' && (
             <VolumeSearchChart
               merged={merged}
@@ -391,11 +394,14 @@ export default function MonitoringPage() {
               barSize={barSize}
             />
           )}
+          */}
         </div>
 
         {/* AI 분석 ─────────────────────────────────────── */}
-        {/* 페이지 기간 프리셋(차트용) 과 완전 분리 — 카드 자체가 모달 트리거 + 토큰 차감 흐름 관리. */}
+        {/* AI 분석 임시 비노출
+        페이지 기간 프리셋(차트용) 과 완전 분리 — 카드 자체가 모달 트리거 + 토큰 차감 흐름 관리.
         <AiAnalysisCard workspaceId={workspaceId} />
+        */}
 
         <ReportDisclaimer />
       </div>
@@ -457,11 +463,12 @@ function KpiCard({
 
 function TabBar({ activeTab, onChange }: { activeTab: TabId; onChange: (id: TabId) => void }) {
   // 라벨이 길어 가로 스크롤 대신 반응형 그리드로 줄바꿈 처리.
-  // 모바일 2열(3줄) · 태블릿~노트북 3열(2줄) · 와이드(xl) 6열(1줄).
+  // 현재 노출 탭 3개가 한 줄을 꽉 채우도록 sm 이상 3열 고정.
+  // 모바일은 1열로 세로 배치해 긴 라벨 가독성 유지.
   // 셀 stretch(grid 기본) + min-h-[44px] 로 버튼 높이 균일 + 터치 타깃 확보.
   // break-keep: 한국어를 단어(어절) 단위로만 줄바꿈해 "데이터 수집량과 / 주가 관계" 처럼 자연스럽게.
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-1.5 lg:gap-2">
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5 lg:gap-2">
       {TABS.map((t) => {
         const active = t.id === activeTab;
         return (

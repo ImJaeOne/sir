@@ -2,7 +2,12 @@
 
 import { useMemo } from 'react';
 import { useParams, usePathname, useRouter } from 'next/navigation';
-import { FileText, ShieldAlert, LineChart, History } from 'lucide-react';
+import {
+  FileText,
+  ShieldAlert,
+  LineChart,
+  // History,
+} from 'lucide-react';
 import { useReports } from '@/hooks/workspace/useWorkspaceQuery';
 import { useLastReportStore } from '@/store/lastReport';
 
@@ -32,17 +37,17 @@ export function SidebarMainNav({ isOpen }: SidebarMainNavProps) {
 
   const crisisHref = workspaceId ? `/crisis/${workspaceId}` : '';
   const monitoringHref = workspaceId ? `/monitoring/${workspaceId}` : '';
-  const historyHref = workspaceId ? `/insights-history/${workspaceId}` : '';
+  // const historyHref = workspaceId ? `/insights-history/${workspaceId}` : '';
 
   const isReport = pathname.startsWith('/report/');
   const isCrisis = pathname.startsWith('/crisis/');
   const isMonitoring = pathname.startsWith('/monitoring/');
-  const isHistory = pathname.startsWith('/insights-history/');
+  // const isHistory = pathname.startsWith('/insights-history/');
 
   const items: { label: string; Icon: typeof FileText; href: string; active: boolean }[] = [
     { label: '보고서', Icon: FileText, href: reportHref, active: isReport },
     { label: '인사이트', Icon: LineChart, href: monitoringHref, active: isMonitoring },
-    { label: '분석 히스토리', Icon: History, href: historyHref, active: isHistory },
+    // { label: '분석 히스토리', Icon: History, href: historyHref, active: isHistory },
     { label: '위기 대응 센터', Icon: ShieldAlert, href: crisisHref, active: isCrisis },
   ];
 
