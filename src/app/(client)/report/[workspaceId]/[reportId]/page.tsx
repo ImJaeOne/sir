@@ -6,7 +6,7 @@ import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigat
 import { ReportHeader } from '@/components/report/ReportHeader';
 import { Highlight } from '@/components/report/Highlight';
 import { OnlineReputation } from '@/components/report/OnlineReputation';
-import { RiskContent } from '@/components/report/RiskContent';
+// import { RiskContent } from '@/components/report/RiskContent';
 import { Strategy } from '@/components/report/Strategy';
 import { ServiceCTA } from '@/components/report/ServiceCTA';
 import { ReportDisclaimer } from '@/components/report/ReportDisclaimer';
@@ -109,9 +109,11 @@ function ClientReportContent() {
         <SectionBg color="bg-light" id="section-reputation">
           <OnlineReputation workspaceId={workspaceId} reportId={reportId} pdfMode />
         </SectionBg>
+        {/* 리스크 콘텐츠 관리 섹션 임시 비노출.
         <SectionBg color="bg-light" id="section-risk">
           <RiskContent workspaceId={workspaceId} reportId={reportId} />
         </SectionBg>
+        */}
         <SectionBg color="bg-light" id="section-strategy">
           <Strategy workspaceId={workspaceId} reportId={reportId} />
         </SectionBg>
@@ -136,9 +138,11 @@ function ClientReportContent() {
         <SectionBg color="blue" gradient="from-light" id="section-reputation">
           <OnlineReputation workspaceId={workspaceId} reportId={reportId} pdfMode={pdfMode} />
         </SectionBg>
+        {/* 리스크 콘텐츠 관리 섹션 임시 비노출.
         <SectionBg color="bg-light" gradient="from-blue" id="section-risk">
           <RiskContent workspaceId={workspaceId} reportId={reportId} />
         </SectionBg>
+        */}
         <SectionBg color="blue" gradient="from-light">
           <ServiceCTA />
           <ReportDisclaimer />
@@ -204,11 +208,13 @@ function ClientReportContent() {
           <OnlineReputation workspaceId={workspaceId} reportId={reportId} />
         </SectionBg>
       )}
+      {/* 리스크 콘텐츠 관리 섹션 임시 비노출.
       {activeSection === 'section-risk' && (
         <SectionBg color="bg-light">
           <RiskContent workspaceId={workspaceId} reportId={reportId} />
         </SectionBg>
       )}
+      */}
       {activeSection === 'section-strategy' && !isDaily && (
         <SectionBg color="bg-light">
           <Strategy workspaceId={workspaceId} reportId={reportId} />
