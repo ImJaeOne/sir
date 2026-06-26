@@ -17,7 +17,7 @@ const TIME_FRAMES = [
 
 const LEGEND_ITEMS = [
   { color: 'bg-chart-sir', label: 'SIR 지수' },
-  { color: 'bg-chart-stock-up', secondColor: 'bg-chart-stock-down', label: '주가 지수' },
+  { color: 'bg-chart-stock-up', secondColor: 'bg-chart-stock-down', label: '주가' },
 ];
 
 interface SirStockPanelProps {
@@ -30,8 +30,8 @@ export function SirStockPanel({ pdfMode, sirStockData }: SirStockPanelProps) {
 
   return (
     <ReportSubSection
-      title="주가와 SIR 지수 비교"
-      description="주가 지수와 SIR 지수를 이중축으로 배치해 평판 변화가 주가 변화에 미치는 상관관계를 직관적으로 확인할 수 있습니다."
+      title="SIR 지수와 주가 분석"
+      description="주가와 SIR 지수를 이중축으로 배치해 평판 변화가 주가 변화에 미치는 상관관계를 직관적으로 확인할 수 있습니다."
     >
       <ReportCard px={20} py={20}>
         <div className="flex flex-col gap-4">
