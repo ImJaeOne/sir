@@ -15,7 +15,7 @@ interface ChannelSirPanelProps {
 export function ChannelSirPanel({ channelStats, isInitial, prevIsInitial, isDaily = false, prevChannelSirMap }: ChannelSirPanelProps) {
   return (
     <ReportSubSection
-      title="채널별 평판 지수"
+      title="채널별 SIR 지수"
       description="1,000점 만점을 기준으로 각 채널 별 긍정·부정 여론 강도를 확인할 수 있습니다."
     >
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
